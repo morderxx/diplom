@@ -1,4 +1,4 @@
-const username = localStorage.getItem('login'); // Твой логин
+const username = localStorage.getItem('login');
 
 const WS_URL = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host;
 const socket = new WebSocket(WS_URL);
@@ -14,22 +14,18 @@ socket.addEventListener('message', (event) => {
         const chatBox = document.getElementById('chat-box');
 
         const wrapper = document.createElement('div');
-        wrapper.className = 'message-wrapper';
-
-        const messageDiv = document.createElement('div');
-        messageDiv.className = data.login === username ? 'my-message' : 'other-message';
+        wrapper.className = data.login === username ? 'my-message' : 'other-message';
 
         const info = document.createElement('div');
         info.className = 'message-info';
-        info.textContent = data.login;
+        info.textContent = `${data.login} • ${new Date(data.time).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}`;
 
         const text = document.createElement('div');
         text.className = 'message-text';
         text.textContent = data.text;
 
-        messageDiv.appendChild(info);
-        messageDiv.appendChild(text);
-        wrapper.appendChild(messageDiv);
+        wrapper.appendChild(info);
+        wrapper.appendChild(text);
         chatBox.appendChild(wrapper);
         chatBox.scrollTop = chatBox.scrollHeight;
     } catch (e) {
@@ -42,9 +38,18 @@ function sendMessage() {
     if (input.value.trim() !== '') {
         const payload = {
             login: username,
-            text: input.value.trim()
+            text: input.value.trim(),
+            time: new Date().toISOString()
         };
         socket.send(JSON.stringify(payload));
         input.value = '';
     }
 }
+
+// Отправка на Enter
+document.getElementById('message').addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        sendMessage();
+    }
+});
