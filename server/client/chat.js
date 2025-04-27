@@ -1,6 +1,7 @@
-const WS_URL = 'wss://diplom-production-df7f.up.railway.app';
+const WS_URL = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host;
 
 const socket = new WebSocket(WS_URL);
+
 
 socket.addEventListener('open', () => {
     console.log('Connected to chat');
