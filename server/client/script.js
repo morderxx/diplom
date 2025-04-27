@@ -1,4 +1,4 @@
-const API_URL = 'https://diplom-production-df7f.up.railway.app/api';
+const API_URL = '/api';
 
 
 function showRegister() {
