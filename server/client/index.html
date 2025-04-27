@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Вход в чат</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="form-container">
+        <h1>Мессенджер</h1>
+        <input type="text" id="login" placeholder="Логин">
+        <input type="password" id="password" placeholder="Пароль">
+        <input type="text" id="keyword" placeholder="Ключевое слово (для регистрации)" style="display: none;">
+        <div class="buttons">
+            <button onclick="login()">Войти</button>
+            <button onclick="showRegister()">Регистрация</button>
+        </div>
+        <button id="registerButton" onclick="register()" style="display: none;">Подтвердить регистрацию</button>
+        <div id="message"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
