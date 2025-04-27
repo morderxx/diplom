@@ -1,7 +1,6 @@
+const username = localStorage.getItem('login'); // Твой логин
+
 const WS_URL = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host;
-
-const username = localStorage.getItem('login') || 'Аноним'; // <-- ДОБАВИЛ
-
 const socket = new WebSocket(WS_URL);
 
 socket.addEventListener('open', () => {
@@ -9,50 +8,43 @@ socket.addEventListener('open', () => {
 });
 
 socket.addEventListener('message', (event) => {
-    const chatBox = document.getElementById('chat-box');
-
-    let data;
-
     try {
-        data = JSON.parse(event.data);
+        const data = JSON.parse(event.data);
+
+        const chatBox = document.getElementById('chat-box');
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'message-wrapper';
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = data.login === username ? 'my-message' : 'other-message';
+
+        const info = document.createElement('div');
+        info.className = 'message-info';
+        info.textContent = data.login;
+
+        const text = document.createElement('div');
+        text.className = 'message-text';
+        text.textContent = data.text;
+
+        messageDiv.appendChild(info);
+        messageDiv.appendChild(text);
+        wrapper.appendChild(messageDiv);
+        chatBox.appendChild(wrapper);
+        chatBox.scrollTop = chatBox.scrollHeight;
     } catch (e) {
         console.error('Ошибка обработки сообщения', e);
-        return;
     }
-
-    const messageWrapper = document.createElement('div');
-    messageWrapper.classList.add('message-wrapper');
-
-    const messageInfo = document.createElement('div');
-    messageInfo.classList.add('message-info');
-    messageInfo.textContent = `${data.username} | ${data.time}`;
-
-    const messageText = document.createElement('div');
-    messageText.classList.add('message-text');
-    messageText.textContent = data.message;
-
-    messageWrapper.appendChild(messageInfo);
-    messageWrapper.appendChild(messageText);
-
-    if (data.username === username) {
-        messageWrapper.classList.add('my-message');
-    } else {
-        messageWrapper.classList.add('other-message');
-    }
-
-    chatBox.appendChild(messageWrapper);
-    chatBox.scrollTop = chatBox.scrollHeight;
 });
 
 function sendMessage() {
     const input = document.getElementById('message');
     if (input.value.trim() !== '') {
-        const message = {
-            username,
-            time: new Date().toLocaleTimeString(),
-            message: input.value
+        const payload = {
+            login: username,
+            text: input.value.trim()
         };
-        socket.send(JSON.stringify(message));
+        socket.send(JSON.stringify(payload));
         input.value = '';
     }
 }
