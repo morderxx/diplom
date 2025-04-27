@@ -1,5 +1,7 @@
 const WS_URL = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host;
 
+const username = localStorage.getItem('login') || 'Аноним'; // <-- ДОБАВИЛ
+
 const socket = new WebSocket(WS_URL);
 
 socket.addEventListener('open', () => {
@@ -12,7 +14,7 @@ socket.addEventListener('message', (event) => {
     let data;
 
     try {
-        data = JSON.parse(event.data); // ПАРСИМ СТРОКУ
+        data = JSON.parse(event.data);
     } catch (e) {
         console.error('Ошибка обработки сообщения', e);
         return;
@@ -45,13 +47,12 @@ socket.addEventListener('message', (event) => {
 function sendMessage() {
     const input = document.getElementById('message');
     if (input.value.trim() !== '') {
-        const username = localStorage.getItem('login') || 'Аноним'; // берем имя из localStorage
         const message = {
             username,
             time: new Date().toLocaleTimeString(),
             message: input.value
         };
-        socket.send(JSON.stringify(message)); // ОТПРАВЛЯЕМ JSON, а не просто текст
+        socket.send(JSON.stringify(message));
         input.value = '';
     }
 }
