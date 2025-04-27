@@ -7,6 +7,9 @@ function setupWebSocket(server) {
         console.log('User connected');
 
         ws.on('message', (message) => {
+            if (Buffer.isBuffer(message)) {
+                message = message.toString('utf8');
+            }
             console.log('Received:', message);
 
             // Отправляем сообщение всем клиентам
