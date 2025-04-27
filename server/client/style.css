@@ -29,6 +29,7 @@ input {
     border-radius: 8px;
 }
 
+/* Стили для обычных кнопок */
 button {
     width: 100%;
     padding: 10px;
@@ -37,11 +38,31 @@ button {
     border: none;
     border-radius: 8px;
     cursor: pointer;
+    transition: background-color 0.3s ease; /* Плавный эффект при наведении */
 }
 
 button:hover {
     background: #45a049;
 }
+
+/* Кнопки для регистрации чтобы были другие стили */
+#registerButton {
+    margin-top: 15px;
+    background-color: #007bff;
+}
+
+#registerButton:hover {
+    background-color: #0056b3;
+}
+
+/* Стили для контейнера кнопок (добавляем отступ между кнопками) */
+.button-container {
+    display: flex;
+    flex-direction: column; /* Кнопки в столбец */
+    gap: 10px; /* Расстояние между кнопками */
+    margin-bottom: 15px;  /*отступ снизу от всего контейнера*/
+}
+
 
 #chat-box {
     display: flex;
