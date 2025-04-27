@@ -1,21 +1,18 @@
 const WS_URL = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host;
-const socket = new WebSocket(WS_URL);
 
-// Получаем ник пользователя из localStorage
-const username = localStorage.getItem('username') || 'Аноним';
+const socket = new WebSocket(WS_URL);
 
 socket.addEventListener('open', () => {
     console.log('Connected to chat');
 });
 
-socket.addEventListener('message', async (event) => {
+socket.addEventListener('message', (event) => {
     const chatBox = document.getElementById('chat-box');
 
     let data;
 
     try {
-        data = await event.data.text(); // Преобразуем Blob в текст
-        data = JSON.parse(data);
+        data = JSON.parse(event.data); // ПАРСИМ СТРОКУ
     } catch (e) {
         console.error('Ошибка обработки сообщения', e);
         return;
@@ -48,16 +45,13 @@ socket.addEventListener('message', async (event) => {
 function sendMessage() {
     const input = document.getElementById('message');
     if (input.value.trim() !== '') {
-        const now = new Date();
-        const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-        const messageData = {
-            username: username,
-            message: input.value.trim(),
-            time: time
+        const username = localStorage.getItem('login') || 'Аноним'; // берем имя из localStorage
+        const message = {
+            username,
+            time: new Date().toLocaleTimeString(),
+            message: input.value
         };
-
-        socket.send(JSON.stringify(messageData));
+        socket.send(JSON.stringify(message)); // ОТПРАВЛЯЕМ JSON, а не просто текст
         input.value = '';
     }
 }
