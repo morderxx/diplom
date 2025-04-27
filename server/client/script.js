@@ -19,11 +19,13 @@ async function login() {
     if (res.ok) {
         const data = await res.json();
         localStorage.setItem('token', data.token);
+        localStorage.setItem('username', login); // Сохраняем логин
         window.location.href = 'chat.html';
     } else {
         document.getElementById('message').innerText = 'Ошибка входа';
     }
 }
+
 
 async function register() {
     const login = document.getElementById('login').value;
