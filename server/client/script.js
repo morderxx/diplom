@@ -9,6 +9,7 @@ function showRegister() {
 async function login() {
     const login = document.getElementById('login').value;
     const password = document.getElementById('password').value;
+    localStorage.setItem('login', login);
 
     const res = await fetch(`${API_URL}/login`, {
         method: 'POST',
