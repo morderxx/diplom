@@ -14,18 +14,26 @@ socket.addEventListener('message', (event) => {
         const chatBox = document.getElementById('chat-box');
 
         const wrapper = document.createElement('div');
-        wrapper.className = data.login === username ? 'my-message' : 'other-message';
+        wrapper.className = 'message-wrapper';
+
+        const message = document.createElement('div');
+        message.className = data.login === username ? 'my-message' : 'other-message';
 
         const info = document.createElement('div');
         info.className = 'message-info';
         info.textContent = `${data.login} • ${new Date(data.time).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}`;
 
+        const bubble = document.createElement('div');
+        bubble.className = 'message-bubble';
+
         const text = document.createElement('div');
         text.className = 'message-text';
         text.textContent = data.text;
 
-        wrapper.appendChild(info);
-        wrapper.appendChild(text);
+        bubble.appendChild(text);
+        message.appendChild(info);
+        message.appendChild(bubble);
+        wrapper.appendChild(message);
         chatBox.appendChild(wrapper);
         chatBox.scrollTop = chatBox.scrollHeight;
     } catch (e) {
