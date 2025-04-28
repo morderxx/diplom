@@ -53,35 +53,53 @@ async function loadUsers() {
 
 // 3) Создать/открыть приватную комнату
 async function openPrivateChat(otherNick) {
-  const roomsRes = await fetch(`${API_URL}/rooms`, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
-  const rooms = roomsRes.ok ? await roomsRes.json() : [];
-  const exist = rooms.find(r =>
-    !r.is_group && r.name === otherNick
-  );
-  if (exist) return joinRoom(exist.id);
+  try {
+    const token = localStorage.getItem('token');
+    const userNickname = localStorage.getItem('nickname'); // <-- ВАЖНО! забираем nickname из localStorage
 
-  const res = await fetch(`${API_URL}/rooms`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify({
-      name: otherNick,
-      is_group: false,
-      members: [userNickname, otherNick]
-    })
-  });
-  if (!res.ok) {
-    console.error('Не удалось создать комнату');
-    return;
+    // Получаем все комнаты
+    const roomsRes = await fetch(`${API_URL}/rooms`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    const rooms = roomsRes.ok ? await roomsRes.json() : [];
+
+    // Ищем существующую приватную комнату с этим пользователем
+    const exist = rooms.find(r =>
+      !r.is_group && r.members && r.members.includes(otherNick)
+    );
+
+    if (exist) {
+      return joinRoom(exist.id);
+    }
+
+    // Если нет комнаты - создаём новую
+    const res = await fetch(`${API_URL}/rooms`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        name: null, // можно оставить null для приватной комнаты
+        is_group: false,
+        members: [userNickname, otherNick]  // <-- теперь точно 2 ника передаются
+      })
+    });
+
+    if (!res.ok) {
+      console.error('Не удалось создать комнату:', await res.text());
+      return;
+    }
+
+    const { roomId } = await res.json();
+    await loadRooms();
+    joinRoom(roomId);
+  } catch (err) {
+    console.error('Ошибка при открытии приватного чата:', err);
   }
-  const { roomId } = await res.json();
-  await loadRooms();
-  joinRoom(roomId);
 }
+
 
 // 4) Войти в комнату
 async function joinRoom(roomId) {
