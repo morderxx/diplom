@@ -40,12 +40,28 @@ async function register() {
     });
 
     if (res.ok) {
-        document.getElementById('message').innerText = 'Регистрация успешна!';
-        setTimeout(() => {
-            window.location.href = 'profile.html';
-        }, 1000);
+        // После успешной регистрации сразу логинимся
+        const loginRes = await fetch(`${API_URL}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ login, pass: password })
+        });
+
+        if (loginRes.ok) {
+            const data = await loginRes.json();
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('login', login);
+
+            document.getElementById('message').innerText = 'Регистрация успешна!';
+            setTimeout(() => {
+                window.location.href = 'profile.html';
+            }, 1000);
+        } else {
+            document.getElementById('message').innerText = 'Ошибка входа после регистрации';
+        }
     } else {
         document.getElementById('message').innerText = 'Ошибка регистрации';
     }
 }
+
 
