@@ -17,26 +17,11 @@ router.post('/register', async (req, res) => {
     const key = require('crypto').randomBytes(32).toString('hex');
 
     try {
-        // Вставляем пользователя
-        const result = await pool.query(
-            'INSERT INTO users (login, pass, key, keyword) VALUES ($1, $2, $3, $4) RETURNING id',
+        // Вставляем пользователя, без создания отдельной таблицы
+        await pool.query(
+            'INSERT INTO users (login, pass, key, keyword) VALUES ($1, $2, $3, $4)',
             [login, hashedPass, key, keyword]
         );
-
-        const userId = result.rows[0].id;
-
-        // Создаём персональную таблицу для профиля
-        const tableName = `user_${userId}`;
-        await pool.query(`
-            CREATE TABLE ${tableName} (
-                id SERIAL PRIMARY KEY,
-                nickname TEXT,
-                full_name TEXT,
-                age INTEGER,
-                bio TEXT
-            )
-        `);
-
         res.status(201).send('User registered');
     } catch (err) {
         console.error('Registration error:', err);
@@ -64,7 +49,7 @@ router.post('/login', async (req, res) => {
             return res.status(400).send('Invalid password');
         }
 
-        const token = jwt.sign({ id: user.id, login: user.login }, JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign({ id: user.id, login: user.login }, JWT_SECRET, { expiresIn: '24h' });
         res.json({ token });
     } catch (err) {
         console.error('Login error:', err);
@@ -72,7 +57,7 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// Заполнение профиля
+// Обновление профиля — теперь пишем прямо в таблицу users
 router.post('/profile', async (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
@@ -90,11 +75,14 @@ router.post('/profile', async (req, res) => {
             return res.status(400).send('Missing profile fields');
         }
 
-        const tableName = `user_${userId}`;
-
         await pool.query(
-            `INSERT INTO ${tableName} (nickname, full_name, age, bio) VALUES ($1, $2, $3, $4)`,
-            [nickname, full_name, age, bio]
+            `UPDATE users
+                SET nickname  = $1,
+                    full_name = $2,
+                    age       = $3,
+                    bio       = $4
+              WHERE id = $5`,
+            [nickname, full_name, age, bio, userId]
         );
 
         res.status(200).send('Profile saved');
