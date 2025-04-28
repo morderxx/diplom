@@ -6,14 +6,16 @@ const router   = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
-// Универсальный middleware для защиты роутов
+// Универсальный middleware для защищённых роутов
 function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth) return res.status(401).send('No token provided');
   const token = auth.split(' ')[1];
   try {
     const payload = jwt.verify(token, JWT_SECRET);
-    req.userLogin = payload.login;  // достаём login
+    // теперь payload содержит и id, и login
+    req.userLogin = payload.login;
+    req.userId    = payload.id;
     next();
   } catch (e) {
     console.error('JWT error:', e);
@@ -26,10 +28,9 @@ router.post('/register', async (req, res) => {
   const { login, pass, keyword } = req.body;
   if (!login || !pass || !keyword) return res.status(400).send('Missing fields');
 
-  const hashedPass = await bcrypt.hash(pass, 10);
-  const key = require('crypto').randomBytes(32).toString('hex');
-
   try {
+    const hashedPass = await bcrypt.hash(pass, 10);
+    const key = require('crypto').randomBytes(32).toString('hex');
     await pool.query(
       'INSERT INTO users (login, pass, key, keyword) VALUES ($1,$2,$3,$4)',
       [login, hashedPass, key, keyword]
@@ -47,14 +48,20 @@ router.post('/login', async (req, res) => {
   if (!login || !pass) return res.status(400).send('Missing fields');
 
   try {
-    const result = await pool.query('SELECT * FROM users WHERE login = $1', [login]);
-    if (result.rows.length === 0) return res.status(400).send('User not found');
+    const { rows } = await pool.query('SELECT * FROM users WHERE login = $1', [login]);
+    if (rows.length === 0) return res.status(400).send('User not found');
 
-    const user = result.rows[0];
-    const match = await bcrypt.compare(pass, user.pass);
-    if (!match) return res.status(400).send('Invalid password');
+    const user = rows[0];
+    if (!await bcrypt.compare(pass, user.pass)) {
+      return res.status(400).send('Invalid password');
+    }
 
-    const token = jwt.sign({ login: user.login }, JWT_SECRET, { expiresIn: '24h' });
+    // Восстанавливаем payload.id чтобы фильтры работали
+    const token = jwt.sign(
+      { id: user.id, login: user.login },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
     res.json({ token });
   } catch (err) {
     console.error('Login error:', err);
@@ -62,7 +69,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// POST /api/profile — обновляем профиль
+// Сохранение профиля
 router.post('/profile', authMiddleware, async (req, res) => {
   const { nickname, full_name, age, bio } = req.body;
   if (!nickname || !full_name || !age || !bio) {
@@ -85,7 +92,7 @@ router.post('/profile', authMiddleware, async (req, res) => {
   }
 });
 
-// GET /api/profile — возвращаем информацию профиля
+// Получение профиля
 router.get('/profile', authMiddleware, async (req, res) => {
   try {
     const { rows } = await pool.query(
