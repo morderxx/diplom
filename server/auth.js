@@ -30,10 +30,10 @@ router.post('/register', async (req, res) => {
         await pool.query(`
             CREATE TABLE ${tableName} (
                 id SERIAL PRIMARY KEY,
+                nickname TEXT,
                 full_name TEXT,
                 age INTEGER,
-                bio TEXT,
-                avatar_url TEXT
+                bio TEXT
             )
         `);
 
@@ -84,13 +84,17 @@ router.post('/profile', async (req, res) => {
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
         const userId = decoded.id;
-        const { full_name, age, bio, avatar_url } = req.body;
+        const { nickname, full_name, age, bio } = req.body;
+
+        if (!nickname || !full_name || !age || !bio) {
+            return res.status(400).send('Missing profile fields');
+        }
 
         const tableName = `user_${userId}`;
 
         await pool.query(
-            `INSERT INTO ${tableName} (full_name, age, bio, avatar_url) VALUES ($1, $2, $3, $4)`,
-            [full_name, age, bio, avatar_url]
+            `INSERT INTO ${tableName} (nickname, full_name, age, bio) VALUES ($1, $2, $3, $4)`,
+            [nickname, full_name, age, bio]
         );
 
         res.status(200).send('Profile saved');
