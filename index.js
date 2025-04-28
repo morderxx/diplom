@@ -9,6 +9,11 @@ const roomsRoutes    = require('./routes/rooms');
 const messagesRoutes = require('./routes/messages');
 const usersRoutes    = require('./routes/users');
 const setupWebSocket = require('./chat');
+const authRoutes = require('./auth');
+const usersRoutes = require('./routes/users'); // <-- добавь это
+
+app.use('/api', authRoutes);
+app.use('/api/users', usersRoutes); // <-- добавь это
 
 const app = express();
 const server = http.createServer(app);
