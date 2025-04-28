@@ -1,20 +1,24 @@
-// routes/rooms.js
 const express = require('express');
 const jwt     = require('jsonwebtoken');
 const pool    = require('../db');
 const router  = express.Router();
 
-// Тот же секрет с fallback
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
-// Middleware для проверки токена и извлечения login
-function authMiddleware(req, res, next) {
+// Middleware: проверяем токен, получаем userId и nickname
+async function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth) return res.status(401).send('No token');
+
   try {
-    const token = auth.split(' ')[1];
+    const token   = auth.split(' ')[1];
     const payload = jwt.verify(token, JWT_SECRET);
-    req.userLogin = payload.login;
+    req.userId = payload.id;
+    const { rows } = await pool.query(
+      'SELECT nickname FROM users WHERE id = $1',
+      [req.userId]
+    );
+    req.userNickname = rows[0]?.nickname;
     next();
   } catch (e) {
     console.error('JWT error:', e);
@@ -22,24 +26,30 @@ function authMiddleware(req, res, next) {
   }
 }
 
-// POST /api/rooms — создать новую комнату (приватную или групповую)
+// POST /api/rooms — создать комнату, members = массив никнеймов
 router.post('/', authMiddleware, async (req, res) => {
   const { name, is_group, members } = req.body;
   if (!Array.isArray(members) || members.length < 1) {
     return res.status(400).send('Members list required');
   }
+
   try {
-    const { rows } = await pool.query(
+    const roomInsert = await pool.query(
       'INSERT INTO rooms (name, is_group) VALUES ($1,$2) RETURNING id',
       [name || null, is_group]
     );
-    const roomId = rows[0].id;
-    await Promise.all(members.map(login =>
-      pool.query(
-        'INSERT INTO room_members (room_id,user_login) VALUES ($1,$2)',
-        [roomId, login]
+    const roomId = roomInsert.rows[0].id;
+
+    // Вставляем каждого участника по nickname
+    await Promise.all(
+      members.map(nick =>
+        pool.query(
+          'INSERT INTO room_members (room_id, user_login) VALUES ($1,$2)',
+          [roomId, nick]
+        )
       )
-    ));
+    );
+
     res.json({ roomId });
   } catch (err) {
     console.error('Error creating room:', err);
@@ -47,7 +57,7 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });
 
-// GET /api/rooms — список комнат текущего пользователя
+// GET /api/rooms — комнаты, в которых состоит текущий пользователь
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -56,7 +66,7 @@ router.get('/', authMiddleware, async (req, res) => {
          JOIN room_members m ON m.room_id = r.id
         WHERE m.user_login = $1
      ORDER BY r.created_at DESC`,
-      [req.userLogin]
+      [req.userNickname]
     );
     res.json(rows);
   } catch (err) {
@@ -65,19 +75,22 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
-// GET /api/rooms/:roomId/messages — история сообщений в комнате
+// GET /api/rooms/:roomId/messages — история сообщений
 router.get('/:roomId/messages', authMiddleware, async (req, res) => {
   const { roomId } = req.params;
   try {
-    // проверяем членство
-    const { rowCount } = await pool.query(
+    const mem = await pool.query(
       'SELECT 1 FROM room_members WHERE room_id=$1 AND user_login=$2',
-      [roomId, req.userLogin]
+      [roomId, req.userNickname]
     );
-    if (rowCount === 0) return res.status(403).send('Not a member');
+    if (mem.rowCount === 0) return res.status(403).send('Not a member');
 
     const { rows } = await pool.query(
-      `SELECT id, sender_login, text, time, is_read
+      `SELECT id,
+              sender_login   AS sender_nickname,
+              text,
+              time,
+              is_read
          FROM messages
         WHERE room_id = $1
      ORDER BY time`,
