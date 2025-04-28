@@ -1,4 +1,3 @@
-// routes/messages.js
 const express = require('express');
 const jwt     = require('jsonwebtoken');
 const pool    = require('../db');
@@ -6,14 +5,20 @@ const router  = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
-// Middleware для проверки токена и извлечения login
-function authMiddleware(req, res, next) {
+// Middleware: проверяем токен, получаем userId и nickname
+async function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth) return res.status(401).send('No token');
+
   try {
-    const token = auth.split(' ')[1];
+    const token   = auth.split(' ')[1];
     const payload = jwt.verify(token, JWT_SECRET);
-    req.userLogin = payload.login;
+    req.userId = payload.id;
+    const { rows } = await pool.query(
+      'SELECT nickname FROM users WHERE id = $1',
+      [req.userId]
+    );
+    req.userNickname = rows[0]?.nickname;
     next();
   } catch (e) {
     console.error('JWT error:', e);
@@ -25,17 +30,16 @@ function authMiddleware(req, res, next) {
 router.post('/:messageId/read', authMiddleware, async (req, res) => {
   const { messageId } = req.params;
   try {
-    const { rows } = await pool.query(
+    const m = await pool.query(
       'SELECT room_id FROM messages WHERE id = $1',
       [messageId]
     );
-    if (rows.length === 0) return res.status(404).send('Message not found');
-    const roomId = rows[0].room_id;
+    if (m.rows.length === 0) return res.status(404).send('Message not found');
+    const roomId = m.rows[0].room_id;
 
-    // проверяем, что пользователь в этой комнате
     const mem = await pool.query(
       'SELECT 1 FROM room_members WHERE room_id=$1 AND user_login=$2',
-      [roomId, req.userLogin]
+      [roomId, req.userNickname]
     );
     if (mem.rowCount === 0) return res.status(403).send('Not a member');
 
@@ -43,7 +47,7 @@ router.post('/:messageId/read', authMiddleware, async (req, res) => {
       'UPDATE messages SET is_read = TRUE WHERE id = $1',
       [messageId]
     );
-    res.send('OK');
+    res.sendStatus(200);
   } catch (err) {
     console.error('Error marking read:', err);
     res.status(500).send('Error marking read');
