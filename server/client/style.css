@@ -1,0 +1,125 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f0f2f5;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.form-container, .chat-container {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    width: 350px;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+input {
+    width: 100%;
+    margin-bottom: 15px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+}
+
+/* Стили для обычных кнопок */
+button {
+    width: 100%;
+    padding: 10px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease; /* Плавный эффект при наведении */
+}
+
+button:hover {
+    background: #45a049;
+}
+
+/* Кнопки для регистрации чтобы были другие стили */
+#registerButton {
+    margin-top: 15px;
+    background-color: #007bff;
+}
+
+#registerButton:hover {
+    background-color: #0056b3;
+}
+
+/* Стили для контейнера кнопок (добавляем отступ между кнопками) */
+.button-container {
+    display: flex;
+    flex-direction: column; /* Кнопки в столбец */
+    gap: 10px; /* Расстояние между кнопками */
+    margin-bottom: 15px;  /*отступ снизу от всего контейнера*/
+}
+
+
+#chat-box {
+    display: flex;
+    flex-direction: column;
+    height: 400px;
+    overflow-y: auto;
+    padding: 10px;
+    gap: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.input-container {
+    display: flex;
+    gap: 10px;
+}
+
+.message-wrapper {
+    display: flex;
+    width: 100%;
+}
+
+.my-message, .other-message {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.my-message {
+    align-items: flex-end;
+}
+
+.other-message {
+    align-items: flex-start;
+}
+
+.message-bubble {
+    background-color: #dcf8c6; /* фон только вокруг текста своих сообщений */
+    padding: 8px 12px;
+    border-radius: 12px;
+    max-width: 70%;
+    word-break: break-word;
+}
+
+.other-message .message-bubble {
+    background-color: #ffffff; /* чужие сообщения на белом фоне */
+    border: 1px solid #ddd;
+}
+
+.message-info {
+    font-size: 10px;
+    color: #555;
+    margin-bottom: 2px;
+}
+
+.message-text {
+    font-size: 14px;
+    color: #000;
+}
