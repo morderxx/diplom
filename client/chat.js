@@ -35,25 +35,24 @@ async function loadRooms() {
 // 2) Загрузка списка пользователей
 // ————————————————————————————
 async function loadUsers() {
-  const res = await fetch(`${API_URL}/users`, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
-  if (!res.ok) {
-    console.error('Не удалось загрузить пользователей');
-    return;
-  }
-  const users = await res.json();
-  const ul = document.getElementById('users-list');
-  ul.innerHTML = '';
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/users', {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const users = await res.json();
 
-  users.forEach(user => {
-    const li = document.createElement('li');
-    li.textContent = user.nickname || user.login;
-    li.dataset.login = user.login;
-    li.addEventListener('click', () => openPrivateChat(user.login));
-    ul.appendChild(li);
-  });
+    const roomsList = document.getElementById('rooms-list');
+    roomsList.innerHTML = '';
+
+    users.forEach(user => {
+        if (user === username) return; // не показывать себя
+        const li = document.createElement('li');
+        li.textContent = user;
+        li.addEventListener('click', () => openPrivateChat(user));
+        roomsList.appendChild(li);
+    });
 }
+
 
 // ————————————————————————————
 // 3) Создать/открыть приватную комнату
