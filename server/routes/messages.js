@@ -1,3 +1,4 @@
+// server/routes/messages.js
 const express = require('express');
 const jwt     = require('jsonwebtoken');
 const pool    = require('../db');
@@ -12,6 +13,12 @@ async function authMiddleware(req, res, next) {
     const token   = auth.split(' ')[1];
     const payload = jwt.verify(token, JWT_SECRET);
     req.userLogin = payload.login;
+    // подтянуть nickname
+    const ures = await pool.query(
+      'SELECT nickname FROM users WHERE login = $1',
+      [req.userLogin]
+    );
+    req.userNickname = ures.rows[0]?.nickname || req.userLogin;
     next();
   } catch (e) {
     console.error('JWT error:', e);
@@ -19,21 +26,22 @@ async function authMiddleware(req, res, next) {
   }
 }
 
-// POST /api/messages/:messageId/read
+// Пометить сообщение прочитанным
 router.post('/:messageId/read', authMiddleware, async (req, res) => {
   const { messageId } = req.params;
   try {
-    const m = await pool.query(
+    // достаём room_id
+    const mres = await pool.query(
       'SELECT room_id FROM messages WHERE id = $1',
       [messageId]
     );
-    if (m.rows.length === 0) return res.status(404).send('Message not found');
-    const roomId = m.rows[0].room_id;
+    if (mres.rowCount === 0) return res.status(404).send('Message not found');
+    const roomId = mres.rows[0].room_id;
 
-    // проверяем участие
+    // проверяем membership по nickname
     const mem = await pool.query(
       'SELECT 1 FROM room_members WHERE room_id = $1 AND nickname = $2',
-      [roomId, req.userLogin]
+      [roomId, req.userNickname]
     );
     if (mem.rowCount === 0) return res.status(403).send('Not a member');
 
@@ -41,7 +49,7 @@ router.post('/:messageId/read', authMiddleware, async (req, res) => {
       'UPDATE messages SET is_read = TRUE WHERE id = $1',
       [messageId]
     );
-    res.sendStatus(200);
+    res.send('OK');
   } catch (err) {
     console.error('Error marking read:', err);
     res.status(500).send('Error marking read');
