@@ -1,11 +1,13 @@
-// server/routes/users.js
+// routes/users.js
 const express = require('express');
-const jwt = require('jsonwebtoken');
-const pool = require('../db');
-const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET;
+const jwt     = require('jsonwebtoken');
+const pool    = require('../db');
+const router  = express.Router();
 
-// Middleware для проверки JWT и извлечения login + id
+// Берём тот же секрет, что и в auth.js (fallback на 'secret123')
+const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
+
+// Middleware для проверки токена и извлечения login + id
 function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth) return res.status(401).send('No token');
@@ -13,7 +15,7 @@ function authMiddleware(req, res, next) {
     const token = auth.split(' ')[1];
     const payload = jwt.verify(token, JWT_SECRET);
     req.userLogin = payload.login;
-    req.userId = payload.id;
+    req.userId    = payload.id;
     next();
   } catch (e) {
     console.error('JWT error:', e);
@@ -21,16 +23,14 @@ function authMiddleware(req, res, next) {
   }
 }
 
-// GET /api/users — список всех пользователей кроме себя
+// GET /api/users — список всех зарегистрированных пользователей (login + nickname)
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    // Берём всех из users
     const { rows: users } = await pool.query(
       'SELECT id, login FROM users WHERE login <> $1',
       [req.userLogin]
     );
     const result = [];
-    // Для каждого подтягиваем nickname из таблицы user_{id}
     for (const u of users) {
       let nickname = u.login;
       try {
@@ -40,13 +40,13 @@ router.get('/', authMiddleware, async (req, res) => {
         );
         if (rows.length) nickname = rows[0].nickname;
       } catch {
-        // таблицы ещё нет или пустая — игнорируем
+        // таблицы ещё может не быть — игнорируем
       }
       result.push({ login: u.login, nickname });
     }
     res.json(result);
   } catch (err) {
-    console.error(err);
+    console.error('Error fetching users:', err);
     res.status(500).send('Error fetching users');
   }
 });
