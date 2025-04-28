@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Чат</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="chat-wrapper">
+    <!-- Сайдбар -->
+    <aside class="rooms-sidebar">
+      <h2>Комнаты</h2>
+      <ul id="rooms-list" class="rooms-list"></ul>
+      <button id="new-group-btn">Новая группа</button>
+
+      <h2>Пользователи</h2>
+      <ul id="users-list" class="rooms-list"></ul>
+    </aside>
+
+    <!-- Окно чата -->
+    <section class="chat-container">
+      <div id="chat-box" class="chat-box"></div>
+      <div class="input-container">
+        <input type="text" id="message" placeholder="Введите сообщение..." />
+        <button id="send-btn">Отправить</button>
+      </div>
+    </section>
+  </div>
+  <script src="chat.js"></script>
+</body>
+</html>
