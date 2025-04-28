@@ -6,6 +6,7 @@ const router  = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
+// Middleware: проверяем JWT и сохраняем req.userLogin
 async function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth) return res.status(401).send('No token');
@@ -13,12 +14,6 @@ async function authMiddleware(req, res, next) {
     const token   = auth.split(' ')[1];
     const payload = jwt.verify(token, JWT_SECRET);
     req.userLogin = payload.login;
-    // подтянуть nickname
-    const ures = await pool.query(
-      'SELECT nickname FROM users WHERE login = $1',
-      [req.userLogin]
-    );
-    req.userNickname = ures.rows[0]?.nickname || req.userLogin;
     next();
   } catch (e) {
     console.error('JWT error:', e);
@@ -26,11 +21,11 @@ async function authMiddleware(req, res, next) {
   }
 }
 
-// Пометить сообщение прочитанным
+// POST /api/messages/:messageId/read — пометить сообщение прочитанным
 router.post('/:messageId/read', authMiddleware, async (req, res) => {
   const { messageId } = req.params;
   try {
-    // достаём room_id
+    // Находим room_id
     const mres = await pool.query(
       'SELECT room_id FROM messages WHERE id = $1',
       [messageId]
@@ -38,10 +33,10 @@ router.post('/:messageId/read', authMiddleware, async (req, res) => {
     if (mres.rowCount === 0) return res.status(404).send('Message not found');
     const roomId = mres.rows[0].room_id;
 
-    // проверяем membership по nickname
+    // Проверяем членство по room_members.nickname = req.userLogin
     const mem = await pool.query(
       'SELECT 1 FROM room_members WHERE room_id = $1 AND nickname = $2',
-      [roomId, req.userNickname]
+      [roomId, req.userLogin]
     );
     if (mem.rowCount === 0) return res.status(403).send('Not a member');
 
