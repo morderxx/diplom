@@ -9,14 +9,39 @@ document.getElementById('current-user').textContent = username;
 let socket = null;
 let currentRoomId = null;
 
-// 1) Загрузка списка пользователей
+// 1) Загрузка списка комнат
+async function loadRooms() {
+  const res = await fetch(`${API_URL}/rooms`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) {
+    console.error('Не удалось загрузить комнаты');
+    return;
+  }
+  const rooms = await res.json();
+  const ul = document.getElementById('rooms-list');
+  ul.innerHTML = '';
+  rooms.forEach(r => {
+    const li = document.createElement('li');
+    li.textContent = r.is_group
+      ? (r.name || `Группа #${r.id}`)
+      : r.name || `Приват с ${r.name || r.id}`;  // для приватных r.name == ник собеседника
+    li.dataset.id = r.id;
+    li.onclick = () => joinRoom(r.id);
+    ul.appendChild(li);
+  });
+}
+
+// 2) Загрузка списка пользователей
 async function loadUsers() {
   const res = await fetch(`${API_URL}/users`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
-  if (!res.ok) return console.error('Не удалось загрузить пользователей');
+  if (!res.ok) {
+    console.error('Не удалось загрузить пользователей');
+    return;
+  }
   const users = await res.json();
-
   const ul = document.getElementById('users-list');
   ul.innerHTML = '';
   users.forEach(u => {
@@ -28,9 +53,22 @@ async function loadUsers() {
   });
 }
 
-// 2) Создаем/открываем приватную комнату
+// 3) Создать/открыть приватную комнату
 async function openPrivateChat(otherLogin, otherNick) {
-  // POST /api/rooms с именем interlocutor
+  // сначала проверим, не существует ли уже приватный чат с этим пользователем
+  const roomsRes = await fetch(`${API_URL}/rooms`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  const rooms = roomsRes.ok ? await roomsRes.json() : [];
+  const exist = rooms.find(r =>
+    !r.is_group && r.name === otherNick
+  );
+  if (exist) {
+    // есть — сразу входим
+    return joinRoom(exist.id);
+  }
+
+  // иначе создаём новый
   const res = await fetch(`${API_URL}/rooms`, {
     method: 'POST',
     headers: {
@@ -38,28 +76,31 @@ async function openPrivateChat(otherLogin, otherNick) {
       'Authorization': `Bearer ${token}`
     },
     body: JSON.stringify({
-      name: otherNick,        // отображаемое имя комнаты
+      name: otherNick,
       is_group: false,
       members: [username, otherLogin]
     })
   });
-  if (!res.ok) return console.error('Не удалось создать комнату');
+  if (!res.ok) {
+    console.error('Не удалось создать комнату');
+    return;
+  }
   const { roomId } = await res.json();
+  // после создания — обновим список и зайдём
+  await loadRooms();
   joinRoom(roomId);
 }
 
-// 3) Подключаемся к комнате через WS и грузим историю
+// 4) Войти в комнату: показать UI, подключиться по WS и загрузить историю
 async function joinRoom(roomId) {
   // Закрываем предыдущее соединение
   if (socket) socket.close();
 
   currentRoomId = roomId;
   document.getElementById('chat-box').innerHTML = '';
-
-  // Показываем чат
   document.getElementById('chat-section').classList.add('active');
 
-  // Новый WebSocket
+  // WS
   socket = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
   socket.onopen = () => {
     socket.send(JSON.stringify({ type:'join', token, roomId }));
@@ -75,18 +116,23 @@ async function joinRoom(roomId) {
   const h = await fetch(`${API_URL}/rooms/${roomId}/messages`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
-  if (!h.ok) return console.error('Не удалось загрузить историю');
-  (await h.json()).forEach(m => {
-    appendMessage(m.sender_login, m.text, m.time);
-  });
+  if (!h.ok) {
+    console.error('Не удалось загрузить историю сообщений');
+    return;
+  }
+  (await h.json()).forEach(m =>
+    appendMessage(m.sender_login, m.text, m.time)
+  );
 }
 
-// 4) Отображение сообщения
+// 5) Добавить сообщение в DOM
 function appendMessage(sender, text, time) {
   const chatBox = document.getElementById('chat-box');
-  const w = document.createElement('div'); w.className = 'message-wrapper';
-  const m = document.createElement('div');
-  m.className = sender === username ? 'my-message' : 'other-message';
+  const wrapper = document.createElement('div');
+  wrapper.className = 'message-wrapper';
+
+  const msgEl = document.createElement('div');
+  msgEl.className = sender === username ? 'my-message' : 'other-message';
 
   const info = document.createElement('div');
   info.className = 'message-info';
@@ -96,18 +142,19 @@ function appendMessage(sender, text, time) {
 
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble';
-  const txt = document.createElement('div');
-  txt.className = 'message-text';
-  txt.textContent = text;
 
-  bubble.append(txt);
-  m.append(info, bubble);
-  w.appendChild(m);
-  chatBox.appendChild(w);
+  const textEl = document.createElement('div');
+  textEl.className = 'message-text';
+  textEl.textContent = text;
+
+  bubble.appendChild(textEl);
+  msgEl.append(info, bubble);
+  wrapper.appendChild(msgEl);
+  chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// 5) Отправка сообщения
+// 6) Отправка
 function sendMessage() {
   const inp = document.getElementById('message');
   const text = inp.value.trim();
@@ -121,7 +168,7 @@ function sendMessage() {
   inp.value = '';
 }
 
-// Привязки
+// События
 document.getElementById('send-btn').onclick = sendMessage;
 document.getElementById('message').onkeypress = e => {
   if (e.key === 'Enter') {
@@ -130,5 +177,6 @@ document.getElementById('message').onkeypress = e => {
   }
 };
 
-// Старт
+// Инициализация
+loadRooms();
 loadUsers();
