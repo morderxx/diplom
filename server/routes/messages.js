@@ -1,24 +1,27 @@
-// server/routes/messages.js
+// routes/messages.js
 const express = require('express');
-const jwt = require('jsonwebtoken');
-const pool = require('../db');
-const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET;
+const jwt     = require('jsonwebtoken');
+const pool    = require('../db');
+const router  = express.Router();
 
+const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
+
+// Middleware для проверки токена и извлечения login
 function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth) return res.status(401).send('No token');
   try {
     const token = auth.split(' ')[1];
-    const { login } = jwt.verify(token, JWT_SECRET);
-    req.userLogin = login;
+    const payload = jwt.verify(token, JWT_SECRET);
+    req.userLogin = payload.login;
     next();
-  } catch {
+  } catch (e) {
+    console.error('JWT error:', e);
     res.status(401).send('Invalid token');
   }
 }
 
-// Пометить сообщение прочитанным
+// POST /api/messages/:messageId/read — пометить сообщение прочитанным
 router.post('/:messageId/read', authMiddleware, async (req, res) => {
   const { messageId } = req.params;
   try {
@@ -29,6 +32,7 @@ router.post('/:messageId/read', authMiddleware, async (req, res) => {
     if (rows.length === 0) return res.status(404).send('Message not found');
     const roomId = rows[0].room_id;
 
+    // проверяем, что пользователь в этой комнате
     const mem = await pool.query(
       'SELECT 1 FROM room_members WHERE room_id=$1 AND user_login=$2',
       [roomId, req.userLogin]
@@ -41,7 +45,7 @@ router.post('/:messageId/read', authMiddleware, async (req, res) => {
     );
     res.send('OK');
   } catch (err) {
-    console.error(err);
+    console.error('Error marking read:', err);
     res.status(500).send('Error marking read');
   }
 });
