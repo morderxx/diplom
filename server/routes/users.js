@@ -1,4 +1,3 @@
-// server/routes/users.js
 const express = require('express');
 const jwt     = require('jsonwebtoken');
 const pool    = require('../db');
@@ -6,7 +5,7 @@ const router  = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
-// Middleware: проверяем токен и достаём login + id
+// Middleware для проверки JWT и получения login + id
 async function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth) return res.status(401).send('No token');
@@ -22,10 +21,9 @@ async function authMiddleware(req, res, next) {
   }
 }
 
-// GET /api/users — список всех пользователей (login + nickname), кроме себя
+// GET /api/users — вся таблица users (id, login, nickname), кроме себя
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    // Просто берём из users три колонки
     const { rows } = await pool.query(
       'SELECT id, login, nickname FROM users WHERE id <> $1',
       [req.userId]
