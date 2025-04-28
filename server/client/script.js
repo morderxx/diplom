@@ -21,11 +21,25 @@ async function login() {
         const data = await res.json();
         localStorage.setItem('token', data.token);
         localStorage.setItem('username', login); // Сохраняем логин
+
+        // 🔥 Теперь дополнительно получаем профиль пользователя
+        const profileRes = await fetch(`${API_URL}/profile`, {
+            headers: { 'Authorization': `Bearer ${data.token}` }
+        });
+
+        if (profileRes.ok) {
+            const profileData = await profileRes.json();
+            if (profileData.nickname) {
+                localStorage.setItem('nickname', profileData.nickname);
+            }
+        }
+
         window.location.href = 'chat.html';
     } else {
         document.getElementById('message').innerText = 'Ошибка входа';
     }
 }
+
 
 
 async function register() {
