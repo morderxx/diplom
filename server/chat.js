@@ -1,58 +1,72 @@
 const WebSocket = require('ws');
-const jwt = require('jsonwebtoken');
-const { pool } = require('./db');
+const jwt       = require('jsonwebtoken');
+const pool      = require('./db');
+const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
-const clients = new Map();
+function setupWebSocket(server) {
+  const wss = new WebSocket.Server({ server });
+  const clients = new Map(); // ws → { nickname, roomId }
 
-function setupChatServer(server) {
-    const wss = new WebSocket.Server({ server });
+  wss.on('connection', ws => {
+    ws.on('message', async raw => {
+      let data;
+      try { data = JSON.parse(raw); }
+      catch { return; }
 
-    wss.on('connection', (ws, req) => {
-        const token = req.url.split('token=')[1];
-        if (!token) return ws.close();
+      // JOIN
+      if (data.type === 'join') {
+        try {
+          const p = jwt.verify(data.token, JWT_SECRET);
+          const { rows } = await pool.query(
+            'SELECT nickname FROM users WHERE id = $1',
+            [p.id]
+          );
+          const nick = rows[0]?.nickname;
+          clients.set(ws, { nickname: nick, roomId: data.roomId });
+        } catch (e) {
+          console.error('Invalid join token', e);
+        }
+        return;
+      }
 
-        jwt.verify(token, 'SECRET_KEY', async (err, user) => {
-            if (err) return ws.close();
+      // MESSAGE
+      if (data.type === 'message') {
+        let p;
+        try { p = jwt.verify(data.token, JWT_SECRET); }
+        catch { return; }
 
-            const res = await pool.query('SELECT nickname FROM users WHERE id = $1', [user.id]);
-            const nickname = res.rows[0]?.nickname;
-            if (!nickname) return ws.close();
+        const { rows: urows } = await pool.query(
+          'SELECT nickname FROM users WHERE id = $1',
+          [p.id]
+        );
+        const sender = urows[0]?.nickname;
+        const { roomId, text } = data;
 
-            ws.nickname = nickname;
-            clients.set(ws, { nickname, roomId: null });
+        // Сохраняем в БД
+        await pool.query(
+          'INSERT INTO messages (room_id, sender_login, text) VALUES ($1,$2,$3)',
+          [roomId, sender, text]
+        );
 
-            ws.on('message', async (message) => {
-                const data = JSON.parse(message);
-
-                if (data.type === 'join') {
-                    clients.get(ws).roomId = data.roomId;
-                }
-
-                if (data.type === 'message') {
-                    const { roomId, text } = data;
-                    await pool.query(
-                        'INSERT INTO messages (room_id, sender_nickname, text) VALUES ($1, $2, $3)',
-                        [roomId, nickname, text]
-                    );
-
-                    const payload = {
-                        type: 'message',
-                        message: { senderNickname: nickname, text }
-                    };
-
-                    clients.forEach((clientInfo, clientWs) => {
-                        if (clientInfo.roomId === roomId) {
-                            clientWs.send(JSON.stringify(payload));
-                        }
-                    });
-                }
-            });
-
-            ws.on('close', () => {
-                clients.delete(ws);
-            });
+        // Рассылаем всем в комнате
+        wss.clients.forEach(client => {
+          const info = clients.get(client);
+          if (info && info.roomId === roomId && client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({
+              type: 'message',
+              sender,
+              text,
+              time: new Date().toISOString()
+            }));
+          }
         });
+      }
     });
+
+    ws.on('close', () => {
+      clients.delete(ws);
+    });
+  });
 }
 
-module.exports = { setupChatServer };
+module.exports = setupWebSocket;
