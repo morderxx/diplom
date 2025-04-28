@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Заполнить профиль</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="form-container">
+        <h1>Профиль</h1>
+        <input type="text" id="nickname" placeholder="@никнейм">
+        <input type="text" id="full_name" placeholder="ФИО">
+        <input type="number" id="age" placeholder="Возраст">
+        <textarea id="bio" placeholder="О себе" rows="4" style="resize: none; margin-bottom: 15px;"></textarea>
+
+        <button onclick="saveProfile()">Сохранить профиль</button>
+        <div id="message"></div>
+    </div>
+
+    <script src="profile.js"></script>
+</body>
+</html>
