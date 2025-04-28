@@ -5,7 +5,7 @@ const router  = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
-// Middleware для проверки JWT и получения login + id
+// Middleware: проверяем токен и извлекаем login + id
 async function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth) return res.status(401).send('No token');
@@ -21,7 +21,7 @@ async function authMiddleware(req, res, next) {
   }
 }
 
-// GET /api/users — вся таблица users (id, login, nickname), кроме себя
+// GET /api/users — возвращает id, login, nickname всех, кроме себя
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const { rows } = await pool.query(
