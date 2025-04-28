@@ -46,34 +46,29 @@ async function loadUsers() {
     if (u.login === username) return;
     const li = document.createElement('li');
     li.textContent = u.nickname;
-    li.onclick = () => openPrivateChat(u.nickname);
+    // передаём в openPrivateChat: (логин, ник)
+    li.onclick = () => openPrivateChat(u.login, u.nickname);
     ul.appendChild(li);
   });
 }
 
 // 3) Создать/открыть приватную комнату
-async function openPrivateChat(otherNick) {
+async function openPrivateChat(otherLogin, otherNick) {
   try {
-    const token = localStorage.getItem('token');
-    const userNickname = localStorage.getItem('nickname'); // <-- ВАЖНО! забираем nickname из localStorage
-
-    // Получаем все комнаты
+    // сначала пробуем найти по name
     const roomsRes = await fetch(`${API_URL}/rooms`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
-
     const rooms = roomsRes.ok ? await roomsRes.json() : [];
 
-    // Ищем существующую приватную комнату с этим пользователем
     const exist = rooms.find(r =>
-      !r.is_group && r.members && r.members.includes(otherNick)
+      !r.is_group && r.name === otherNick
     );
-
     if (exist) {
       return joinRoom(exist.id);
     }
 
-    // Если нет комнаты - создаём новую
+    // создаём новую комнату — members: [логины]
     const res = await fetch(`${API_URL}/rooms`, {
       method: 'POST',
       headers: {
@@ -81,9 +76,9 @@ async function openPrivateChat(otherNick) {
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        name: null, // можно оставить null для приватной комнаты
+        name: null,           // сервер подсчитает display-name по никнейму второго
         is_group: false,
-        members: [userNickname, otherNick]  // <-- теперь точно 2 ника передаются
+        members: [username, otherLogin]
       })
     });
 
@@ -95,11 +90,11 @@ async function openPrivateChat(otherNick) {
     const { roomId } = await res.json();
     await loadRooms();
     joinRoom(roomId);
+
   } catch (err) {
     console.error('Ошибка при открытии приватного чата:', err);
   }
 }
-
 
 // 4) Войти в комнату
 async function joinRoom(roomId) {
@@ -127,7 +122,7 @@ async function joinRoom(roomId) {
     return;
   }
   (await h.json()).forEach(m =>
-    appendMessage(m.sender_nickname, m.text, m.time)
+    appendMessage(m.sender_login, m.text, m.time)
   );
 }
 
@@ -148,7 +143,6 @@ function appendMessage(sender, text, time) {
 
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble';
-
   const textEl = document.createElement('div');
   textEl.className = 'message-text';
   textEl.textContent = text;
@@ -174,7 +168,7 @@ function sendMessage() {
   inp.value = '';
 }
 
-// События
+// Привязки
 document.getElementById('send-btn').onclick = sendMessage;
 document.getElementById('message').addEventListener('keypress', e => {
   if (e.key === 'Enter') {
@@ -183,6 +177,6 @@ document.getElementById('message').addEventListener('keypress', e => {
   }
 });
 
-// Инициализация
+// Старт
 loadRooms();
 loadUsers();
