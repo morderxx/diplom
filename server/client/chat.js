@@ -1,15 +1,16 @@
+// client/chat.js
 const API_URL      = '/api';
 const token        = localStorage.getItem('token');
-const username     = localStorage.getItem('login');
-const userNickname = localStorage.getItem('nickname');
+const username     = localStorage.getItem('login');    // login из secret_profile
+const userNickname = localStorage.getItem('nickname'); // nickname из users
 
-// Показать свой никнейм
+// Показать свой никнейм в сайдбаре
 document.getElementById('current-user').textContent = userNickname;
 
 let socket = null;
 let currentRoomId = null;
 
-// 1) Загрузка списка комнат
+// Загрузка комнат
 async function loadRooms() {
   const res = await fetch(`${API_URL}/rooms`, {
     headers: { 'Authorization': `Bearer ${token}` }
@@ -30,7 +31,7 @@ async function loadRooms() {
   });
 }
 
-// 2) Загрузка списка пользователей
+// Загрузка пользователей
 async function loadUsers() {
   const res = await fetch(`${API_URL}/users`, {
     headers: { 'Authorization': `Bearer ${token}` }
@@ -43,60 +44,47 @@ async function loadUsers() {
   const ul = document.getElementById('users-list');
   ul.innerHTML = '';
   users.forEach(u => {
-    if (u.login === username) return;
+    if (u.nickname === userNickname) return;
     const li = document.createElement('li');
     li.textContent = u.nickname;
-    // передаём в openPrivateChat: (логин, ник)
-    li.onclick = () => openPrivateChat(u.login, u.nickname);
+    li.onclick = () => openPrivateChat(u.id, u.nickname);
     ul.appendChild(li);
   });
 }
 
-// 3) Создать/открыть приватную комнату
-async function openPrivateChat(otherLogin, otherNick) {
-  try {
-    // сначала пробуем найти по name
-    const roomsRes = await fetch(`${API_URL}/rooms`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const rooms = roomsRes.ok ? await roomsRes.json() : [];
+// Создание/открытие приватной комнаты
+async function openPrivateChat(otherId, otherNick) {
+  // Проверка уже существующих комнат
+  const roomsRes = await fetch(`${API_URL}/rooms`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  const rooms = roomsRes.ok ? await roomsRes.json() : [];
+  const exist = rooms.find(r => !r.is_group && r.name === otherNick);
+  if (exist) return joinRoom(exist.id);
 
-    const exist = rooms.find(r =>
-      !r.is_group && r.name === otherNick
-    );
-    if (exist) {
-      return joinRoom(exist.id);
-    }
-
-    // создаём новую комнату — members: [логины]
-    const res = await fetch(`${API_URL}/rooms`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        name: null,           // сервер подсчитает display-name по никнейму второго
-        is_group: false,
-        members: [username, otherLogin]
-      })
-    });
-
-    if (!res.ok) {
-      console.error('Не удалось создать комнату:', await res.text());
-      return;
-    }
-
-    const { roomId } = await res.json();
-    await loadRooms();
-    joinRoom(roomId);
-
-  } catch (err) {
-    console.error('Ошибка при открытии приватного чата:', err);
+  // Создаём новую
+  const res = await fetch(`${API_URL}/rooms`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      name: null,
+      is_group: false,
+      members: [parseInt(localStorage.getItem('userId')), otherId]
+    })
+  });
+  if (!res.ok) {
+    console.error('Не удалось создать комнату:', await res.text());
+    return;
   }
+  const { roomId } = await res.json();
+  await loadRooms();
+  joinRoom(roomId);
 }
 
-// 4) Войти в комнату
+// Вход в комнату
 async function joinRoom(roomId) {
   if (socket) socket.close();
   currentRoomId = roomId;
@@ -122,11 +110,11 @@ async function joinRoom(roomId) {
     return;
   }
   (await h.json()).forEach(m =>
-    appendMessage(m.sender_login, m.text, m.time)
+    appendMessage(m.sender, m.text, m.time)
   );
 }
 
-// 5) Добавить сообщение в DOM
+// Отображение сообщения
 function appendMessage(sender, text, time) {
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
@@ -143,6 +131,7 @@ function appendMessage(sender, text, time) {
 
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble';
+
   const textEl = document.createElement('div');
   textEl.className = 'message-text';
   textEl.textContent = text;
@@ -154,7 +143,7 @@ function appendMessage(sender, text, time) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// 6) Отправка сообщения
+// Отправка сообщения
 function sendMessage() {
   const inp = document.getElementById('message');
   const text = inp.value.trim();
@@ -168,7 +157,6 @@ function sendMessage() {
   inp.value = '';
 }
 
-// Привязки
 document.getElementById('send-btn').onclick = sendMessage;
 document.getElementById('message').addEventListener('keypress', e => {
   if (e.key === 'Enter') {
@@ -177,6 +165,6 @@ document.getElementById('message').addEventListener('keypress', e => {
   }
 });
 
-// Старт
+// Инициализация
 loadRooms();
 loadUsers();
