@@ -83,6 +83,7 @@ button:hover {
     text-align: center;
 }
 
+
 /* =================== */
 /*   СТИЛИ ДЛЯ ЧАТА    */
 /* =================== */
@@ -165,33 +166,56 @@ button:hover {
     border: 1px solid #ccc;
 }
 
-/* Поле ввода и кнопка */
+/* =================== */
+/* Новые стили поля ввода и кнопок */
+/* =================== */
+
 .input-container {
     display: flex;
+    align-items: center;
     gap: 8px;
+    padding: 10px;
+    background: #fff;
+    margin-top: 8px;
 }
 
-.input-container input {
+/* Кнопки-иконки */
+.icon-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: #4CAF50;
+    color: #fff;
+    font-size: 18px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+}
+
+.icon-btn:hover {
+    background: #45a049;
+}
+
+/* Специальная кнопка отправки */
+#send-btn {
+    background: #007bff;
+}
+
+#send-btn:hover {
+    background: #0056b3;
+}
+
+/* Поле ввода сообщения */
+.input-container input#message {
     flex: 1;
-    padding: 12px;
-    border-radius: 8px;
+    padding: 10px 12px;
+    border-radius: 20px;
     border: 1px solid #ccc;
     font-size: 14px;
-}
-
-.input-container button {
-    padding: 0 12px;
-    border: none;
-    border-radius: 8px;
-    background: #4CAF50;
-    color: white;
-    cursor: pointer;
-    transition: background 0.3s;
-    font-size: 14px;
-}
-
-.input-container button:hover {
-    background: #45a049;
+    box-sizing: border-box;
 }
 
 /* Сообщения */
