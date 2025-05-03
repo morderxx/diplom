@@ -1,4 +1,3 @@
-// server/routes/rooms.js
 const express = require('express');
 const jwt     = require('jsonwebtoken');
 const pool    = require('../db');
@@ -6,7 +5,7 @@ const router  = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
-// Middleware: проверяем JWT и вытаскиваем login + nickname текущего пользователя
+// authMiddleware — вытаскивает из JWT login и nickname
 async function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth) return res.status(401).send('No token');
@@ -14,8 +13,7 @@ async function authMiddleware(req, res, next) {
     const token   = auth.split(' ')[1];
     const payload = jwt.verify(token, JWT_SECRET);
     req.userLogin = payload.login;
-
-    // получаем nickname из users по login через secret_profile → users.id
+    // находим nickname
     const prof = await pool.query(
       `SELECT u.nickname
          FROM users u
@@ -32,7 +30,7 @@ async function authMiddleware(req, res, next) {
   }
 }
 
-// GET /api/rooms — список комнат с массивом участников
+// GET /api/rooms — список комнат + участников
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -56,7 +54,7 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
-// POST /api/rooms — создать или вернуть приватную/групповую комнату
+// POST /api/rooms — создать или вернуть приватку/группу
 router.post('/', authMiddleware, async (req, res) => {
   let { is_group, members } = req.body;
   let name = req.body.name || null;
@@ -65,55 +63,43 @@ router.post('/', authMiddleware, async (req, res) => {
     return res.status(400).send('Members list required');
   }
 
-  // всегда добавляем себя
+  // добавляем себя
   if (!members.includes(req.userNickname)) {
     members.push(req.userNickname);
   }
 
-  // приватный чат — ровно 2 участников
+  // приват: ровно два никнейма
   if (!is_group && members.length === 2) {
-    // сортируем, чтобы порядок не влиял на поиск
-    const sorted = [...members].sort();
-    try {
-      // ищем существующий чат с этими двумя никнеймами
-      const exist = await pool.query(
-        `SELECT r.id
-           FROM rooms r
-           JOIN room_members m ON m.room_id = r.id
-          WHERE r.is_group = FALSE
-            AND m.nickname = $1
-        INTERSECT
-         SELECT r2.id
-           FROM rooms r2
-           JOIN room_members m2 ON m2.room_id = r2.id
-          WHERE r2.is_group = FALSE
-            AND m2.nickname = $2`,
-        sorted
-      );
-      if (exist.rows.length) {
-        const roomId = exist.rows[0].id;
-        // имя комнаты для приватки — nickname второго пользователя
-        const other = members.find(n => n !== req.userNickname);
-        return res.json({ roomId, name: other });
-      }
-    } catch (e) {
-      console.error('Error checking existing private room:', e);
-      // fall through to creation
+    // ищем существующую комнату
+    const [a, b] = members.sort();
+    const exist = await pool.query(
+      `SELECT r.id FROM rooms r
+         JOIN room_members m1 ON m1.room_id = r.id
+         JOIN room_members m2 ON m2.room_id = r.id
+        WHERE r.is_group = FALSE
+          AND m1.nickname = $1
+          AND m2.nickname = $2`,
+      [a, b]
+    );
+    if (exist.rows.length) {
+      const roomId = exist.rows[0].id;
+      // имя приватки — ник второго участника
+      const other = members.find(n => n !== req.userNickname);
+      return res.json({ roomId, name: other });
     }
-
-    // если не нашли — имя комнаты = ник второго
+    // имя для новой приватки
     name = members.find(n => n !== req.userNickname);
   }
 
   try {
     // создаём комнату
-    const insert = await pool.query(
+    const roomRes = await pool.query(
       'INSERT INTO rooms (name, is_group) VALUES ($1,$2) RETURNING id, name',
       [name, is_group]
     );
-    const roomId = insert.rows[0].id;
+    const roomId = roomRes.rows[0].id;
 
-    // сохраняем участников
+    // вставляем участников
     await Promise.all(
       members.map(nick =>
         pool.query(
@@ -123,7 +109,7 @@ router.post('/', authMiddleware, async (req, res) => {
       )
     );
 
-    res.json({ roomId, name: insert.rows[0].name });
+    res.json({ roomId, name: roomRes.rows[0].name });
   } catch (err) {
     console.error('Error creating room:', err);
     res.status(500).send('Error creating room');
