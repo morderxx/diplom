@@ -33,7 +33,7 @@ async function authMiddleware(req, res, next) {
   }
 }
 
-// 1) GET /api/rooms — список своих комнат с массивом участников
+// 1) GET /api/rooms — список своих комнат + полный массив участников
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -44,8 +44,12 @@ router.get('/', authMiddleware, async (req, res) => {
          r.created_at,
          array_agg(m.nickname ORDER BY m.nickname) AS members
        FROM rooms r
-       JOIN room_members m ON m.room_id = r.id
-      WHERE m.nickname = $1
+       -- сначала фильтруем только те комнаты, где вы участник
+       JOIN room_members m1 
+         ON m1.room_id = r.id AND m1.nickname = $1
+       -- затем собираем всех участников из room_members
+       JOIN room_members m 
+         ON m.room_id = r.id
       GROUP BY r.id
       ORDER BY r.created_at DESC`,
       [req.userNickname]
