@@ -1,4 +1,3 @@
-// server/chat.js
 const WebSocket = require('ws');
 const jwt       = require('jsonwebtoken');
 const pool      = require('./db');
@@ -15,61 +14,54 @@ function setupWebSocket(server) {
     ws.on('message', async raw => {
       try {
         const msg = JSON.parse(raw);
-        switch (msg.type) {
-          case 'join': {
-            // msg: { type:'join', token, roomId }
-            const { token, roomId } = msg;
-            const payload = jwt.verify(token, JWT_SECRET);
-            ws.meta.userId   = payload.id;
-            ws.meta.nickname = payload.login;
-            ws.meta.roomId   = roomId;
-            // отмечаем прочитанными
-            await pool.query(
-              `UPDATE messages SET is_read = true
-               WHERE room_id = $1 AND receiver_id = $2`,
-              [roomId, ws.meta.userId]
-            );
-            break;
-          }
-          case 'message': {
-            // msg: { type:'message', token, roomId, text }
-            const { token, roomId, text } = msg;
-            const payload = jwt.verify(token, JWT_SECRET);
-            const senderId  = payload.id;
-            const timestamp = new Date().toISOString();
 
-            // получатель для приватного чата
-            const otherRes = await pool.query(
-              `SELECT user_id FROM room_members
-               WHERE room_id = $1 AND user_id != $2`,
-              [roomId, senderId]
-            );
-            const receiverId = otherRes.rows[0]?.user_id;
+        if (msg.type === 'join') {
+          // msg = { type:'join', token, roomId }
+          const { token, roomId } = msg;
+          const payload = jwt.verify(token, JWT_SECRET);
+          ws.meta.userId   = payload.id;
+          ws.meta.nickname = payload.login;
+          ws.meta.roomId   = roomId;
 
-            // сохраняем в БД
-            await pool.query(
-              `INSERT INTO messages
-                 (room_id, sender_id, receiver_id, text, time, is_read)
-               VALUES($1,$2,$3,$4,$5,false)`,
-              [roomId, senderId, receiverId, text, timestamp]
-            );
+          // Помечаем все предыдущие сообщения как прочитанные
+          await pool.query(
+            `UPDATE messages
+               SET is_read = true
+             WHERE room_id = $1
+               AND sender_nickname != $2`,
+            [roomId, ws.meta.nickname]
+          );
+        }
 
-            // рассылаем всем в комнате
-            wss.clients.forEach(client => {
-              if (
-                client.readyState === WebSocket.OPEN &&
-                client.meta.roomId === roomId
-              ) {
-                client.send(JSON.stringify({
-                  type:   'message',
-                  sender: payload.login,
-                  text,
-                  time:   timestamp
-                }));
-              }
-            });
-            break;
-          }
+        else if (msg.type === 'message') {
+          // msg = { type:'message', token, roomId, text }
+          const { token, roomId, text } = msg;
+          const payload   = jwt.verify(token, JWT_SECRET);
+          const sender    = payload.login;
+          const timestamp = new Date().toISOString();
+
+          // Сохраняем в БД
+          await pool.query(
+            `INSERT INTO messages
+               (room_id, sender_nickname, text, time, is_read)
+             VALUES($1,$2,$3,$4,false)`,
+            [roomId, sender, text, timestamp]
+          );
+
+          // Рассылаем всем в комнате
+          wss.clients.forEach(client => {
+            if (
+              client.readyState === WebSocket.OPEN &&
+              client.meta.roomId === roomId
+            ) {
+              client.send(JSON.stringify({
+                type:   'message',
+                sender: sender,
+                text:   text,
+                time:   timestamp
+              }));
+            }
+          });
         }
       } catch (e) {
         console.error('WS error:', e);
