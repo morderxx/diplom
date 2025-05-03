@@ -1,24 +1,20 @@
 // client/chat.js
 const API_URL      = '/api';
 const token        = localStorage.getItem('token');
-const username     = localStorage.getItem('login');    // login из secret_profile
-const userNickname = localStorage.getItem('nickname'); // nickname из users
+const userNickname = localStorage.getItem('nickname');
 
-// Показать свой никнейм в сайдбаре
+let socket       = null;
+let currentRoom  = null;
+
+// Показать никнейм
 document.getElementById('current-user').textContent = userNickname;
 
-let socket = null;
-let currentRoomId = null;
-
-// Загрузка комнат
+// Загрузить список комнат
 async function loadRooms() {
   const res = await fetch(`${API_URL}/rooms`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
-  if (!res.ok) {
-    console.error('Не удалось загрузить комнаты');
-    return;
-  }
+  if (!res.ok) throw await res.text();
   const rooms = await res.json();
   const ul = document.getElementById('rooms-list');
   ul.innerHTML = '';
@@ -26,20 +22,17 @@ async function loadRooms() {
     const li = document.createElement('li');
     li.textContent = r.name;
     li.dataset.id = r.id;
-    li.onclick = () => joinRoom(r.id);
+    li.onclick   = () => joinRoom(r.id);
     ul.appendChild(li);
   });
 }
 
-// Загрузка пользователей
+// Загрузить пользователей для нового чата
 async function loadUsers() {
   const res = await fetch(`${API_URL}/users`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
-  if (!res.ok) {
-    console.error('Не удалось загрузить пользователей');
-    return;
-  }
+  if (!res.ok) throw await res.text();
   const users = await res.json();
   const ul = document.getElementById('users-list');
   ul.innerHTML = '';
@@ -47,22 +40,22 @@ async function loadUsers() {
     if (u.nickname === userNickname) return;
     const li = document.createElement('li');
     li.textContent = u.nickname;
-    li.onclick = () => openPrivateChat(u.id, u.nickname);
+    li.onclick   = () => openPrivateChat(u.id, u.nickname);
     ul.appendChild(li);
   });
 }
 
-// Создание/открытие приватной комнаты
+// Открыть или создать приватный чат
 async function openPrivateChat(otherId, otherNick) {
-  // Проверка уже существующих комнат
+  // Проверяем уже существующие
   const roomsRes = await fetch(`${API_URL}/rooms`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
-  const rooms = roomsRes.ok ? await roomsRes.json() : [];
+  const rooms = await roomsRes.json();
   const exist = rooms.find(r => !r.is_group && r.name === otherNick);
   if (exist) return joinRoom(exist.id);
 
-  // Создаём новую
+  // Иначе создаём
   const res = await fetch(`${API_URL}/rooms`, {
     method: 'POST',
     headers: {
@@ -70,58 +63,68 @@ async function openPrivateChat(otherId, otherNick) {
       'Authorization': `Bearer ${token}`
     },
     body: JSON.stringify({
-      name: null,
+      name:     null,
       is_group: false,
-      members: [parseInt(localStorage.getItem('userId')), otherId]
+      members:  [parseInt(localStorage.getItem('userId')), otherId]
     })
   });
   if (!res.ok) {
-    console.error('Не удалось создать комнату:', await res.text());
+    console.error('Не удалось создать чат', await res.text());
     return;
   }
-  const { roomId } = await res.json();
+  const data = await res.json();
   await loadRooms();
-  joinRoom(roomId);
+  joinRoom(data.roomId);
 }
 
-// Вход в комнату
+// Войти в комнату
 async function joinRoom(roomId) {
+  // Закрыть старое WS-соединение
   if (socket) socket.close();
-  currentRoomId = roomId;
+  currentRoom = roomId;
   document.getElementById('chat-box').innerHTML = '';
   document.getElementById('chat-section').classList.add('active');
 
-  socket = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
+  // Открыть WS-соединение
+  socket = new WebSocket(
+    (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host
+  );
+
   socket.onopen = () => {
-    socket.send(JSON.stringify({ type: 'join', token, roomId }));
+    socket.send(JSON.stringify({
+      type:   'join',
+      token,
+      roomId
+    }));
   };
+
   socket.onmessage = ev => {
-    const d = JSON.parse(ev.data);
-    if (d.type === 'message') {
-      appendMessage(d.sender, d.text, d.time);
+    const msg = JSON.parse(ev.data);
+    if (msg.type === 'message') {
+      appendMessage(msg.sender, msg.text, msg.time);
     }
   };
 
+  // Загрузка истории через REST
   const h = await fetch(`${API_URL}/rooms/${roomId}/messages`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
-  if (!h.ok) {
-    console.error('Не удалось загрузить историю сообщений');
-    return;
-  }
-  (await h.json()).forEach(m =>
+  const history = await h.json();
+  history.forEach(m =>
     appendMessage(m.sender, m.text, m.time)
   );
 }
 
-// Отображение сообщения
+// Функция рендера сообщения
 function appendMessage(sender, text, time) {
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
   wrapper.className = 'message-wrapper';
 
   const msgEl = document.createElement('div');
-  msgEl.className = sender === userNickname ? 'my-message' : 'other-message';
+  msgEl.className = sender === userNickname
+    ? 'my-message'
+    : 'other-message';
 
   const info = document.createElement('div');
   info.className = 'message-info';
@@ -143,15 +146,16 @@ function appendMessage(sender, text, time) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// Отправка сообщения
+// Отправка нового сообщения
 function sendMessage() {
   const inp = document.getElementById('message');
   const text = inp.value.trim();
   if (!text || !socket || socket.readyState !== WebSocket.OPEN) return;
+
   socket.send(JSON.stringify({
-    type: 'message',
+    type:   'message',
     token,
-    roomId: currentRoomId,
+    roomId: currentRoom,
     text
   }));
   inp.value = '';
