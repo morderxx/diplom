@@ -17,7 +17,10 @@ async function loadRooms() {
     console.error('Ошибка загрузки комнат:', await res.text());
     return;
   }
+
   const rooms = await res.json();
+  console.log('ROOMS →', rooms);  // <- вот это
+
   const ul = document.getElementById('rooms-list');
   ul.innerHTML = '';
   rooms.forEach(r => {
@@ -94,6 +97,8 @@ async function joinRoom(roomId) {
   currentRoom = roomId;
   document.getElementById('chat-box').innerHTML = '';
   document.getElementById('chat-section').classList.add('active');
+
+  // WS
   socket = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
   socket.onopen = () => socket.send(JSON.stringify({ type: 'join', token, roomId }));
   socket.onmessage = ev => {
@@ -102,6 +107,8 @@ async function joinRoom(roomId) {
       appendMessage(msg.sender, msg.text, msg.time);
     }
   };
+
+  // REST-история
   const histRes = await fetch(`${API_URL}/rooms/${roomId}/messages`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
@@ -110,6 +117,8 @@ async function joinRoom(roomId) {
     return;
   }
   const history = await histRes.json();
+  console.log('HISTORY →', history);  // <- и вот это
+
   history.forEach(m => appendMessage(m.sender_nickname, m.text, m.time));
 }
 
