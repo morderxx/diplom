@@ -6,15 +6,25 @@ const router  = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
-// Middleware: проверяем JWT и сохраняем req.userId / req.userLogin
-function authMiddleware(req, res, next) {
+// Middleware: проверяем JWT и вытаскиваем login + nickname текущего пользователя
+async function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth) return res.status(401).send('No token');
   try {
     const token   = auth.split(' ')[1];
     const payload = jwt.verify(token, JWT_SECRET);
-    req.userId    = payload.id;
     req.userLogin = payload.login;
+
+    // получаем nickname из users по login через secret_profile → users.id
+    const prof = await pool.query(
+      `SELECT u.nickname
+         FROM users u
+         JOIN secret_profile s ON s.id = u.id
+        WHERE s.login = $1`,
+      [req.userLogin]
+    );
+    if (!prof.rows.length) return res.status(400).send('Complete your profile first');
+    req.userNickname = prof.rows[0].nickname;
     next();
   } catch (e) {
     console.error('JWT error:', e);
@@ -22,126 +32,101 @@ function authMiddleware(req, res, next) {
   }
 }
 
-// 1) GET /api/rooms — список комнат текущего пользователя
+// GET /api/rooms — список комнат с массивом участников
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    // получаем никнейм текущего
-    const me = await pool.query(
-      'SELECT nickname FROM users WHERE id=$1',
-      [req.userId]
+    const { rows } = await pool.query(
+      `SELECT
+         r.id,
+         r.name,
+         r.is_group,
+         r.created_at,
+         array_agg(m.nickname ORDER BY m.nickname) AS members
+       FROM rooms r
+       JOIN room_members m ON m.room_id = r.id
+      WHERE m.nickname = $1
+      GROUP BY r.id
+      ORDER BY r.created_at DESC`,
+      [req.userNickname]
     );
-    const myNick = me.rows[0]?.nickname;
-    if (!myNick) return res.status(400).send('No nickname');
-
-    // все комнаты, где он есть
-    const rooms = await pool.query(
-      `SELECT r.id, r.name, r.is_group, r.created_at
-         FROM rooms r
-         JOIN room_members m ON m.room_id = r.id
-        WHERE m.nickname = $1
-     ORDER BY r.created_at DESC`,
-      [myNick]
-    );
-    res.json(rooms.rows);
+    res.json(rows);
   } catch (err) {
     console.error('Error fetching rooms:', err);
     res.status(500).send('Error fetching rooms');
   }
 });
 
-// 2) POST /api/rooms — создать новую комнату (приватную или группу)
+// POST /api/rooms — создать или вернуть приватную/групповую комнату
 router.post('/', authMiddleware, async (req, res) => {
-  let { name = null, is_group, members } = req.body;
+  let { is_group, members } = req.body;
+  let name = req.body.name || null;
 
   if (!Array.isArray(members) || members.length < 1) {
     return res.status(400).send('Members list required');
   }
 
-  // Приводим к числам, убираем NaN, убираем дубли
-  const memberIds = [...new Set(
-    members.map(m => parseInt(m, 10)).filter(id => !isNaN(id))
-  )];
-
-  // Всегда добавляем себя
-  if (!memberIds.includes(req.userId)) {
-    memberIds.push(req.userId);
+  // всегда добавляем себя
+  if (!members.includes(req.userNickname)) {
+    members.push(req.userNickname);
   }
 
-  // Для приватного чата — имя по никнейму собеседника
-  if (!is_group && memberIds.length === 2) {
-    const otherId = memberIds.find(id => id !== req.userId);
-    const other   = await pool.query(
-      'SELECT nickname FROM users WHERE id=$1',
-      [otherId]
-    );
-    if (other.rows[0]) {
-      name = other.rows[0].nickname;
+  // приватный чат — ровно 2 участников
+  if (!is_group && members.length === 2) {
+    // сортируем, чтобы порядок не влиял на поиск
+    const sorted = [...members].sort();
+    try {
+      // ищем существующий чат с этими двумя никнеймами
+      const exist = await pool.query(
+        `SELECT r.id
+           FROM rooms r
+           JOIN room_members m ON m.room_id = r.id
+          WHERE r.is_group = FALSE
+            AND m.nickname = $1
+        INTERSECT
+         SELECT r2.id
+           FROM rooms r2
+           JOIN room_members m2 ON m2.room_id = r2.id
+          WHERE r2.is_group = FALSE
+            AND m2.nickname = $2`,
+        sorted
+      );
+      if (exist.rows.length) {
+        const roomId = exist.rows[0].id;
+        // имя комнаты для приватки — nickname второго пользователя
+        const other = members.find(n => n !== req.userNickname);
+        return res.json({ roomId, name: other });
+      }
+    } catch (e) {
+      console.error('Error checking existing private room:', e);
+      // fall through to creation
     }
+
+    // если не нашли — имя комнаты = ник второго
+    name = members.find(n => n !== req.userNickname);
   }
 
   try {
-    // Создаём комнату
-    const roomRes = await pool.query(
-      'INSERT INTO rooms(name,is_group) VALUES($1,$2) RETURNING id',
+    // создаём комнату
+    const insert = await pool.query(
+      'INSERT INTO rooms (name, is_group) VALUES ($1,$2) RETURNING id, name',
       [name, is_group]
     );
-    const roomId = roomRes.rows[0].id;
+    const roomId = insert.rows[0].id;
 
-    // Вставляем участников
-    await Promise.all(memberIds.map(async id => {
-      const nickR = await pool.query(
-        'SELECT nickname FROM users WHERE id=$1',
-        [id]
-      );
-      const nick = nickR.rows[0]?.nickname;
-      if (nick) {
-        await pool.query(
-          'INSERT INTO room_members(room_id,nickname,joined_at) VALUES($1,$2,NOW())',
+    // сохраняем участников
+    await Promise.all(
+      members.map(nick =>
+        pool.query(
+          'INSERT INTO room_members (room_id, nickname) VALUES ($1,$2)',
           [roomId, nick]
-        );
-      }
-    }));
+        )
+      )
+    );
 
-    res.json({ roomId, name });
+    res.json({ roomId, name: insert.rows[0].name });
   } catch (err) {
     console.error('Error creating room:', err);
     res.status(500).send('Error creating room');
-  }
-});
-
-// 3) GET /api/rooms/:roomId/messages — история сообщений
-router.get('/:roomId/messages', authMiddleware, async (req, res) => {
-  const { roomId } = req.params;
-
-  try {
-    // Проверяем, что текущий пользователь в комнате
-    const check = await pool.query(
-      `SELECT 1 FROM room_members
-        WHERE room_id=$1
-          AND nickname = (
-            SELECT nickname FROM users WHERE id=$2
-         )`,
-      [roomId, req.userId]
-    );
-    if (check.rowCount === 0) {
-      return res.status(403).send('Not a member');
-    }
-
-    // Запрашиваем сообщения
-    const msgs = await pool.query(
-      `SELECT sender_nickname AS sender,
-              text,
-              time,
-              is_read
-         FROM messages
-        WHERE room_id = $1
-     ORDER BY time`,
-      [roomId]
-    );
-    res.json(msgs.rows);
-  } catch (err) {
-    console.error('Error fetching messages:', err);
-    res.status(500).send('Error fetching messages');
   }
 });
 
