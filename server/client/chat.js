@@ -7,6 +7,12 @@ let currentRoom = null;
 
 // Показать свой никнейм
 document.getElementById('current-user').textContent = userNickname;
+// Авто-рост поля ввода
+const textarea = document.getElementById('message');
+textarea.addEventListener('input', () => {
+  textarea.style.height = 'auto';
+  textarea.style.height = textarea.scrollHeight + 'px';
+});
 
 // 1) Загрузка списка комнат
 async function loadRooms() {
