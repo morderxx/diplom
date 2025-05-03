@@ -5,7 +5,7 @@ const router  = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
-// authMiddleware — вытаскивает из JWT login и nickname
+// Middleware: из JWT достаём login и nickname
 async function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth) return res.status(401).send('No token');
@@ -13,7 +13,8 @@ async function authMiddleware(req, res, next) {
     const token   = auth.split(' ')[1];
     const payload = jwt.verify(token, JWT_SECRET);
     req.userLogin = payload.login;
-    // находим nickname
+
+    // Берём nickname через join secret_profile→users
     const prof = await pool.query(
       `SELECT u.nickname
          FROM users u
@@ -21,7 +22,9 @@ async function authMiddleware(req, res, next) {
         WHERE s.login = $1`,
       [req.userLogin]
     );
-    if (!prof.rows.length) return res.status(400).send('Complete your profile first');
+    if (prof.rows.length === 0) {
+      return res.status(400).send('Complete your profile first');
+    }
     req.userNickname = prof.rows[0].nickname;
     next();
   } catch (e) {
@@ -30,7 +33,7 @@ async function authMiddleware(req, res, next) {
   }
 }
 
-// GET /api/rooms — список комнат + участников
+// GET /api/rooms — список комнат + массив участников
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -63,17 +66,17 @@ router.post('/', authMiddleware, async (req, res) => {
     return res.status(400).send('Members list required');
   }
 
-  // добавляем себя
+  // Вставляем себя, если забыли
   if (!members.includes(req.userNickname)) {
     members.push(req.userNickname);
   }
 
-  // приват: ровно два никнейма
+  // Приватный чат: ровно 2 человека
   if (!is_group && members.length === 2) {
-    // ищем существующую комнату
     const [a, b] = members.sort();
     const exist = await pool.query(
-      `SELECT r.id FROM rooms r
+      `SELECT r.id
+         FROM rooms r
          JOIN room_members m1 ON m1.room_id = r.id
          JOIN room_members m2 ON m2.room_id = r.id
         WHERE r.is_group = FALSE
@@ -83,16 +86,15 @@ router.post('/', authMiddleware, async (req, res) => {
     );
     if (exist.rows.length) {
       const roomId = exist.rows[0].id;
-      // имя приватки — ник второго участника
+      // имя приватки = ник второго
       const other = members.find(n => n !== req.userNickname);
       return res.json({ roomId, name: other });
     }
-    // имя для новой приватки
+    // при создании берем ник второго как имя
     name = members.find(n => n !== req.userNickname);
   }
 
   try {
-    // создаём комнату
     const roomRes = await pool.query(
       'INSERT INTO rooms (name, is_group) VALUES ($1,$2) RETURNING id, name',
       [name, is_group]
