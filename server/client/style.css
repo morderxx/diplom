@@ -179,8 +179,8 @@ button:hover {
     margin-top: 8px;
 }
 
-/* Кнопки-иконки */
-.icon-btn {
+/* Кнопка прикрепления (зелёная) */
+#attach-btn {
     width: 36px;
     height: 36px;
     border: none;
@@ -195,27 +195,62 @@ button:hover {
     transition: background 0.2s ease;
 }
 
-.icon-btn:hover {
+#attach-btn:hover {
     background: #45a049;
 }
 
-/* Специальная кнопка отправки */
+/* Поле ввода сообщения теперь textarea */
+.input-container textarea#message {
+    flex: 1;
+    padding: 10px 12px;
+    border-radius: 20px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+    line-height: 1.4em;
+    max-height: calc(1.4em * 3 + 24px); /* 3 строки + padding */
+    overflow-y: auto;
+    resize: none;
+    box-sizing: border-box;
+}
+
+/* Кнопка отправки (синяя) */
 #send-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
     background: #007bff;
+    color: #fff;
+    font-size: 18px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
 }
 
 #send-btn:hover {
     background: #0056b3;
 }
 
-/* Поле ввода сообщения */
-.input-container input#message {
-    flex: 1;
-    padding: 10px 12px;
-    border-radius: 20px;
-    border: 1px solid #ccc;
-    font-size: 14px;
-    box-sizing: border-box;
+/* Кнопка записи голоса (тоже синяя) */
+#voice-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: #007bff;
+    color: #fff;
+    font-size: 18px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+}
+
+#voice-btn:hover {
+    background: #0056b3;
 }
 
 /* Сообщения */
