@@ -1,4 +1,3 @@
-// server/routes/messages.js
 const express = require('express');
 const jwt     = require('jsonwebtoken');
 const pool    = require('../db');
@@ -6,7 +5,7 @@ const router  = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
-// Тот же middleware, что в rooms.js
+// Middleware: из JWT достаём login и nickname
 async function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth) return res.status(401).send('No token');
@@ -14,7 +13,7 @@ async function authMiddleware(req, res, next) {
     const token   = auth.split(' ')[1];
     const payload = jwt.verify(token, JWT_SECRET);
     req.userLogin = payload.login;
-    // подтягиваем nickname из users ↔ secret_profile
+    // подтягиваем nickname
     const prof = await pool.query(
       `SELECT u.nickname
          FROM users u
@@ -22,7 +21,7 @@ async function authMiddleware(req, res, next) {
         WHERE s.login = $1`,
       [req.userLogin]
     );
-    if (!prof.rows.length) {
+    if (prof.rows.length === 0) {
       return res.status(400).send('Complete your profile first');
     }
     req.userNickname = prof.rows[0].nickname;
@@ -33,11 +32,11 @@ async function authMiddleware(req, res, next) {
   }
 }
 
-// GET /api/rooms/:roomId/messages — история
+// GET /api/rooms/:roomId/messages — история сообщений
 router.get('/:roomId/messages', authMiddleware, async (req, res) => {
   const { roomId } = req.params;
   try {
-    // Проверяем, что пользователь — участник комнаты
+    // Проверяем, что пользователь участник
     const mem = await pool.query(
       'SELECT 1 FROM room_members WHERE room_id = $1 AND nickname = $2',
       [roomId, req.userNickname]
@@ -46,7 +45,7 @@ router.get('/:roomId/messages', authMiddleware, async (req, res) => {
       return res.status(403).send('Not a member');
     }
 
-    // Достаём историю
+    // Отдаем историю
     const { rows } = await pool.query(
       `SELECT sender_nickname, text, time
          FROM messages
