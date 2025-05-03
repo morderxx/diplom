@@ -13,28 +13,29 @@ const setupWebSocket = require('./chat');
 const app    = express();
 const server = http.createServer(app);
 
+// Парсеры тела и CORS
 app.use(cors());
 app.use(express.json());
 
-const path = require('path');
-
-// 1) В первую очередь — API
-app.use('/api', authRoutes);
-app.use('/api/users', usersRoutes);
-app.use('/api/rooms', roomsRoutes);
+// 1) Монтируем API
+app.use('/api',          authRoutes);
+app.use('/api/users',    usersRoutes);
+app.use('/api/rooms',    roomsRoutes);
 app.use('/api/messages', messagesRoutes);
 
-// 2) Затем — раздача статики клиентской части
+// 2) Раздаём статические файлы из client
 app.use(express.static(path.join(__dirname, 'client')));
 
-// 3) И в самом конце any-route -> index.html (для поддержки client-side роутинга)
-app.get('*', (req, res) => {
+// 3) Catch-all для SPA: любые GET-запросы, НЕ начинающиеся с /api, возвращают index.html
+app.get(/^\/(?!api).*/, (req, res) => {
   res.sendFile(path.join(__dirname, 'client', 'index.html'));
 });
 
-// Запуск HTTP + WebSocket
+// Запускаем HTTP
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+// Инициализируем WebSocket
 setupWebSocket(server);
