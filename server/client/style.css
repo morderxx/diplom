@@ -201,7 +201,7 @@ button:hover {
 
 /* Поле ввода сообщения теперь textarea */
 .input-container textarea#message {
-    width: 70%;
+    flex: 1;
     padding: 10px 12px;
     border-radius: 20px;
     border: 1px solid #ccc;
@@ -211,8 +211,6 @@ button:hover {
     overflow-y: auto;
     resize: none;
     box-sizing: border-box;
-    white-space: pre-wrap; /* сохраняем переносы */
-    word-break: break-word;
 }
 
 /* Кнопка отправки (синяя) */
