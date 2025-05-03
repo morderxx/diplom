@@ -153,6 +153,18 @@ function sendMessage() {
   inp.value = '';
 }
 
+// Добавим обработчики кликов на новые кнопки
+document.getElementById('attach-btn').onclick = () => {
+  // TODO: открыть диалог выбора файла
+  alert('Реализуйте загрузку файлов здесь');
+};
+
+document.getElementById('voice-btn').onclick = () => {
+  // TODO: начать/остановить запись голосового сообщения
+  alert('Реализуйте запись голоса здесь');
+};
+
+// Существующая отправка
 document.getElementById('send-btn').onclick = sendMessage;
 document.getElementById('message').addEventListener('keypress', e => {
   if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
