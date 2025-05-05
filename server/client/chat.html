@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Чат</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="chat-wrapper">
+    <aside class="rooms-sidebar">
+      <div class="current-user">Вы: <span id="current-user"></span></div>
+      <h2>Чаты</h2>
+      <ul id="rooms-list" class="rooms-list"></ul>
+      <h2>Пользователи</h2>
+      <ul id="users-list" class="rooms-list"></ul>
+    </aside>
+
+    <section id="chat-section" class="chat-container">
+      <div id="chat-box" class="chat-box"></div>
+  <div class="input-container">
+  <button id="attach-btn" class="icon-btn">📎</button>
+  <textarea id="message" placeholder="Введите сообщение..." rows="1"></textarea>
+  <button id="send-btn"   class="icon-btn">➤</button>
+  <button id="voice-btn"  class="icon-btn">🎤</button>
+</div>
+
+
+    </section>
+  </div>
+
+  <script src="chat.js"></script>
+</body>
+</html>
