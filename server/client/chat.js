@@ -1,31 +1,31 @@
 // client/chat.js
-const API_URL      = '/api';
-const token        = localStorage.getItem('token');
+const API_URL = '/api';
+const token = localStorage.getItem('token');
 const userNickname = localStorage.getItem('nickname');
 
-let socket      = null;
+let socket = null;
 let currentRoom = null;
 
-// Показать свой никнейм
+if (!token || !userNickname) {
+  alert('Вы не авторизованы');
+  window.location.href = '/login';
+}
+
 document.getElementById('current-user').textContent = userNickname;
 
-// Авто-рост поля ввода
 const textarea = document.getElementById('message');
 textarea.addEventListener('input', () => {
   textarea.style.height = 'auto';
   textarea.style.height = textarea.scrollHeight + 'px';
 });
 
-// Скрытое поле для выбора файла
 const fileInput = document.createElement('input');
 fileInput.type = 'file';
 fileInput.style.display = 'none';
 document.body.appendChild(fileInput);
 
-// Обработчик клика на кнопку прикрепления
 document.getElementById('attach-btn').onclick = () => fileInput.click();
 
-// При выборе файла — загружаем и рассылаем
 fileInput.onchange = async () => {
   if (!currentRoom) {
     alert('Сначала выберите чат');
@@ -34,7 +34,6 @@ fileInput.onchange = async () => {
   const file = fileInput.files[0];
   if (!file) return;
 
-  // 1) Загружаем байты в БД через API
   const form = new FormData();
   form.append('file', file);
   form.append('roomId', currentRoom);
@@ -54,24 +53,22 @@ fileInput.onchange = async () => {
     console.error('Ошибка загрузки файла:', await res.text());
     return;
   }
-  const meta = await res.json(); 
-  // meta: { id, filename, mime_type, uploaded_at }
 
-  // 2) Шлём через WebSocket уведомление о файле
+  const meta = await res.json();
+
   socket.send(JSON.stringify({
     type: 'file',
     token,
     roomId: currentRoom,
-    fileId:   meta.id,
+    fileId: meta.id,
     filename: meta.filename,
     mimeType: meta.mime_type,
-    time:     meta.uploaded_at
+    time: meta.uploaded_at
   }));
 
   fileInput.value = '';
 };
 
-// 1) Загрузка списка комнат
 async function loadRooms() {
   const res = await fetch(`${API_URL}/rooms`, {
     headers: { 'Authorization': `Bearer ${token}` }
@@ -90,7 +87,6 @@ async function loadRooms() {
     if (r.is_group) {
       li.textContent = r.name || `Группа #${r.id}`;
     } else {
-      // Для приватного чата имя — это имя второго участника
       const other = (r.members || []).find(n => n !== userNickname);
       li.textContent = other || '(без имени)';
     }
@@ -99,7 +95,6 @@ async function loadRooms() {
   });
 }
 
-// 2) Загрузка списка пользователей
 async function loadUsers() {
   const res = await fetch(`${API_URL}/users`, {
     headers: { 'Authorization': `Bearer ${token}` }
@@ -120,7 +115,6 @@ async function loadUsers() {
   });
 }
 
-// 3) Создать или открыть приватный чат
 async function openPrivateChat(otherNick) {
   const roomsRes = await fetch(`${API_URL}/rooms`, {
     headers: { 'Authorization': `Bearer ${token}` }
@@ -142,7 +136,7 @@ async function openPrivateChat(otherNick) {
     },
     body: JSON.stringify({
       is_group: false,
-      members:  [userNickname, otherNick]
+      members: [userNickname, otherNick]
     })
   });
   if (!create.ok) {
@@ -154,7 +148,6 @@ async function openPrivateChat(otherNick) {
   joinRoom(roomId);
 }
 
-// 4) Вход в комнату + WS + история
 async function joinRoom(roomId) {
   if (socket) socket.close();
   currentRoom = roomId;
@@ -163,15 +156,16 @@ async function joinRoom(roomId) {
 
   socket = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
   socket.onopen = () => socket.send(JSON.stringify({ type: 'join', token, roomId }));
+  socket.onerror = err => console.error('WS error:', err);
+  socket.onclose = () => console.log('WS закрыт');
+
   socket.onmessage = ev => {
     const msg = JSON.parse(ev.data);
     if (msg.type === 'message') {
       appendMessage(msg.sender, msg.text, msg.time);
     } else if (msg.type === 'file') {
       appendFileMessage(msg.sender, msg.fileId, msg.filename, msg.mimeType, msg.time);
-    }else if (msg.type === 'file') {
-  appendFileMessage(msg.sender, msg.fileId, msg.filename, msg.time);
-}
+    }
   };
 
   const histRes = await fetch(`${API_URL}/rooms/${roomId}/messages`, {
@@ -183,16 +177,14 @@ async function joinRoom(roomId) {
   }
   const history = await histRes.json();
   history.forEach(m => {
-  if (m.file_id) {
-    appendFileMessage(m.sender, m.file_id, m.filename, m.time);
-  } else {
-    appendMessage(m.sender, m.text, m.time);
-  }
-});
-
+    if (m.file_id) {
+      appendFileMessage(m.sender_nickname, m.file_id, m.filename, m.mime_type || null, m.time);
+    } else {
+      appendMessage(m.sender_nickname, m.text, m.time);
+    }
+  });
 }
 
-// 5) Отрисовка текстового сообщения
 function appendMessage(sender, text, time) {
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
@@ -221,7 +213,6 @@ function appendMessage(sender, text, time) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// 6) Отрисовка файлового сообщения
 function appendFileMessage(sender, fileId, filename, mimeType, time) {
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
@@ -239,7 +230,6 @@ function appendFileMessage(sender, fileId, filename, mimeType, time) {
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble';
 
-  // Ссылка на скачивание или просмотр
   const link = document.createElement('a');
   link.href = `${API_URL}/files/${fileId}`;
   link.textContent = filename;
@@ -252,7 +242,6 @@ function appendFileMessage(sender, fileId, filename, mimeType, time) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// 7) Отправка текстового сообщения
 function sendMessage() {
   const inp = document.getElementById('message');
   const text = inp.value.trim();
@@ -269,6 +258,5 @@ document.getElementById('message').addEventListener('keypress', e => {
   }
 });
 
-// Инициализация
 loadRooms();
 loadUsers();
