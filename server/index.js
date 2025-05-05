@@ -9,32 +9,32 @@ const authRoutes     = require('./auth');
 const usersRoutes    = require('./routes/users');
 const roomsRoutes    = require('./routes/rooms');
 const messagesRoutes = require('./routes/messages');
+const filesRoutes    = require('./routes/files');
 const setupWebSocket = require('./chat');
 
 const app    = express();
 const server = http.createServer(app);
 
+// 1) Middleware
 app.use(cors());
 app.use(express.json());
 
-// 1) API
+// 2) API
 app.use('/api',          authRoutes);
 app.use('/api/users',    usersRoutes);
 app.use('/api/rooms',    roomsRoutes);
 app.use('/api/messages', messagesRoutes);
+app.use('/api/files',    filesRoutes);
 
-// 2) Статика
+// 3) Статика клиента
 app.use(express.static(path.join(__dirname, 'client')));
 
-// 3) SPA fallback (не для /api/*)
-app.get(/^\/(?!api).*/, (req, res) => {
-  res.sendFile(path.join(__dirname, 'client', 'index.html'));
-});
+// 4) SPA fallback (все, что не /api)
+app.get(/^\/(?!api).*/, (req, res) =>
+  res.sendFile(path.join(__dirname, 'client', 'index.html'))
+);
 
+// 5) Запуск HTTP и WebSocket
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-
-// WebSocket
+server.listen(PORT, () => console.log(`Server listening on ${PORT}`));
 setupWebSocket(server);
