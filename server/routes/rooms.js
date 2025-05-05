@@ -1,4 +1,3 @@
-// server/routes/rooms.js
 const express = require('express');
 const jwt     = require('jsonwebtoken');
 const pool    = require('../db');
@@ -7,7 +6,6 @@ require('dotenv').config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
-// JWT-middleware как у вас было
 function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth) return res.status(401).send('No token');
@@ -22,17 +20,13 @@ function authMiddleware(req, res, next) {
   }
 }
 
-// GET /api/rooms — list с members!
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    // получаем никнейм
     const meR = await pool.query(
-      'SELECT nickname FROM users WHERE id=$1',
+      'SELECT nickname FROM users WHERE id = $1',
       [req.userId]
     );
     const myNick = meR.rows[0].nickname;
-
-    // собираем комнаты вместе с массивом участников
     const roomsR = await pool.query(
       `SELECT
          r.id,
@@ -53,26 +47,23 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
-// POST /api/rooms — без изменений, вы вставляете room_members, тоже members[]
 router.post('/', authMiddleware, async (req, res) => {
   let { name = null, is_group, members } = req.body;
   if (!Array.isArray(members) || members.length < 1) {
     return res.status(400).send('Members list required');
   }
-
-  // чистим ID
   const memberIds = [...new Set(
-    members.map(m => parseInt(m,10)).filter(n => !isNaN(n))
+    members.map(m => parseInt(m, 10)).filter(n => !isNaN(n))
   )];
   if (!memberIds.includes(req.userId)) memberIds.push(req.userId);
 
   if (!is_group && memberIds.length === 2) {
-    const other = memberIds.find(i => i !== req.userId);
-    const r = await pool.query(
-      'SELECT nickname FROM users WHERE id=$1',
-      [other]
+    const otherId = memberIds.find(id => id !== req.userId);
+    const otherR  = await pool.query(
+      'SELECT nickname FROM users WHERE id = $1',
+      [otherId]
     );
-    if (r.rows[0]) name = r.rows[0].nickname;
+    if (otherR.rows[0]) name = otherR.rows[0].nickname;
   }
 
   try {
@@ -84,7 +75,7 @@ router.post('/', authMiddleware, async (req, res) => {
 
     await Promise.all(memberIds.map(async id => {
       const nickR = await pool.query(
-        'SELECT nickname FROM users WHERE id=$1',
+        'SELECT nickname FROM users WHERE id = $1',
         [id]
       );
       const nick = nickR.rows[0]?.nickname;
@@ -103,22 +94,19 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });
 
-// GET /api/rooms/:roomId/messages — теперь с file_id и filename
 router.get('/:roomId/messages', authMiddleware, async (req, res) => {
   const { roomId } = req.params;
   try {
-    // проверка членства
     const chk = await pool.query(
       `SELECT 1 FROM room_members
-         WHERE room_id=$1
+         WHERE room_id = $1
            AND nickname = (
-             SELECT nickname FROM users WHERE id=$2
+             SELECT nickname FROM users WHERE id = $2
            )`,
       [roomId, req.userId]
     );
     if (chk.rowCount === 0) return res.status(403).send('Not a member');
 
-    // история: текст или файл (file_id + filename)
     const msgs = await pool.query(
       `SELECT
          sender_nickname AS sender,
