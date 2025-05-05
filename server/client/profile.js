@@ -1,12 +1,13 @@
+// server/client/profile.js
 const API_URL = '/api';
 
 async function saveProfile() {
-    const nickname = document.getElementById('nickname').value;
+    const nickname  = document.getElementById('nickname').value;
     const full_name = document.getElementById('full_name').value;
-    const age = document.getElementById('age').value;
-    const bio = document.getElementById('bio').value;
-
-    const token = localStorage.getItem('token');
+    // берём значение из календаря
+    const age = document.getElementById('birthdate').value;
+    const bio       = document.getElementById('bio').value;
+    const token     = localStorage.getItem('token');
 
     const res = await fetch(`${API_URL}/profile`, {
         method: 'POST',
@@ -14,13 +15,16 @@ async function saveProfile() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ nickname, full_name, age, bio })
+        body: JSON.stringify({
+            nickname,
+            full_name,
+            age,  // вместо age
+            bio
+        })
     });
 
     if (res.ok) {
-        // Сохраняем никнейм в localStorage
         localStorage.setItem('nickname', nickname);
-
         document.getElementById('message').innerText = 'Профиль сохранён!';
         setTimeout(() => {
             window.location.href = 'chat.html';
