@@ -1,4 +1,3 @@
-// server/routes/rooms.js
 const express = require('express');
 const jwt     = require('jsonwebtoken');
 const pool    = require('../db');
@@ -127,7 +126,6 @@ router.post('/', authMiddleware, async (req, res) => {
 router.get('/:roomId/messages', authMiddleware, async (req, res) => {
   const { roomId } = req.params;
   try {
-    // проверяем, что пользователь — участник комнаты
     const mem = await pool.query(
       'SELECT 1 FROM room_members WHERE room_id = $1 AND nickname = $2',
       [roomId, req.userNickname]
@@ -136,14 +134,20 @@ router.get('/:roomId/messages', authMiddleware, async (req, res) => {
       return res.status(403).send('Not a member');
     }
 
-    // возвращаем историю
     const { rows } = await pool.query(
-      `SELECT sender_nickname, text, time
-         FROM messages
-        WHERE room_id = $1
-     ORDER BY time`,
+      `SELECT
+         sender_nickname AS sender,
+         text,
+         file_id,
+         (SELECT filename FROM files WHERE id = messages.file_id) AS filename,
+         time,
+         is_read
+       FROM messages
+      WHERE room_id = $1
+      ORDER BY time`,
       [roomId]
     );
+
     res.json(rows);
   } catch (err) {
     console.error('Error fetching messages:', err);
