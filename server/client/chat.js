@@ -17,16 +17,16 @@ textarea.addEventListener('input', () => {
   textarea.style.height = textarea.scrollHeight + 'px';
 });
 
-// Создаём скрытый <input type="file"> для кнопки 📎
+// Скрытый <input type="file"> для кнопки 📎
 const fileInput = document.createElement('input');
 fileInput.type = 'file';
 fileInput.style.display = 'none';
 document.body.appendChild(fileInput);
 
-// Обработчик кнопки 📎
+// Кнопка 📎 открывает диалог выбора
 document.getElementById('attach-btn').onclick = () => fileInput.click();
 
-// Когда выбран файл — загружаем на сервер и сбрасываем input
+// При выборе файла — загружаем и сбрасываем input
 fileInput.onchange = async () => {
   if (!currentRoom) {
     alert('Сначала выберите чат');
@@ -50,7 +50,7 @@ fileInput.onchange = async () => {
   fileInput.value = '';
 };
 
-// Заготовка для голосовых сообщений 🎤
+// TODO: запись голосового сообщения
 document.getElementById('voice-btn').onclick = () => {
   alert('Здесь будет запись голосового сообщения');
 };
@@ -137,14 +137,13 @@ async function openPrivateChat(otherNick) {
   joinRoom(roomId);
 }
 
-// 4) Вход в комнату: WebSocket + история
+// 4) Вход в комнату, установка WS и загрузка истории
 async function joinRoom(roomId) {
   if (socket) socket.close();
   currentRoom = roomId;
   document.getElementById('chat-box').innerHTML = '';
   document.getElementById('chat-section').classList.add('active');
 
-  // WebSocket
   socket = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
   socket.onopen = () => socket.send(JSON.stringify({ type: 'join', token, roomId }));
   socket.onmessage = ev => {
@@ -152,11 +151,11 @@ async function joinRoom(roomId) {
     if (msg.type === 'message') {
       appendMessage(msg.sender, msg.text, msg.time);
     } else if (msg.type === 'file') {
-      appendFile(msg.sender, msg.fileId, msg.filename, msg.time);
+      appendFile(msg.sender, msg.fileId, msg.filename, msg.mimeType, msg.time);
     }
   };
 
-  // REST-история (только текстовые сообщения)
+  // REST-история текстовых сообщений
   const histRes = await fetch(`${API_URL}/rooms/${roomId}/messages`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
@@ -173,18 +172,23 @@ function appendMessage(sender, text, time) {
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
   wrapper.className = 'message-wrapper';
+
   const msgEl = document.createElement('div');
   msgEl.className = sender === userNickname ? 'my-message' : 'other-message';
+
   const info = document.createElement('div');
   info.className = 'message-info';
   info.textContent = `${sender} • ${new Date(time).toLocaleTimeString([], {
     hour: '2-digit', minute: '2-digit'
   })}`;
+
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble';
+
   const textEl = document.createElement('div');
   textEl.className = 'message-text';
   textEl.textContent = text;
+
   bubble.appendChild(textEl);
   msgEl.append(info, bubble);
   wrapper.appendChild(msgEl);
@@ -192,25 +196,49 @@ function appendMessage(sender, text, time) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// 6) Отрисовка файлового сообщения
-function appendFile(sender, fileId, filename, time) {
+// 6) Отрисовка файлового сообщения с разным рендерингом
+function appendFile(sender, fileId, filename, mimeType, time) {
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
   wrapper.className = 'message-wrapper';
+
   const msgEl = document.createElement('div');
   msgEl.className = sender === userNickname ? 'my-message' : 'other-message';
+
   const info = document.createElement('div');
   info.className = 'message-info';
   info.textContent = `${sender} • ${new Date(time).toLocaleTimeString([], {
     hour: '2-digit', minute: '2-digit'
   })}`;
+
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble';
-  const link = document.createElement('a');
-  link.href = `${API_URL}/files/${fileId}`;
-  link.textContent = `📎 ${filename}`;
-  link.target = '_blank';
-  bubble.appendChild(link);
+
+  // Определяем тип и создаём соответствующий элемент
+  let contentEl;
+  if (mimeType.startsWith('image/')) {
+    contentEl = document.createElement('img');
+    contentEl.src = `${API_URL}/files/${fileId}`;
+    contentEl.style.maxWidth = '200px';
+    contentEl.style.borderRadius = '8px';
+  } else if (mimeType.startsWith('audio/')) {
+    contentEl = document.createElement('audio');
+    contentEl.controls = true;
+    contentEl.src = `${API_URL}/files/${fileId}`;
+  } else if (mimeType.startsWith('video/')) {
+    contentEl = document.createElement('video');
+    contentEl.controls = true;
+    contentEl.style.maxWidth = '200px';
+    contentEl.src = `${API_URL}/files/${fileId}`;
+  } else {
+    // Остальные — ссылка на скачивание
+    contentEl = document.createElement('a');
+    contentEl.href = `${API_URL}/files/${fileId}`;
+    contentEl.textContent = `📎 ${filename}`;
+    contentEl.target = '_blank';
+  }
+
+  bubble.appendChild(contentEl);
   msgEl.append(info, bubble);
   wrapper.appendChild(msgEl);
   chatBox.appendChild(wrapper);
