@@ -1,4 +1,3 @@
-// server/chat.js
 const WebSocket = require('ws');
 const jwt       = require('jsonwebtoken');
 const pool      = require('./db');
@@ -14,24 +13,21 @@ function setupWebSocket(server) {
 
     ws.on('message', async raw => {
       let msg;
-      try { msg = JSON.parse(raw); }
-      catch { return; }
+      try { msg = JSON.parse(raw); } catch { return; }
 
-      // JOIN
       if (msg.type === 'join') {
         const { token, roomId } = msg;
         const payload = jwt.verify(token, JWT_SECRET);
         ws.meta = { userId: payload.id, nickname: payload.login, roomId };
-        // проставляем прочитанные
         await pool.query(
           `UPDATE messages
              SET is_read = TRUE
-           WHERE room_id=$1 AND sender_nickname != $2`,
+           WHERE room_id = $1
+             AND sender_nickname != $2`,
           [roomId, ws.meta.nickname]
         );
       }
 
-      // TEXT
       else if (msg.type === 'message') {
         const { token, roomId, text } = msg;
         const payload = jwt.verify(token, JWT_SECRET);
@@ -46,35 +42,28 @@ function setupWebSocket(server) {
         );
 
         wss.clients.forEach(client => {
-          if (
-            client.readyState === WebSocket.OPEN &&
-            client.meta.roomId === roomId
-          ) {
+          if (client.readyState === WebSocket.OPEN && client.meta.roomId === roomId) {
             client.send(JSON.stringify({ type:'message', sender, text, time }));
           }
         });
       }
 
-      // FILE
       else if (msg.type === 'file') {
         const { token, roomId, fileId, filename, time } = msg;
         const payload = jwt.verify(token, JWT_SECRET);
         const sender  = payload.login;
 
-        // сообщение в БД уже создалось в POST /api/files
-        // просто рассылаем:
         wss.clients.forEach(client => {
-          if (
-            client.readyState === WebSocket.OPEN &&
-            client.meta.roomId === roomId
-          ) {
+          if (client.readyState === WebSocket.OPEN && client.meta.roomId === roomId) {
             client.send(JSON.stringify({ type:'file', sender, fileId, filename, time }));
           }
         });
       }
     });
 
-    ws.on('close', () => { ws.meta = {}; });
+    ws.on('close', () => {
+      ws.meta = {};
+    });
   });
 }
 
