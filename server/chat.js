@@ -1,80 +1,79 @@
 // server/chat.js
 const WebSocket = require('ws');
-const jwt       = require('jsonwebtoken');
 const pool      = require('./db');
+const jwt       = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
+let wss;
+const clients = new Map(); // ws → { userLogin, rooms: Set<roomId> }
+
 function setupWebSocket(server) {
-  const wss = new WebSocket.Server({ server });
-  const clients = new Map(); // ws → { nickname, roomId }
+  wss = new WebSocket.Server({ server });
 
   wss.on('connection', ws => {
+    let userLogin = null;
+
     ws.on('message', async raw => {
-      let data;
-      try { data = JSON.parse(raw); }
-      catch { return; }
+      let msg;
+      try { msg = JSON.parse(raw); } catch { return; }
 
-      // Обработаем JOIN
-      if (data.type === 'join') {
+      // ————————————————
+      // 1) АУТЕНТИФИКАЦИЯ
+      if (msg.type === 'auth') {
         try {
-          // payload.login — это login из secret_profile
-          const p = jwt.verify(data.token, JWT_SECRET);
-
-          // Ищем никнейм в таблице users по login
-          const res = await pool.query(
-            'SELECT nickname FROM users WHERE id = (SELECT id FROM secret_profile WHERE login = $1)',
-            [p.login]
-          );
-          const nick = res.rows[0]?.nickname;
-          if (!nick) throw new Error('No nickname for ' + p.login);
-
-          clients.set(ws, { nickname: nick, roomId: data.roomId });
-        } catch (e) {
-          console.error('Invalid join token or lookup error', e);
+          const payload = jwt.verify(msg.token, JWT_SECRET);
+          userLogin = payload.login;
+          clients.set(ws, { userLogin, rooms: new Set() });
+        } catch {
+          return ws.close();
         }
         return;
       }
+      const info = clients.get(ws);
+      if (!info) return; // без auth дальше не пускаем
 
-      // Обработаем MESSAGE
-      if (data.type === 'message') {
-        let p;
-        try {
-          p = jwt.verify(data.token, JWT_SECRET);
-        } catch {
-          return;
-        }
+      // ————————————————
+      // 2) JOIN — подписаться на комнату
+      if (msg.type === 'join') {
+        info.rooms.add(msg.roomId);
+        return;
+      }
 
-        // Снова ищем nickname по login
-        const res = await pool.query(
-          'SELECT nickname FROM users WHERE id = (SELECT id FROM secret_profile WHERE login = $1)',
-          [p.login]
+      // ————————————————
+      // 3) MESSAGE — новое текстовое сообщение
+      if (msg.type === 'message') {
+        const { roomId, text } = msg;
+        // сохраняем в БД
+        const { rows } = await pool.query(
+          `INSERT INTO messages (room_id, sender_login, receiver_login, text)
+             VALUES ($1,$2,$3,$4) RETURNING time`,
+          [ roomId, info.userLogin, msg.to || null, text ]
         );
-        const sender = res.rows[0]?.nickname;
-        if (!sender) {
-          console.error('Cannot find nickname for', p.login);
-          return;
-        }
-
-        const { roomId, text } = data;
-
-        // Сохраняем в таблицу messages (именно sender_nickname, а не sender_login!)
-        await pool.query(
-          'INSERT INTO messages (room_id, sender_nickname, text) VALUES ($1, $2, $3)',
-          [roomId, sender, text]
-        );
-
-        // Шлём всем участникам комнаты
-        wss.clients.forEach(client => {
-          const info = clients.get(client);
-          if (info && info.roomId === roomId && client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({
-              type: 'message',
-              sender,
-              text,
-              time: new Date().toISOString()
-            }));
-          }
+        const time = rows[0].time;
+        // рассылаем всем в комнате
+        broadcastToRoom(roomId, {
+          type:    'message',
+          roomId,
+          from:    info.userLogin,
+          text,
+          time,
+          isRead:  false
         });
+        return;
+      }
+
+      // ————————————————
+      // 4) READ — отметить прочитанные
+      if (msg.type === 'read') {
+        await pool.query(
+          `UPDATE messages
+             SET is_read = TRUE
+           WHERE room_id=$1
+             AND receiver_login = $2
+             AND is_read = FALSE`,
+          [ msg.roomId, info.userLogin ]
+        );
+        return;
       }
     });
 
@@ -84,4 +83,14 @@ function setupWebSocket(server) {
   });
 }
 
-module.exports = setupWebSocket;
+// утилита для рассылки события всем WS-клиентам в комнате
+function broadcastToRoom(roomId, data) {
+  const json = JSON.stringify(data);
+  for (const [client, info] of clients.entries()) {
+    if (info.rooms.has(roomId) && client.readyState === WebSocket.OPEN) {
+      client.send(json);
+    }
+  }
+}
+
+module.exports = { setupWebSocket, broadcastToRoom };
