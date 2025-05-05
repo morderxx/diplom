@@ -9,42 +9,50 @@ const router  = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 const upload = multer({ storage: multer.memoryStorage() });
 
-// JWT middleware
+// JWT middleware для защищённых маршрутов
 function authMiddleware(req, res, next) {
-  const h = req.headers.authorization;
-  if (!h) return res.status(401).send('No token');
+  const header = req.headers.authorization;
+  if (!header) return res.status(401).send('No token');
   try {
-    req.userId = jwt.verify(h.split(' ')[1], JWT_SECRET).id;
+    req.userId = jwt.verify(header.split(' ')[1], JWT_SECRET).id;
     next();
   } catch {
     res.status(401).send('Invalid token');
   }
 }
 
-// POST /api/files
+// POST /api/files — загрузка файла (только для авторизованных)
 router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
   const file   = req.file;
   const roomId = parseInt(req.body.roomId, 10);
-  if (!file || isNaN(roomId)) return res.status(400).send('Missing file or roomId');
+  if (!file || isNaN(roomId)) {
+    return res.status(400).send('Missing file or roomId');
+  }
 
   try {
+    // Сохраняем файл в БД
     const { rows } = await pool.query(
-      `INSERT INTO files(room_id,uploader_id,filename,mime_type,content)
-         VALUES($1,$2,$3,$4,$5)
-       RETURNING id, filename, mime_type AS "mimeType", uploaded_at AS "time"`,
+      `INSERT INTO files(room_id, uploader_id, filename, mime_type, content)
+         VALUES ($1,$2,$3,$4,$5)
+       RETURNING id,
+                 filename,
+                 mime_type   AS "mimeType",
+                 uploaded_at AS "time"`,
       [roomId, req.userId, file.originalname, file.mimetype, file.buffer]
     );
     const meta = rows[0];
+
+    // Отправляем клиенту метаданные
     res.json(meta);
 
-    // broadcast через WS
+    // И рассылаем всем участникам комнаты через WebSocket
     const wss = getWss();
     if (wss) {
-      // получаем nickname
       const u = await pool.query(
-        `SELECT nickname FROM users WHERE id = $1`, [req.userId]
+        `SELECT nickname FROM users WHERE id = $1`,
+        [req.userId]
       );
-      const sender = u.rows[0]?.nickname;
+      const sender = u.rows[0]?.nickname || 'Unknown';
       const msg = {
         type:     'file',
         sender,
@@ -53,9 +61,10 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
         mimeType: meta.mimeType,
         time:     meta.time
       };
-      wss.clients.forEach(c => {
-        // у клиента в setupWebSocket хранится roomId в clients map
-        c.send(JSON.stringify(msg));
+      wss.clients.forEach(client => {
+        if (client.readyState === client.OPEN) {
+          client.send(JSON.stringify(msg));
+        }
       });
     }
 
@@ -65,21 +74,35 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
   }
 });
 
-// GET /api/files/:id
-router.get('/:id', authMiddleware, async (req, res) => {
+// GET /api/files/:id — скачивание / просмотр файла (публично)
+router.get('/:id', async (req, res) => {
   const fileId = parseInt(req.params.id, 10);
   try {
     const { rows } = await pool.query(
-      `SELECT filename, mime_type AS "mimeType", content
-         FROM files WHERE id = $1`, [fileId]
+      `SELECT filename,
+              mime_type AS "mimeType",
+              content
+         FROM files
+        WHERE id = $1`,
+      [fileId]
     );
-    if (!rows.length) return res.status(404).send('Not found');
+    if (!rows.length) {
+      return res.status(404).send('File not found');
+    }
     const { filename, mimeType, content } = rows[0];
     res.setHeader('Content-Type', mimeType);
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    // для inline-просмотра в браузере не ставим attachment,
+    // но для несupported типов можно скачать
+    if (mimeType.startsWith('image/') ||
+        mimeType.startsWith('audio/') ||
+        mimeType.startsWith('video/')) {
+      res.setHeader('Content-Disposition', 'inline');
+    } else {
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    }
     res.send(content);
-  } catch (e) {
-    console.error('File download error:', e);
+  } catch (err) {
+    console.error('File download error:', err);
     res.status(500).send('Error retrieving file');
   }
 });
