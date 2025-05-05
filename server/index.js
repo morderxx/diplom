@@ -28,11 +28,12 @@ app.use('/api/files',    filesRoutes);
 // 2) Статика
 app.use(express.static(path.join(__dirname, 'client')));
 
-// 3) SPA-обработка (не /api и не статик)
+// 3) SPA fallback
 app.get(/^\/(?!api).*/, (req, res) => {
   res.sendFile(path.join(__dirname, 'client', 'index.html'));
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server running on ${PORT}`));
+server.listen(process.env.PORT || 3000, () =>
+  console.log('Server running')
+);
 setupWebSocket(server);
