@@ -169,7 +169,9 @@ async function joinRoom(roomId) {
       appendMessage(msg.sender, msg.text, msg.time);
     } else if (msg.type === 'file') {
       appendFileMessage(msg.sender, msg.fileId, msg.filename, msg.mimeType, msg.time);
-    }
+    }else if (msg.type === 'file') {
+  appendFileMessage(msg.sender, msg.fileId, msg.filename, msg.time);
+}
   };
 
   const histRes = await fetch(`${API_URL}/rooms/${roomId}/messages`, {
