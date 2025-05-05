@@ -181,8 +181,13 @@ async function joinRoom(roomId) {
   }
   const history = await histRes.json();
   history.forEach(m => {
+  if (m.file_id) {
+    appendFileMessage(m.sender, m.file_id, m.filename, m.time);
+  } else {
     appendMessage(m.sender, m.text, m.time);
-  });
+  }
+});
+
 }
 
 // 5) Отрисовка текстового сообщения
