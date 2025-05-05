@@ -17,33 +17,27 @@ function setupWebSocket(server) {
       try { msg = JSON.parse(raw); }
       catch { return; }
 
-      // 1) join
+      // JOIN
       if (msg.type === 'join') {
         const { token, roomId } = msg;
         const payload = jwt.verify(token, JWT_SECRET);
-        ws.meta = {
-          userId:   payload.id,
-          nickname: payload.login,
-          roomId
-        };
-        // помечаем прочитанное
+        ws.meta = { userId: payload.id, nickname: payload.login, roomId };
+        // проставляем прочитанные
         await pool.query(
           `UPDATE messages
              SET is_read = TRUE
-           WHERE room_id = $1
-             AND sender_nickname != $2`,
+           WHERE room_id=$1 AND sender_nickname != $2`,
           [roomId, ws.meta.nickname]
         );
       }
 
-      // 2) текст
+      // TEXT
       else if (msg.type === 'message') {
         const { token, roomId, text } = msg;
         const payload = jwt.verify(token, JWT_SECRET);
         const sender  = payload.login;
         const time    = new Date().toISOString();
 
-        // сохраняем текст
         await pool.query(
           `INSERT INTO messages
              (room_id, sender_nickname, text, time, is_read)
@@ -51,57 +45,36 @@ function setupWebSocket(server) {
           [roomId, sender, text, time]
         );
 
-        // рассылаем
         wss.clients.forEach(client => {
           if (
             client.readyState === WebSocket.OPEN &&
             client.meta.roomId === roomId
           ) {
-            client.send(JSON.stringify({
-              type: 'message',
-              sender,
-              text,
-              time
-            }));
+            client.send(JSON.stringify({ type:'message', sender, text, time }));
           }
         });
       }
 
-      // 3) файл
+      // FILE
       else if (msg.type === 'file') {
         const { token, roomId, fileId, filename, time } = msg;
         const payload = jwt.verify(token, JWT_SECRET);
         const sender  = payload.login;
 
-        // сохраняем file_id
-        await pool.query(
-          `INSERT INTO messages
-             (room_id, sender_nickname, file_id, text, time, is_read)
-           VALUES($1,$2,$3,NULL,$4,false)`,
-          [roomId, sender, fileId, time]
-        );
-
-        // рассылаем
+        // сообщение в БД уже создалось в POST /api/files
+        // просто рассылаем:
         wss.clients.forEach(client => {
           if (
             client.readyState === WebSocket.OPEN &&
             client.meta.roomId === roomId
           ) {
-            client.send(JSON.stringify({
-              type:     'file',
-              sender,
-              fileId,
-              filename,
-              time
-            }));
+            client.send(JSON.stringify({ type:'file', sender, fileId, filename, time }));
           }
         });
       }
     });
 
-    ws.on('close', () => {
-      ws.meta = {};
-    });
+    ws.on('close', () => { ws.meta = {}; });
   });
 }
 
