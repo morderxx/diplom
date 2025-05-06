@@ -16,6 +16,7 @@ function setupWebSocket(server) {
       let data;
       try { data = JSON.parse(raw); } catch { return; }
 
+      // Пользователь присоединяется к комнате
       if (data.type === 'join') {
         try {
           const payload = jwt.verify(data.token, JWT_SECRET);
@@ -25,7 +26,8 @@ function setupWebSocket(server) {
             `SELECT u.nickname
                FROM users u
                JOIN secret_profile s ON s.id = u.id
-              WHERE s.login = $1`, [login]
+              WHERE s.login = $1`,
+            [login]
           );
           const nick = result.rows[0]?.nickname;
           if (!nick) throw new Error('No nick');
@@ -36,6 +38,7 @@ function setupWebSocket(server) {
         return;
       }
 
+      // Текстовое сообщение
       if (data.type === 'message') {
         let payload;
         try { payload = jwt.verify(data.token, JWT_SECRET); }
@@ -45,17 +48,20 @@ function setupWebSocket(server) {
           `SELECT u.nickname
              FROM users u
              JOIN secret_profile s ON s.id = u.id
-            WHERE s.login = $1`, [payload.login]
+            WHERE s.login = $1`,
+          [payload.login]
         );
         const sender = r.rows[0]?.nickname;
         if (!sender) return;
 
+        // Сохраняем в БД
         await pool.query(
           `INSERT INTO messages (room_id, sender_nickname, text)
              VALUES ($1,$2,$3)`,
           [data.roomId, sender, data.text]
         );
 
+        // Рассылаем всем клиентам в комнате
         wss.clients.forEach(c => {
           const info = clients.get(c);
           if (info && info.roomId === data.roomId && c.readyState === WebSocket.OPEN) {
@@ -77,6 +83,7 @@ function setupWebSocket(server) {
   });
 }
 
+// Экспорт для маршрутов файлов
 function getWss() {
   return wssInstance;
 }
