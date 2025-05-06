@@ -296,3 +296,30 @@ button:hover {
     font-size: 14px;
     color: #000;
 }
+/* ========== Улучшенное отображение изображений и видео ========== */
+
+/* Для изображений и видео в сообщении */
+.message-bubble img,
+.message-bubble video {
+  display: block;              /* чтобы не было лишних отступов */
+  width: auto;                 /* сохраняем оригинальное соотношение сторон */
+  max-width: 90%;              /* до 90% ширины контейнера */
+  max-height: 60vh;            /* чтобы не занимало весь экран по высоте */
+  margin: 8px 0;               /* отступы сверху/снизу */
+  border: none;                /* убираем рамку */
+  background: none;            /* без фона */
+  border-radius: 8px;          /* скругляем углы */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1); /* легкая тень для глубины */
+}
+
+/* Убираем фон .message-bubble для чистых мультимедиа, чтобы не было «пузыря» */
+.message-bubble img + *,
+.message-bubble video + * {
+  /* ничего */
+}
+
+/* Если хочется совсем без пузыря — можно override: */
+.message-text + .message-bubble img,
+.message-text + .message-bubble video {
+  /* ничего, оставить пузырь для текста и медиа вместе */
+}
