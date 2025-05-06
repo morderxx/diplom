@@ -166,7 +166,16 @@ function appendMessage(sender, text, time) {
 }
 
 // 6) appendFile
+// 6) Отрисовка файлового сообщения с разным рендерингом
 function appendFile(sender, fileId, filename, mimeType, time) {
+  // Декодируем имя из Latin1 в UTF-8, если нужно
+  let displayName = filename;
+  try {
+    displayName = decodeURIComponent(escape(filename));
+  } catch (e) {
+    // если не получилось — оставляем оригинал
+  }
+
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
   wrapper.className = 'message-wrapper';
@@ -201,7 +210,7 @@ function appendFile(sender, fileId, filename, mimeType, time) {
   } else {
     contentEl = document.createElement('a');
     contentEl.href = `${API_URL}/files/${fileId}`;
-    contentEl.textContent = `📎 ${filename}`;
+    contentEl.textContent = `📎 ${displayName}`;
     contentEl.target = '_blank';
   }
 
@@ -211,6 +220,7 @@ function appendFile(sender, fileId, filename, mimeType, time) {
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
+
 
 // 7) sendMessage
 function sendMessage() {
