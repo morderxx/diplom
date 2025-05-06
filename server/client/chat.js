@@ -165,16 +165,16 @@ function appendMessage(sender, text, time) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// helper: скачивает файл как Blob, сохраняя правильное имя
+// helper: скачивает файл как Blob, сохраняя правильное UTF-8 имя
 async function downloadFile(fileId, filename) {
   try {
-    const res = await fetch(`${API_URL}/files/${fileId}`);
+    const res  = await fetch(`${API_URL}/files/${fileId}`);
     if (!res.ok) throw new Error('Fetch error');
     const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;       // корректное имя с кириллицей
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = filename;      // <- оригинальное русское имя
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -184,6 +184,7 @@ async function downloadFile(fileId, filename) {
     alert('Не удалось скачать файл');
   }
 }
+
 
 // 6) appendFile
 // 6) Отрисовка файлового сообщения как обычной ссылки
@@ -228,12 +229,15 @@ function appendFile(sender, fileId, filename, mimeType, time) {
     contentEl.style.maxWidth = '200px';
     contentEl.src = `${API_URL}/files/${fileId}`;
   } else {
-    // для остальных типов — обычная текстовая ссылка
+    // для остальных типов — ссылка, при клике скачиваем через downloadFile
     contentEl = document.createElement('a');
-    contentEl.href = `${API_URL}/files/${fileId}`;
+    contentEl.href = '#';
     contentEl.textContent = `📎 ${displayName}`;
-    contentEl.target = '_blank';
-    // не задаём download — пусть браузер сам решает
+    contentEl.style.color = '#065fd4';  // optional: вернуть «синий» цвет ссылки
+    contentEl.onclick = e => {
+      e.preventDefault();
+      downloadFile(fileId, displayName);
+    };
   }
 
   bubble.appendChild(contentEl);
