@@ -166,16 +166,8 @@ function appendMessage(sender, text, time) {
 }
 
 // 6) appendFile
-// 6) Отрисовка файлового сообщения с разным рендерингом
+// 6) Отрисовка файлового сообщения
 function appendFile(sender, fileId, filename, mimeType, time) {
-  // Декодируем имя из Latin1 в UTF-8, если нужно
-  let displayName = filename;
-  try {
-    displayName = decodeURIComponent(escape(filename));
-  } catch (e) {
-    // если не получилось — оставляем оригинал
-  }
-
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
   wrapper.className = 'message-wrapper';
@@ -193,6 +185,7 @@ function appendFile(sender, fileId, filename, mimeType, time) {
   bubble.className = 'message-bubble';
 
   let contentEl;
+
   if (mimeType.startsWith('image/')) {
     contentEl = document.createElement('img');
     contentEl.src = `${API_URL}/files/${fileId}`;
@@ -208,9 +201,11 @@ function appendFile(sender, fileId, filename, mimeType, time) {
     contentEl.style.maxWidth = '200px';
     contentEl.src = `${API_URL}/files/${fileId}`;
   } else {
+    // все остальные — ссылка на скачивание
     contentEl = document.createElement('a');
     contentEl.href = `${API_URL}/files/${fileId}`;
-    contentEl.textContent = `📎 ${displayName}`;
+    contentEl.textContent = `📎 ${filename}`;      // показываем оригинальное UTF-8 имя
+    contentEl.download = filename;               // атрибут download
     contentEl.target = '_blank';
   }
 
@@ -220,6 +215,7 @@ function appendFile(sender, fileId, filename, mimeType, time) {
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
+
 
 
 // 7) sendMessage
