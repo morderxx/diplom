@@ -113,7 +113,7 @@ router.post('/profile', authMiddleware, async (req, res) => {
   }
 });
 
-// Новый маршрут: получить профиль (для синхронизации nickname)
+// GET /api/profile — вернуть профиль
 router.get('/profile', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
