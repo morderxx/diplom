@@ -186,7 +186,16 @@ async function downloadFile(fileId, filename) {
 }
 
 // 6) appendFile
+// 6) Отрисовка файлового сообщения как обычной ссылки
 function appendFile(sender, fileId, filename, mimeType, time) {
+  // коректируем имя для отображения
+  let displayName = filename;
+  try {
+    displayName = decodeURIComponent(escape(filename));
+  } catch {
+    /* если не получилось — оставляем оригинал */
+  }
+
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
   wrapper.className = 'message-wrapper';
@@ -219,11 +228,12 @@ function appendFile(sender, fileId, filename, mimeType, time) {
     contentEl.style.maxWidth = '200px';
     contentEl.src = `${API_URL}/files/${fileId}`;
   } else {
-    // Для документов и прочего — кнопка скачивания
-    contentEl = document.createElement('button');
-    contentEl.className = 'file-download-btn';
-    contentEl.textContent = `📎 ${filename}`;
-    contentEl.onclick = () => downloadFile(fileId, filename);
+    // для остальных типов — обычная текстовая ссылка
+    contentEl = document.createElement('a');
+    contentEl.href = `${API_URL}/files/${fileId}`;
+    contentEl.textContent = `📎 ${displayName}`;
+    contentEl.target = '_blank';
+    // не задаём download — пусть браузер сам решает
   }
 
   bubble.appendChild(contentEl);
@@ -232,9 +242,6 @@ function appendFile(sender, fileId, filename, mimeType, time) {
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
-
-
-
 
 // 7) sendMessage
 function sendMessage() {
