@@ -182,6 +182,25 @@ button:hover {
     background: #45a049;
 }
 
+#call-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: #4CAF50;
+    color: #fff;
+    font-size: 18px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+}
+
+#call-btn:hover {
+    background: #45a049;
+}
+
 .input-container textarea#message {
     flex: 1;
     padding: 10px 12px;
