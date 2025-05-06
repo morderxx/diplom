@@ -9,7 +9,6 @@ const router  = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 const upload = multer({ storage: multer.memoryStorage() });
 
-// JWT middleware для защищённых маршрутов
 function authMiddleware(req, res, next) {
   const header = req.headers.authorization;
   if (!header) return res.status(401).send('No token');
@@ -21,7 +20,6 @@ function authMiddleware(req, res, next) {
   }
 }
 
-// POST /api/files — загрузка файла (только для авторизованных)
 router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
   const file   = req.file;
   const roomId = parseInt(req.body.roomId, 10);
@@ -30,7 +28,6 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
   }
 
   try {
-    // 1) Сохраняем файл
     const { rows } = await pool.query(
       `INSERT INTO files(room_id, uploader_id, filename, mime_type, content)
          VALUES ($1,$2,$3,$4,$5)
@@ -39,7 +36,6 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
     );
     const meta = rows[0];
 
-    // 2) Сохраняем сообщение с file_id
     const u = await pool.query(`SELECT nickname FROM users WHERE id = $1`, [req.userId]);
     const sender = u.rows[0]?.nickname || 'Unknown';
 
@@ -49,15 +45,14 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
       [roomId, sender, meta.id, meta.time]
     );
 
-    // 3) Отправляем клиенту
     res.json(meta);
 
-    // 4) Рассылаем через WS
     const wss = getWss();
     if (wss) {
       const msg = {
         type:     'file',
         sender,
+        senderId: req.userId,
         fileId:   meta.id,
         filename: meta.filename,
         mimeType: meta.mimeType,
@@ -67,14 +62,12 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
         if (c.readyState === c.OPEN) c.send(JSON.stringify(msg));
       });
     }
-
   } catch (err) {
     console.error('File upload error:', err);
     res.status(500).send('Error saving file');
   }
 });
 
-// GET /api/files/:id — скачивание / просмотр файла (публично)
 router.get('/:id', async (req, res) => {
   const fileId = parseInt(req.params.id, 10);
   try {
@@ -89,10 +82,7 @@ router.get('/:id', async (req, res) => {
     }
     const { filename, mimeType, content } = rows[0];
 
-    // Устанавливаем Content-Type
     res.setHeader('Content-Type', mimeType);
-
-    // Оставляем только filename*= для корректного UTF-8 имени
     const encoded = encodeURIComponent(filename);
     const disposition = mimeType.startsWith('image/') ||
                         mimeType.startsWith('audio/') ||
