@@ -11,14 +11,17 @@ document.addEventListener('DOMContentLoaded', () => {
   let mediaRecorder;
   let audioChunks = [];
 
+  // Показываем ник
   document.getElementById('current-user').textContent = userNickname;
 
+  // Авто-рост textarea
   const textarea = document.getElementById('message');
   textarea.addEventListener('input', () => {
     textarea.style.height = 'auto';
     textarea.style.height = textarea.scrollHeight + 'px';
   });
 
+  // Скрытое <input type="file"> для кнопки 📎
   const fileInput = document.createElement('input');
   fileInput.type = 'file';
   fileInput.style.display = 'none';
@@ -46,34 +49,46 @@ document.addEventListener('DOMContentLoaded', () => {
   // ====== Запись голосового сообщения ======
   const voiceBtn = document.getElementById('voice-btn');
   voiceBtn.onclick = async () => {
-    if (!currentRoom) return alert('Сначала выберите чат');
+    if (!currentRoom) {
+      return alert('Сначала выберите чат');
+    }
+
+    // Если уже идёт запись — остановить
     if (mediaRecorder && mediaRecorder.state === 'recording') {
       mediaRecorder.stop();
       voiceBtn.textContent = '🎤';
-      voiceBtn.disabled = true;
+      voiceBtn.disabled = true; // пока отправляем
       return;
     }
+
+    // Запрос доступа к микрофону и старт записи
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorder = new MediaRecorder(stream);
       audioChunks = [];
+
       mediaRecorder.addEventListener('dataavailable', e => {
         if (e.data.size > 0) audioChunks.push(e.data);
       });
+
       mediaRecorder.addEventListener('stop', async () => {
         const blob = new Blob(audioChunks, { type: 'audio/webm' });
         const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type });
+
         const form = new FormData();
         form.append('file', file);
         form.append('roomId', currentRoom);
+
         const res = await fetch(`${API_URL}/files`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` },
           body: form
         });
         if (!res.ok) console.error('Ошибка загрузки голосового сообщения:', await res.text());
+
         voiceBtn.disabled = false;
       });
+
       mediaRecorder.start();
       voiceBtn.textContent = '■';
     } catch (err) {
@@ -81,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (err.name === 'NotFoundError') {
         alert('Микрофон не найден. Проверьте подключение и разрешения.');
       } else if (err.name === 'NotAllowedError') {
-        alert('Доступ к микрофону запрещён. Разрешите его в настройках браузера.');
+        alert('Доступ к микрофону запрещён. Разрешите в настройках браузера.');
       } else {
         alert('Не удалось получить доступ к микрофону: ' + err.message);
       }
@@ -89,6 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   // =========================================
 
+  // 1) Загрузка списка комнат
   async function loadRooms() {
     const res = await fetch(`${API_URL}/rooms`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) return console.error(await res.text());
@@ -106,6 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // 2) Загрузка списка пользователей
   async function loadUsers() {
     const res = await fetch(`${API_URL}/users`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) return console.error(await res.text());
@@ -121,8 +138,35 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  async function openPrivateChat(otherNick) { /* ... без изменений ... */ }
+  // 3) Открыть или создать приватный чат
+  async function openPrivateChat(otherNick) {
+    const roomsRes = await fetch(`${API_URL}/rooms`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const rooms = roomsRes.ok ? await roomsRes.json() : [];
+    const key = [userNickname, otherNick].sort().join('|');
+    const exist = rooms.find(r =>
+      !r.is_group &&
+      Array.isArray(r.members) &&
+      r.members.sort().join('|') === key
+    );
+    if (exist) {
+      return joinRoom(exist.id);
+    }
 
+    const create = await fetch(`${API_URL}/rooms`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ is_group: false, members: [userNickname, otherNick] })
+    });
+    if (!create.ok) return console.error(await create.text());
+    const { roomId } = await create.json();
+    await loadRooms();
+    joinRoom(roomId);
+  }
+
+  // 4) Вход в комнату + WS + история
   async function joinRoom(roomId) {
     if (socket) socket.close();
     currentRoom = roomId;
@@ -154,23 +198,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // 5) Добавление текстового сообщения в DOM
   function appendMessage(sender, senderId, text, time) {
     const isSelf = String(senderId) === String(userId);
     const chatBox = document.getElementById('chat-box');
     const wrapper = document.createElement('div');
     wrapper.className = 'message-wrapper';
+
     const msgEl = document.createElement('div');
     msgEl.className = isSelf ? 'my-message' : 'other-message';
+
     const info = document.createElement('div');
     info.className = 'message-info';
     info.textContent = `${sender} • ${new Date(time).toLocaleTimeString([], {
       hour: '2-digit', minute: '2-digit'
     })}`;
+
     const bubble = document.createElement('div');
     bubble.className = 'message-bubble';
+
     const textEl = document.createElement('div');
     textEl.className = 'message-text';
     textEl.textContent = text;
+
     bubble.appendChild(textEl);
     msgEl.append(info, bubble);
     wrapper.appendChild(msgEl);
@@ -178,22 +228,48 @@ document.addEventListener('DOMContentLoaded', () => {
     chatBox.scrollTop = chatBox.scrollHeight;
   }
 
+  // helper: скачать файл
+  async function downloadFile(fileId, filename) {
+    try {
+      const res  = await fetch(`${API_URL}/files/${fileId}`);
+      if (!res.ok) throw new Error('Fetch error');
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Download failed:', e);
+      alert('Не удалось скачать файл');
+    }
+  }
+
+  // 6) Добавление файла/медиа в DOM
   function appendFile(sender, senderId, fileId, filename, mimeType, time) {
     const isSelf = String(senderId) === String(userId);
     let displayName = filename;
     try { displayName = decodeURIComponent(escape(filename)); } catch {}
+
     const chatBox = document.getElementById('chat-box');
     const wrapper = document.createElement('div');
     wrapper.className = 'message-wrapper';
+
     const msgEl = document.createElement('div');
     msgEl.className = isSelf ? 'my-message' : 'other-message';
+
     const info = document.createElement('div');
     info.className = 'message-info';
     info.textContent = `${sender} • ${new Date(time).toLocaleTimeString([], {
       hour: '2-digit', minute: '2-digit'
     })}`;
+
     const bubble = document.createElement('div');
     bubble.className = 'message-bubble media-bubble';
+
     let contentEl;
     if (mimeType.startsWith('image/')) {
       contentEl = document.createElement('img');
@@ -216,6 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
         downloadFile(fileId, displayName);
       };
     }
+
     bubble.appendChild(contentEl);
     msgEl.append(info, bubble);
     wrapper.appendChild(msgEl);
@@ -223,6 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chatBox.scrollTop = chatBox.scrollHeight;
   }
 
+  // 7) Отправка текстового сообщения
   function sendMessage() {
     const inp = document.getElementById('message');
     const text = inp.value.trim();
@@ -239,8 +317,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Lightbox — без изменений
+  // ========== Lightbox Overlay ==========
+  // (оставляем без изменений)
 
+  // Инициализация
   loadRooms();
   loadUsers();
 });
