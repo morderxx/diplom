@@ -299,3 +299,53 @@ button:hover {
     background: none;
     margin: 0;
 }
+/* ======= Lightbox Overlay ======= */
+#lightbox-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+#lightbox-overlay.hidden {
+  display: none;
+}
+
+#lightbox-content {
+  position: relative;
+  max-width: 90%;
+  max-height: 90%;
+}
+
+#lightbox-content img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+#lightbox-content button {
+  position: absolute;
+  background: rgba(255,255,255,0.8);
+  border: none;
+  border-radius: 4px;
+  padding: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+#lightbox-close {
+  top: -10px;
+  right: 10px;
+}
+
+#lightbox-download {
+  top: -10px;
+  right: 50px;
+}
