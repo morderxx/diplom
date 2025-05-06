@@ -31,7 +31,6 @@ async function login() {
     const { nickname } = await profRes.json();
     localStorage.setItem('nickname', nickname);
   } else {
-    // Если профиль не создан, переходим на страницу заполнения
     window.location.href = 'profile.html';
     return;
   }
@@ -55,7 +54,7 @@ async function register() {
     return;
   }
 
-  // После успешной регистрации сразу логинимся
+  // После регистрации — сразу логинимся
   await login();
 }
 
