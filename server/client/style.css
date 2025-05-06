@@ -6,14 +6,12 @@ body {
     margin: 0;
     font-family: Arial, sans-serif;
     background: #f0f2f5;
-    /* Для форм мы центрируем по вертикали и горизонтали */
     height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
-/* Контейнер для форм входа, регистрации и профиля */
 .form-container {
     background: white;
     padding: 30px;
@@ -22,13 +20,11 @@ body {
     width: 350px;
 }
 
-/* Заголовок */
 h1 {
     text-align: center;
     margin-bottom: 20px;
 }
 
-/* Поля ввода */
 input, textarea {
     width: 100%;
     margin-bottom: 15px;
@@ -39,7 +35,6 @@ input, textarea {
     box-sizing: border-box;
 }
 
-/* Контейнер для кнопок */
 .button-container {
     display: flex;
     flex-direction: column;
@@ -47,7 +42,6 @@ input, textarea {
     margin-bottom: 15px;
 }
 
-/* Общие кнопки */
 button {
     width: 100%;
     padding: 10px;
@@ -60,12 +54,10 @@ button {
     font-size: 14px;
 }
 
-/* Ховер-эффект для кнопок */
 button:hover {
     background: #45a049;
 }
 
-/* Специальная кнопка регистрации */
 #registerButton {
     background-color: #007bff;
     margin-top: 15px;
@@ -75,14 +67,12 @@ button:hover {
     background-color: #0056b3;
 }
 
-/* Сообщение об ошибке/статусе */
 #message {
     margin-top: 10px;
     font-size: 14px;
     color: red;
     text-align: center;
 }
-
 
 /* =================== */
 /*   СТИЛИ ДЛЯ ЧАТА    */
@@ -99,7 +89,6 @@ button:hover {
     box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
-/* Сайдбар */
 .rooms-sidebar {
     width: 260px;
     background: #fafafa;
@@ -140,17 +129,16 @@ button:hover {
     background: #e0e0e0;
 }
 
-/* Контейнер чата */
 .chat-container {
     flex: 1;
-    display: none;       /* Скрываем до выбора комнаты */
+    display: none;
     flex-direction: column;
     padding: 20px;
     background: #f0f2f5;
 }
 
 .chat-container.active {
-    display: flex;       /* Показываем, когда выбрана комната */
+    display: flex;
 }
 
 #chat-box {
@@ -166,10 +154,6 @@ button:hover {
     border: 1px solid #ccc;
 }
 
-/* =================== */
-/* Новые стили поля ввода и кнопок */
-/* =================== */
-
 .input-container {
     display: flex;
     align-items: center;
@@ -179,7 +163,6 @@ button:hover {
     margin-top: 8px;
 }
 
-/* Кнопка прикрепления (зелёная) */
 #attach-btn {
     width: 36px;
     height: 36px;
@@ -199,7 +182,6 @@ button:hover {
     background: #45a049;
 }
 
-/* Поле ввода сообщения теперь textarea */
 .input-container textarea#message {
     flex: 1;
     padding: 10px 12px;
@@ -207,13 +189,12 @@ button:hover {
     border: 1px solid #ccc;
     font-size: 14px;
     line-height: 1.4em;
-    max-height: calc(1.4em * 3 + 24px); /* 3 строки + padding */
+    max-height: calc(1.4em * 3 + 24px);
     overflow-y: auto;
     resize: none;
     box-sizing: border-box;
 }
 
-/* Кнопка отправки (синяя) */
 #send-btn {
     width: 36px;
     height: 36px;
@@ -233,7 +214,6 @@ button:hover {
     background: #0056b3;
 }
 
-/* Кнопка записи голоса (тоже синяя) */
 #voice-btn {
     width: 36px;
     height: 36px;
@@ -253,7 +233,6 @@ button:hover {
     background: #0056b3;
 }
 
-/* Сообщения */
 .message-wrapper {
     display: flex;
     width: 100%;
@@ -296,30 +275,33 @@ button:hover {
     font-size: 14px;
     color: #000;
 }
-/* ========== Улучшенное отображение изображений и видео ========== */
 
-/* Для изображений и видео в сообщении */
+/* =============================== */
+/*  Улучшенное отображение медиа  */
+/* =============================== */
+
+/* Изображения и видео растягиваем почти во весь пузырь */
 .message-bubble img,
 .message-bubble video {
-  display: block;              /* чтобы не было лишних отступов */
-  width: auto;                 /* сохраняем оригинальное соотношение сторон */
-  max-width: 90%;              /* до 90% ширины контейнера */
-  max-height: 60vh;            /* чтобы не занимало весь экран по высоте */
-  margin: 8px 0;               /* отступы сверху/снизу */
-  border: none;                /* убираем рамку */
-  background: none;            /* без фона */
-  border-radius: 8px;          /* скругляем углы */
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1); /* легкая тень для глубины */
+    display: block;
+    width: 100%;          /* ширина 100% пузыря */
+    height: auto;         /* сохраняем пропорции */
+    max-height: 70vh;     /* не выше 70% экрана */
+    margin: 0;            /* убираем внутренние отступы */
+    border-radius: 8px;   /* скруглённые углы */
+    box-shadow: none;     /* без тени */
+    background: none;     /* без фона */
 }
 
-/* Убираем фон .message-bubble для чистых мультимедиа, чтобы не было «пузыря» */
-.message-bubble img + *,
-.message-bubble video + * {
-  /* ничего */
+/* Убираем фон и padding пузыря для чистого медиа */
+.message-bubble img,
+.message-bubble video {
+    padding: 0;
+    background: transparent;
 }
 
-/* Если хочется совсем без пузыря — можно override: */
+/* Если вдруг нужно сохранить текстовый пузырь перед медиа — можно так */
 .message-text + .message-bubble img,
 .message-text + .message-bubble video {
-  /* ничего, оставить пузырь для текста и медиа вместе */
+    /* оставляем всё как выше */
 }
