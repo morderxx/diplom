@@ -30,7 +30,7 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
   }
 
   try {
-    // 1) Сохраняем файл в БД
+    // 1) Сохраняем файл
     const { rows } = await pool.query(
       `INSERT INTO files(room_id, uploader_id, filename, mime_type, content)
          VALUES ($1,$2,$3,$4,$5)
@@ -39,12 +39,8 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
     );
     const meta = rows[0];
 
-    // 2) Сохраняем запись в messages с file_id
-    //    sender_nickname вычислим далее
-    const u = await pool.query(
-      `SELECT nickname FROM users WHERE id = $1`,
-      [req.userId]
-    );
+    // 2) Сохраняем сообщение с file_id
+    const u = await pool.query(`SELECT nickname FROM users WHERE id = $1`, [req.userId]);
     const sender = u.rows[0]?.nickname || 'Unknown';
 
     await pool.query(
@@ -53,10 +49,10 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
       [roomId, sender, meta.id, meta.time]
     );
 
-    // 3) Отправляем клиенту метаданные
+    // 3) Отправляем клиенту
     res.json(meta);
 
-    // 4) Рассылаем всем участникам комнаты через WebSocket
+    // 4) Рассылаем через WS
     const wss = getWss();
     if (wss) {
       const msg = {
@@ -67,10 +63,8 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
         mimeType: meta.mimeType,
         time:     meta.time
       };
-      wss.clients.forEach(client => {
-        if (client.readyState === client.OPEN) {
-          client.send(JSON.stringify(msg));
-        }
+      wss.clients.forEach(c => {
+        if (c.readyState === c.OPEN) c.send(JSON.stringify(msg));
       });
     }
 
@@ -94,17 +88,25 @@ router.get('/:id', async (req, res) => {
       return res.status(404).send('File not found');
     }
     const { filename, mimeType, content } = rows[0];
+
+    // Устанавливаем Content-Type
     res.setHeader('Content-Type', mimeType);
-    // inline для мультимедиа, attachment для остальных
-    if (
-      mimeType.startsWith('image/') ||
-      mimeType.startsWith('audio/') ||
-      mimeType.startsWith('video/')
-    ) {
-      res.setHeader('Content-Disposition', 'inline');
-    } else {
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    }
+
+    // Кодируем имя файла по RFC5987
+    const encodedName = encodeURIComponent(filename).replace(/['()]/g, escape);
+    const disposition = mimeType.startsWith('image/') ||
+                        mimeType.startsWith('audio/') ||
+                        mimeType.startsWith('video/')
+                      ? 'inline'
+                      : 'attachment';
+    // Добавляем оба параметра: простое ASCII (fallback) и UTF-8*
+    res.setHeader(
+      'Content-Disposition',
+      `${disposition}; ` +
+      `filename="${filename.replace(/"/g, '')}"; ` +
+      `filename*=UTF-8''${encodedName}`
+    );
+
     res.send(content);
   } catch (err) {
     console.error('File download error:', err);
