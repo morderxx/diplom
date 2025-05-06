@@ -1,16 +1,19 @@
 // server/client/chat.js
-
 document.addEventListener('DOMContentLoaded', () => {
   const API_URL      = '/api';
   const token        = localStorage.getItem('token');
   const userNickname = localStorage.getItem('nickname');
+
+  if (!token || !userNickname) {
+    window.location.href = 'index.html';
+    return;
+  }
 
   let socket      = null;
   let currentRoom = null;
   let mediaRecorder;
   let audioChunks = [];
 
-  // Показываем ник
   document.getElementById('current-user').textContent = userNickname;
 
   // Авто-рост textarea
@@ -20,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     textarea.style.height = textarea.scrollHeight + 'px';
   });
 
-  // Скрытое <input type="file"> для кнопки 📎
+  // Скрытое поле для выбора файла
   const fileInput = document.createElement('input');
   fileInput.type = 'file';
   fileInput.style.display = 'none';
@@ -45,60 +48,46 @@ document.addEventListener('DOMContentLoaded', () => {
     fileInput.value = '';
   };
 
-  // ====== Запись голосового сообщения ======
+  // Запись голосового сообщения
   const voiceBtn = document.getElementById('voice-btn');
   voiceBtn.onclick = async () => {
-    if (!currentRoom) {
-      return alert('Сначала выберите чат');
-    }
-
-    // Если уже идёт запись — остановить
+    if (!currentRoom) return alert('Сначала выберите чат');
     if (mediaRecorder && mediaRecorder.state === 'recording') {
       mediaRecorder.stop();
       voiceBtn.textContent = '🎤';
-      voiceBtn.disabled = true; // выключаем пока идёт отправка
+      voiceBtn.disabled = true;
       return;
     }
-
-    // Запрос доступа к микрофону и старт записи
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorder = new MediaRecorder(stream);
       audioChunks = [];
-
       mediaRecorder.addEventListener('dataavailable', e => {
         if (e.data.size > 0) audioChunks.push(e.data);
       });
-
       mediaRecorder.addEventListener('stop', async () => {
         const blob = new Blob(audioChunks, { type: 'audio/webm' });
         const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type });
-
-        // отправляем как файл
         const form = new FormData();
         form.append('file', file);
         form.append('roomId', currentRoom);
-
         const res = await fetch(`${API_URL}/files`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` },
           body: form
         });
         if (!res.ok) console.error('Ошибка загрузки голосового сообщения:', await res.text());
-
         voiceBtn.disabled = false;
       });
-
       mediaRecorder.start();
-      voiceBtn.textContent = '■'; // индикатор записи
+      voiceBtn.textContent = '■';
     } catch (err) {
       console.error('Ошибка доступа к микрофону:', err);
       alert('Не получилось получить доступ к микрофону');
     }
   };
-  // =========================================
 
-  // 1) Загрузка комнат
+  // Загрузка комнат
   async function loadRooms() {
     const res = await fetch(`${API_URL}/rooms`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) return console.error(await res.text());
@@ -116,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 2) Загрузка пользователей
+  // Загрузка пользователей
   async function loadUsers() {
     const res = await fetch(`${API_URL}/users`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) return console.error(await res.text());
@@ -132,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 3) Открыть приватный чат
+  // Открытие приватного чата
   async function openPrivateChat(otherNick) {
     const roomsRes = await fetch(`${API_URL}/rooms`, { headers: { 'Authorization': `Bearer ${token}` } });
     const rooms = roomsRes.ok ? await roomsRes.json() : [];
@@ -143,7 +132,6 @@ document.addEventListener('DOMContentLoaded', () => {
       r.members.sort().join('|') === key
     );
     if (exist) return joinRoom(exist.id);
-
     const create = await fetch(`${API_URL}/rooms`, {
       method: 'POST',
       headers: {
@@ -158,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
     joinRoom(roomId);
   }
 
-  // 4) Вход в комнату + WS + история
+  // Вход в комнату + WS + история
   async function joinRoom(roomId) {
     if (socket) socket.close();
     currentRoom = roomId;
@@ -182,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!histRes.ok) return console.error(await histRes.text());
     const history = await histRes.json();
     history.forEach(m => {
-      if (m.file_id) {
+      if (m.file_id || m.file_id === 0) {
         appendFile(m.sender_nickname, m.file_id, m.filename, m.mime_type, m.time);
       } else {
         appendMessage(m.sender_nickname, m.text, m.time);
@@ -190,28 +178,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 5) appendMessage
+  // Рендер текстового сообщения
   function appendMessage(sender, text, time) {
     const chatBox = document.getElementById('chat-box');
     const wrapper = document.createElement('div');
     wrapper.className = 'message-wrapper';
-
     const msgEl = document.createElement('div');
     msgEl.className = sender === userNickname ? 'my-message' : 'other-message';
-
     const info = document.createElement('div');
     info.className = 'message-info';
     info.textContent = `${sender} • ${new Date(time).toLocaleTimeString([], {
       hour: '2-digit', minute: '2-digit'
     })}`;
-
     const bubble = document.createElement('div');
     bubble.className = 'message-bubble';
-
     const textEl = document.createElement('div');
     textEl.className = 'message-text';
     textEl.textContent = text;
-
     bubble.appendChild(textEl);
     msgEl.append(info, bubble);
     wrapper.appendChild(msgEl);
@@ -219,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chatBox.scrollTop = chatBox.scrollHeight;
   }
 
-  // helper: скачивает файл как Blob, сохраняя имя
+  // Скачать файл
   async function downloadFile(fileId, filename) {
     try {
       const res  = await fetch(`${API_URL}/files/${fileId}`);
@@ -239,24 +222,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // 6) appendFile
+  // Рендер файлового сообщения
   function appendFile(sender, fileId, filename, mimeType, time) {
     let displayName = filename;
     try { displayName = decodeURIComponent(escape(filename)); } catch {}
-
     const chatBox = document.getElementById('chat-box');
     const wrapper = document.createElement('div');
     wrapper.className = 'message-wrapper';
-
     const msgEl = document.createElement('div');
     msgEl.className = sender === userNickname ? 'my-message' : 'other-message';
-
     const info = document.createElement('div');
     info.className = 'message-info';
     info.textContent = `${sender} • ${new Date(time).toLocaleTimeString([], {
       hour: '2-digit', minute: '2-digit'
     })}`;
-
     const bubble = document.createElement('div');
     bubble.className = 'message-bubble media-bubble';
 
@@ -290,24 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chatBox.scrollTop = chatBox.scrollHeight;
   }
 
-  // 7) sendMessage
-  function sendMessage() {
-    const inp = document.getElementById('message');
-    const text = inp.value.trim();
-    if (!text || !socket || socket.readyState !== WebSocket.OPEN) return;
-    socket.send(JSON.stringify({ type: 'message', token, roomId: currentRoom, text }));
-    inp.value = '';
-  }
-
-  document.getElementById('send-btn').onclick = sendMessage;
-  document.getElementById('message').addEventListener('keypress', e => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      sendMessage();
-    }
-  });
-
-  // ========== Lightbox ==========
+  // Lightbox
   const overlay     = document.getElementById('lightbox-overlay');
   const lightboxImg = document.getElementById('lightbox-image');
   const btnClose    = document.getElementById('lightbox-close');
@@ -340,7 +302,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Инициализация
+  // Отправка текстового сообщения
+  function sendMessage() {
+    const inp = document.getElementById('message');
+    const text = inp.value.trim();
+    if (!text || !socket || socket.readyState !== WebSocket.OPEN) return;
+    socket.send(JSON.stringify({ type: 'message', token, roomId: currentRoom, text }));
+    inp.value = '';
+  }
+
+  document.getElementById('send-btn').onclick = sendMessage;
+  document.getElementById('message').addEventListener('keypress', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
   loadRooms();
   loadUsers();
 });
