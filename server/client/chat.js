@@ -268,3 +268,52 @@ document.getElementById('message').addEventListener('keypress', e => {
 // Инициализация
 loadRooms();
 loadUsers();
+// Lightbox elements
+const overlay = document.getElementById('lightbox-overlay');
+const lightboxImg = document.getElementById('lightbox-image');
+const btnClose = document.getElementById('lightbox-close');
+const btnDownload = document.getElementById('lightbox-download');
+
+// При клике на любое <img> в чате — открываем лайтбокс
+document.getElementById('chat-box').addEventListener('click', e => {
+  if (e.target.tagName === 'IMG' && e.target.src.includes('/api/files/')) {
+    lightboxImg.src = e.target.src;
+    // сохраняем URL и filename
+    const url = e.target.src;
+    overlay.dataset.url = url;
+    // filename берем из src (последняя часть) или можно из data-атрибута
+    const parts = url.split('/');
+    overlay.dataset.filename = decodeURIComponent(parts.pop());
+    overlay.classList.remove('hidden');
+  }
+});
+
+// Закрыть лайтбокс
+btnClose.onclick = () => {
+  overlay.classList.add('hidden');
+  lightboxImg.src = '';
+};
+
+// Скачиваем текущее изображение
+btnDownload.onclick = () => {
+  const url = overlay.dataset.url;
+  const filename = overlay.dataset.filename;
+  // fetch + blob, как раньше
+  fetch(url)
+    .then(r => r.blob())
+    .then(blob => {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(link.href);
+    })
+    .catch(() => alert('Не удалось скачать изображение'));
+};
+
+// Закрываем по клику вне контента
+overlay.addEventListener('click', e => {
+  if (e.target === overlay) btnClose.click();
+});
