@@ -1,4 +1,4 @@
-// client/chat.js
+// server/client/chat.js
 
 document.addEventListener('DOMContentLoaded', () => {
   const API_URL      = '/api';
@@ -7,6 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let socket      = null;
   let currentRoom = null;
+  let mediaRecorder;
+  let audioChunks = [];
 
   // Показываем ник
   document.getElementById('current-user').textContent = userNickname;
@@ -43,9 +45,58 @@ document.addEventListener('DOMContentLoaded', () => {
     fileInput.value = '';
   };
 
-  document.getElementById('voice-btn').onclick = () => {
-    alert('Запись голосового сообщения пока не реализована');
+  // ====== Запись голосового сообщения ======
+  const voiceBtn = document.getElementById('voice-btn');
+  voiceBtn.onclick = async () => {
+    if (!currentRoom) {
+      return alert('Сначала выберите чат');
+    }
+
+    // Если уже идёт запись — остановить
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+      voiceBtn.textContent = '🎤';
+      voiceBtn.disabled = true; // выключаем пока идёт отправка
+      return;
+    }
+
+    // Запрос доступа к микрофону и старт записи
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+
+      mediaRecorder.addEventListener('dataavailable', e => {
+        if (e.data.size > 0) audioChunks.push(e.data);
+      });
+
+      mediaRecorder.addEventListener('stop', async () => {
+        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+        const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type });
+
+        // отправляем как файл
+        const form = new FormData();
+        form.append('file', file);
+        form.append('roomId', currentRoom);
+
+        const res = await fetch(`${API_URL}/files`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: form
+        });
+        if (!res.ok) console.error('Ошибка загрузки голосового сообщения:', await res.text());
+
+        voiceBtn.disabled = false;
+      });
+
+      mediaRecorder.start();
+      voiceBtn.textContent = '■'; // индикатор записи
+    } catch (err) {
+      console.error('Ошибка доступа к микрофону:', err);
+      alert('Не получилось получить доступ к микрофону');
+    }
   };
+  // =========================================
 
   // 1) Загрузка комнат
   async function loadRooms() {
@@ -168,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chatBox.scrollTop = chatBox.scrollHeight;
   }
 
-  // helper: скачивает файл как Blob, сохраняя правильное UTF-8 имя
+  // helper: скачивает файл как Blob, сохраняя имя
   async function downloadFile(fileId, filename) {
     try {
       const res  = await fetch(`${API_URL}/files/${fileId}`);
