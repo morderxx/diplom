@@ -165,8 +165,27 @@ function appendMessage(sender, text, time) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
+// helper: скачивает файл как Blob, сохраняя правильное имя
+async function downloadFile(fileId, filename) {
+  try {
+    const res = await fetch(`${API_URL}/files/${fileId}`);
+    if (!res.ok) throw new Error('Fetch error');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;       // корректное имя с кириллицей
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error('Download failed:', e);
+    alert('Не удалось скачать файл');
+  }
+}
+
 // 6) appendFile
-// 6) Отрисовка файлового сообщения
 function appendFile(sender, fileId, filename, mimeType, time) {
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
@@ -185,7 +204,6 @@ function appendFile(sender, fileId, filename, mimeType, time) {
   bubble.className = 'message-bubble';
 
   let contentEl;
-
   if (mimeType.startsWith('image/')) {
     contentEl = document.createElement('img');
     contentEl.src = `${API_URL}/files/${fileId}`;
@@ -201,12 +219,11 @@ function appendFile(sender, fileId, filename, mimeType, time) {
     contentEl.style.maxWidth = '200px';
     contentEl.src = `${API_URL}/files/${fileId}`;
   } else {
-    // все остальные — ссылка на скачивание
-    contentEl = document.createElement('a');
-    contentEl.href = `${API_URL}/files/${fileId}`;
-    contentEl.textContent = `📎 ${filename}`;      // показываем оригинальное UTF-8 имя
-    contentEl.download = filename;               // атрибут download
-    contentEl.target = '_blank';
+    // Для документов и прочего — кнопка скачивания
+    contentEl = document.createElement('button');
+    contentEl.className = 'file-download-btn';
+    contentEl.textContent = `📎 ${filename}`;
+    contentEl.onclick = () => downloadFile(fileId, filename);
   }
 
   bubble.appendChild(contentEl);
@@ -215,6 +232,7 @@ function appendFile(sender, fileId, filename, mimeType, time) {
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
+
 
 
 
