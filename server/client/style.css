@@ -280,13 +280,19 @@ button:hover {
 /*  Специальные стили для media   */
 /* =============================== */
 
-/* Уменьшаем медиа внутри чата до аккуратных размеров */
+/* Для медиа в чате: аккуратный размер, без пузыря */
+.media-bubble {
+    background: transparent !important;
+    padding: 0 !important;
+    max-width: none !important;
+}
+
 .media-bubble img,
 .media-bubble video {
     display: block;
     width: auto !important;
-    max-width: 300px !important;
-    max-height: 300px !important;
+    max-width: 250px !important;
+    max-height: 250px !important;
     margin: 4px 0;
     border-radius: 8px;
 }
@@ -314,6 +320,7 @@ button:hover {
     max-height: 90vh;
 }
 
+/* Большое изображение */
 #lightbox-content img {
     display: block;
     max-width: 100%;
@@ -322,20 +329,23 @@ button:hover {
     border-radius: 8px;
 }
 
+/* Кнопки в лайтбоксе — поверх оверлея, над контентом */
 #lightbox-close,
 #lightbox-download {
-    position: absolute;
-    top: 10px;
-    width: 32px;
-    height: 32px;
-    background: rgba(255,255,255,0.8);
+    position: fixed;
+    top: 20px;
+    width: 36px;
+    height: 36px;
+    background: rgba(0,0,0,0.6);
+    color: #fff;
     border: none;
     border-radius: 50%;
     font-size: 18px;
-    line-height: 32px;
+    line-height: 36px;
     text-align: center;
     cursor: pointer;
+    z-index: 1001;
 }
 
-#lightbox-close { right: 10px; }
-#lightbox-download { right: 50px; }
+#lightbox-close { right: 20px; }
+#lightbox-download { right: 70px; }
