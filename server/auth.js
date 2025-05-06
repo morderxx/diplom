@@ -20,21 +20,17 @@ router.post('/register', async (req, res) => {
   }
 
   try {
-    // Хешируем пароль
     const hashedPass = await bcrypt.hash(pass, 10);
-    // Генерируем криптоключ
     const generatedKey = crypto.randomBytes(32).toString('hex');
 
-    // 1) Вставляем секретную часть
     const spRes = await pool.query(
       `INSERT INTO secret_profile(login, pass, keyword, key)
          VALUES($1,$2,$3,$4)
-      RETURNING id`,
+       RETURNING id`,
       [login, hashedPass, keyword, generatedKey]
     );
     const userId = spRes.rows[0].id;
 
-    // 2) Создаём соответствующую запись в users
     await pool.query(
       `INSERT INTO users(id) VALUES($1)`,
       [userId]
@@ -43,7 +39,6 @@ router.post('/register', async (req, res) => {
     res.status(201).send('User registered');
   } catch (err) {
     console.error('Registration error:', err);
-    // Дублирование login
     if (err.code === '23505') {
       return res.status(400).send('Login or keyword already in use');
     }
@@ -52,7 +47,7 @@ router.post('/register', async (req, res) => {
 });
 
 //
-// Логин: проверяем по secret_profile, возвращаем JWT { id, login }
+// Логин: проверяем по secret_profile, возвращаем JWT { id, login } и сам id
 //
 router.post('/login', async (req, res) => {
   const { login, pass } = req.body;
@@ -61,7 +56,6 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    // Ищем в secret_profile
     const spRes = await pool.query(
       `SELECT id, pass FROM secret_profile WHERE login = $1`,
       [login]
@@ -76,9 +70,8 @@ router.post('/login', async (req, res) => {
       return res.status(400).send('Invalid password');
     }
 
-    // Генерируем токен с payload { id, login }
     const token = jwt.sign({ id, login }, JWT_SECRET, { expiresIn: '1h' });
-    res.json({ token });
+    res.json({ token, id });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).send('Login error');
@@ -86,8 +79,7 @@ router.post('/login', async (req, res) => {
 });
 
 //
-// Middleware для всех /api/profile и других защищённых маршрутов
-// проверяет JWT и кладёт в req.userId (и req.userLogin, если нужно)
+// Middleware для защищённых маршрутов
 //
 function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
@@ -108,7 +100,6 @@ function authMiddleware(req, res, next) {
 
 //
 // Сохранение или обновление профиля (nickname, full_name, age, bio):
-// данные лежат теперь в users
 //
 router.post('/profile', authMiddleware, async (req, res) => {
   const { nickname, full_name, age, bio } = req.body;
@@ -117,7 +108,6 @@ router.post('/profile', authMiddleware, async (req, res) => {
   }
 
   try {
-    // Обновляем поля в users по id
     await pool.query(
       `UPDATE users
           SET nickname  = $1,
