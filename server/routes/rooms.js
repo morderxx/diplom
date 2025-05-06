@@ -33,7 +33,7 @@ async function authMiddleware(req, res, next) {
   }
 }
 
-// 1) GET /api/rooms — список своих комнат + полный массив участников
+// 1) GET /api/rooms — список своих комнат + массив участников
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -44,11 +44,9 @@ router.get('/', authMiddleware, async (req, res) => {
          r.created_at,
          array_agg(m.nickname ORDER BY m.nickname) AS members
        FROM rooms r
-       -- сначала фильтруем только те комнаты, где вы участник
-       JOIN room_members m1 
+       JOIN room_members m1
          ON m1.room_id = r.id AND m1.nickname = $1
-       -- затем собираем всех участников из room_members
-       JOIN room_members m 
+       JOIN room_members m
          ON m.room_id = r.id
       GROUP BY r.id
       ORDER BY r.created_at DESC`,
@@ -61,7 +59,7 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
-// 2) POST /api/rooms — создать или вернуть приватную/групповую комнату
+// 2) POST /api/rooms — создать или вернуть чат
 router.post('/', authMiddleware, async (req, res) => {
   let { is_group, members } = req.body;
   let name = req.body.name || null;
@@ -78,7 +76,6 @@ router.post('/', authMiddleware, async (req, res) => {
   // приватный чат: ровно 2 участника
   if (!is_group && members.length === 2) {
     const [a, b] = members.sort();
-    // ищем готовую комнату между a и b
     const exist = await pool.query(
       `SELECT r.id
          FROM rooms r
@@ -91,11 +88,9 @@ router.post('/', authMiddleware, async (req, res) => {
     );
     if (exist.rows.length) {
       const roomId = exist.rows[0].id;
-      // имя приватки = ник второго участника
       const other = members.find(n => n !== req.userNickname);
       return res.json({ roomId, name: other });
     }
-    // при создании новой → имя второго
     name = members.find(n => n !== req.userNickname);
   }
 
@@ -106,7 +101,6 @@ router.post('/', authMiddleware, async (req, res) => {
     );
     const roomId = roomRes.rows[0].id;
 
-    // вставляем всех участников
     await Promise.all(
       members.map(nick =>
         pool.query(
@@ -123,11 +117,11 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });
 
-// 3) GET /api/rooms/:roomId/messages — история сообщений
+// 3) GET /api/rooms/:roomId/messages — история (текст + файлы)
 router.get('/:roomId/messages', authMiddleware, async (req, res) => {
   const { roomId } = req.params;
   try {
-    // проверяем, что пользователь — участник комнаты
+    // проверяем членство
     const mem = await pool.query(
       'SELECT 1 FROM room_members WHERE room_id = $1 AND nickname = $2',
       [roomId, req.userNickname]
@@ -136,12 +130,20 @@ router.get('/:roomId/messages', authMiddleware, async (req, res) => {
       return res.status(403).send('Not a member');
     }
 
-    // возвращаем историю
+    // возвращаем историю сообщений (текст и файлы)
     const { rows } = await pool.query(
-      `SELECT sender_nickname, text, time
-         FROM messages
-        WHERE room_id = $1
-     ORDER BY time`,
+      `SELECT
+         m.sender_nickname,
+         m.text,
+         m.time,
+         f.id         AS file_id,
+         f.filename,
+         f.mime_type  AS mime_type
+       FROM messages m
+       LEFT JOIN files f
+         ON f.id = m.file_id
+      WHERE m.room_id = $1
+      ORDER BY m.time`,
       [roomId]
     );
     res.json(rows);
