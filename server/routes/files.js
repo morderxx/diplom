@@ -92,19 +92,16 @@ router.get('/:id', async (req, res) => {
     // Устанавливаем Content-Type
     res.setHeader('Content-Type', mimeType);
 
-    // Кодируем имя файла по RFC5987
-    const encodedName = encodeURIComponent(filename).replace(/['()]/g, escape);
+    // Оставляем только filename*= для корректного UTF-8 имени
+    const encoded = encodeURIComponent(filename);
     const disposition = mimeType.startsWith('image/') ||
                         mimeType.startsWith('audio/') ||
                         mimeType.startsWith('video/')
                       ? 'inline'
                       : 'attachment';
-    // Добавляем оба параметра: простое ASCII (fallback) и UTF-8*
     res.setHeader(
       'Content-Disposition',
-      `${disposition}; ` +
-      `filename="${filename.replace(/"/g, '')}"; ` +
-      `filename*=UTF-8''${encodedName}`
+      `${disposition}; filename*=UTF-8''${encoded}`
     );
 
     res.send(content);
