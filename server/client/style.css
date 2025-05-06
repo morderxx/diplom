@@ -323,10 +323,13 @@ button:hover {
 /* Сама картинка */
 #lightbox-content img {
     display: block;
-    max-width: 100%;
-    max-height: 100%;
+    width: auto;
+    height: auto;
+    max-width: 90vw;
+    max-height: 90vh;
     object-fit: contain;
     border-radius: 8px;
+    margin: 0 auto;
 }
 
 /* Общий стиль кнопок в лайтбоксе */
@@ -358,7 +361,7 @@ button:hover {
     background: rgba(0,0,0,0.8);
 }
 
-/* Отключаем скролл основной страницы, когда открыт лайтбокс */
+/* Отключаем скролл основной страницы при открытом лайтбоксе */
 body.lightbox-open {
     overflow: hidden;
 }
