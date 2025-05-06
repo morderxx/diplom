@@ -30,29 +30,35 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
   }
 
   try {
-    // Сохраняем файл в БД
+    // 1) Сохраняем файл в БД
     const { rows } = await pool.query(
       `INSERT INTO files(room_id, uploader_id, filename, mime_type, content)
          VALUES ($1,$2,$3,$4,$5)
-       RETURNING id,
-                 filename,
-                 mime_type   AS "mimeType",
-                 uploaded_at AS "time"`,
+       RETURNING id, filename, mime_type   AS "mimeType", uploaded_at AS "time"`,
       [roomId, req.userId, file.originalname, file.mimetype, file.buffer]
     );
     const meta = rows[0];
 
-    // Отправляем клиенту метаданные
+    // 2) Сохраняем запись в messages с file_id
+    //    sender_nickname вычислим далее
+    const u = await pool.query(
+      `SELECT nickname FROM users WHERE id = $1`,
+      [req.userId]
+    );
+    const sender = u.rows[0]?.nickname || 'Unknown';
+
+    await pool.query(
+      `INSERT INTO messages(room_id, sender_nickname, file_id, time)
+         VALUES ($1,$2,$3,$4)`,
+      [roomId, sender, meta.id, meta.time]
+    );
+
+    // 3) Отправляем клиенту метаданные
     res.json(meta);
 
-    // И рассылаем всем участникам комнаты через WebSocket
+    // 4) Рассылаем всем участникам комнаты через WebSocket
     const wss = getWss();
     if (wss) {
-      const u = await pool.query(
-        `SELECT nickname FROM users WHERE id = $1`,
-        [req.userId]
-      );
-      const sender = u.rows[0]?.nickname || 'Unknown';
       const msg = {
         type:     'file',
         sender,
@@ -79,9 +85,7 @@ router.get('/:id', async (req, res) => {
   const fileId = parseInt(req.params.id, 10);
   try {
     const { rows } = await pool.query(
-      `SELECT filename,
-              mime_type AS "mimeType",
-              content
+      `SELECT filename, mime_type AS "mimeType", content
          FROM files
         WHERE id = $1`,
       [fileId]
@@ -91,11 +95,12 @@ router.get('/:id', async (req, res) => {
     }
     const { filename, mimeType, content } = rows[0];
     res.setHeader('Content-Type', mimeType);
-    // для inline-просмотра в браузере не ставим attachment,
-    // но для несupported типов можно скачать
-    if (mimeType.startsWith('image/') ||
-        mimeType.startsWith('audio/') ||
-        mimeType.startsWith('video/')) {
+    // inline для мультимедиа, attachment для остальных
+    if (
+      mimeType.startsWith('image/') ||
+      mimeType.startsWith('audio/') ||
+      mimeType.startsWith('video/')
+    ) {
       res.setHeader('Content-Disposition', 'inline');
     } else {
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
