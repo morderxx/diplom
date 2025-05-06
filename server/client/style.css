@@ -280,72 +280,62 @@ button:hover {
 /*  Специальные стили для media   */
 /* =============================== */
 
-/* Сбрасываем фон и padding у .media-bubble */
-.media-bubble {
-    background: transparent !important;
-    padding: 0 !important;
-    max-width: none !important;
-}
-
-/* Изображения и видео занимают всю ширину пузыря */
+/* Уменьшаем медиа внутри чата до аккуратных размеров */
 .media-bubble img,
 .media-bubble video {
     display: block;
-    width: 100% !important;
-    height: auto !important;
-    max-height: 70vh !important;
+    width: auto !important;
+    max-width: 300px !important;
+    max-height: 300px !important;
+    margin: 4px 0;
     border-radius: 8px;
-    box-shadow: none;
-    background: none;
-    margin: 0;
 }
+
 /* ======= Lightbox Overlay ======= */
 #lightbox-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.6);
-  backdrop-filter: blur(8px);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(6px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    overflow: auto;
 }
 
 #lightbox-overlay.hidden {
-  display: none;
+    display: none;
 }
 
 #lightbox-content {
-  position: relative;
-  max-width: 90%;
-  max-height: 90%;
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
 }
 
 #lightbox-content img {
-  display: block;
-  max-width: 100%;
-  max-height: 100%;
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    margin: auto;
+    border-radius: 8px;
 }
 
-#lightbox-content button {
-  position: absolute;
-  background: rgba(255,255,255,0.8);
-  border: none;
-  border-radius: 4px;
-  padding: 6px;
-  cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
-}
-
-#lightbox-close {
-  top: -10px;
-  right: 10px;
-}
-
+#lightbox-close,
 #lightbox-download {
-  top: -10px;
-  right: 50px;
+    position: absolute;
+    top: 10px;
+    width: 32px;
+    height: 32px;
+    background: rgba(255,255,255,0.8);
+    border: none;
+    border-radius: 50%;
+    font-size: 18px;
+    line-height: 32px;
+    text-align: center;
+    cursor: pointer;
 }
+
+#lightbox-close { right: 10px; }
+#lightbox-download { right: 50px; }
