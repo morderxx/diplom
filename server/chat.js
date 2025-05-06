@@ -9,19 +9,18 @@ let wssInstance = null;
 function setupWebSocket(server) {
   const wss = new WebSocket.Server({ server });
   wssInstance = wss;
-  const clients = new Map(); // ws → { nickname, roomId }
+  const clients = new Map(); // ws → { nickname, roomId, userId }
 
   wss.on('connection', ws => {
     ws.on('message', async raw => {
       let data;
       try { data = JSON.parse(raw); } catch { return; }
 
-      // join
       if (data.type === 'join') {
         try {
           const payload = jwt.verify(data.token, JWT_SECRET);
           const login   = payload.login;
-          // получаем nickname
+          const userId  = payload.id;
           const result  = await pool.query(
             `SELECT u.nickname
                FROM users u
@@ -30,19 +29,18 @@ function setupWebSocket(server) {
           );
           const nick = result.rows[0]?.nickname;
           if (!nick) throw new Error('No nick');
-          clients.set(ws, { nickname: nick, roomId: data.roomId });
+          clients.set(ws, { nickname: nick, roomId: data.roomId, userId });
         } catch (e) {
           console.error('WS join error', e);
         }
         return;
       }
 
-      // message
       if (data.type === 'message') {
         let payload;
         try { payload = jwt.verify(data.token, JWT_SECRET); }
         catch { return; }
-        // nickname уже в clients, но ещё для надёжности
+        const senderId = payload.id;
         const r = await pool.query(
           `SELECT u.nickname
              FROM users u
@@ -52,27 +50,25 @@ function setupWebSocket(server) {
         const sender = r.rows[0]?.nickname;
         if (!sender) return;
 
-        // сохраняем
         await pool.query(
           `INSERT INTO messages (room_id, sender_nickname, text)
              VALUES ($1,$2,$3)`,
           [data.roomId, sender, data.text]
         );
 
-        // рассылаем
         wss.clients.forEach(c => {
           const info = clients.get(c);
           if (info && info.roomId === data.roomId && c.readyState === WebSocket.OPEN) {
             c.send(JSON.stringify({
-              type: 'message',
+              type:     'message',
               sender,
-              text: data.text,
-              time: new Date().toISOString()
+              senderId,
+              text:     data.text,
+              time:     new Date().toISOString()
             }));
           }
         });
       }
-      // файл через HTTP маршрут, не тут
     });
 
     ws.on('close', () => {
@@ -81,7 +77,6 @@ function setupWebSocket(server) {
   });
 }
 
-// Экспорт для файлового маршрута
 function getWss() {
   return wssInstance;
 }
