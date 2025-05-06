@@ -1,5 +1,4 @@
 // client/chat.js
-
 const API_URL      = '/api';
 const token        = localStorage.getItem('token');
 const userNickname = localStorage.getItem('nickname');
@@ -7,7 +6,7 @@ const userNickname = localStorage.getItem('nickname');
 let socket      = null;
 let currentRoom = null;
 
-// Показываем в шапке свой никнейм
+// Показываем ник
 document.getElementById('current-user').textContent = userNickname;
 
 // Авто-рост textarea
@@ -17,21 +16,15 @@ textarea.addEventListener('input', () => {
   textarea.style.height = textarea.scrollHeight + 'px';
 });
 
-// Скрытый <input type="file"> для кнопки 📎
+// Скрытое <input type="file"> для кнопки 📎
 const fileInput = document.createElement('input');
 fileInput.type = 'file';
 fileInput.style.display = 'none';
 document.body.appendChild(fileInput);
-
-// Кнопка 📎 открывает диалог выбора
 document.getElementById('attach-btn').onclick = () => fileInput.click();
 
-// При выборе файла — загружаем и сбрасываем input
 fileInput.onchange = async () => {
-  if (!currentRoom) {
-    alert('Сначала выберите чат');
-    return;
-  }
+  if (!currentRoom) return alert('Сначала выберите чат');
   const file = fileInput.files[0];
   if (!file) return;
 
@@ -44,52 +37,35 @@ fileInput.onchange = async () => {
     headers: { 'Authorization': `Bearer ${token}` },
     body: form
   });
-  if (!res.ok) {
-    console.error('Ошибка загрузки файла:', await res.text());
-  }
+  if (!res.ok) console.error('Ошибка загрузки файла:', await res.text());
   fileInput.value = '';
 };
 
-// TODO: запись голосового сообщения
 document.getElementById('voice-btn').onclick = () => {
-  alert('Здесь будет запись голосового сообщения');
+  alert('Запись голосового сообщения пока не реализована');
 };
 
-// 1) Загрузка списка комнат
+// 1) Загрузка комнат
 async function loadRooms() {
-  const res = await fetch(`${API_URL}/rooms`, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
-  if (!res.ok) {
-    console.error('Ошибка загрузки комнат:', await res.text());
-    return;
-  }
+  const res = await fetch(`${API_URL}/rooms`, { headers: { 'Authorization': `Bearer ${token}` } });
+  if (!res.ok) return console.error(await res.text());
   const rooms = await res.json();
   const ul = document.getElementById('rooms-list');
   ul.innerHTML = '';
   rooms.forEach(r => {
     const li = document.createElement('li');
     li.dataset.id = r.id;
-    if (r.is_group) {
-      li.textContent = r.name || `Группа #${r.id}`;
-    } else {
-      const other = (r.members || []).find(n => n !== userNickname);
-      li.textContent = other || '(без имени)';
-    }
+    li.textContent = r.is_group ? (r.name || `Группа #${r.id}`)
+                                : (r.members.find(n => n !== userNickname) || '(без имени)');
     li.onclick = () => joinRoom(r.id);
     ul.appendChild(li);
   });
 }
 
-// 2) Загрузка списка пользователей
+// 2) Загрузка пользователей
 async function loadUsers() {
-  const res = await fetch(`${API_URL}/users`, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
-  if (!res.ok) {
-    console.error('Ошибка загрузки пользователей:', await res.text());
-    return;
-  }
+  const res = await fetch(`${API_URL}/users`, { headers: { 'Authorization': `Bearer ${token}` } });
+  if (!res.ok) return console.error(await res.text());
   const users = await res.json();
   const ul = document.getElementById('users-list');
   ul.innerHTML = '';
@@ -102,11 +78,9 @@ async function loadUsers() {
   });
 }
 
-// 3) Создать или открыть приватный чат
+// 3) Открыть приватный чат
 async function openPrivateChat(otherNick) {
-  const roomsRes = await fetch(`${API_URL}/rooms`, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
+  const roomsRes = await fetch(`${API_URL}/rooms`, { headers: { 'Authorization': `Bearer ${token}` } });
   const rooms = roomsRes.ok ? await roomsRes.json() : [];
   const key = [userNickname, otherNick].sort().join('|');
   const exist = rooms.find(r =>
@@ -114,30 +88,23 @@ async function openPrivateChat(otherNick) {
     Array.isArray(r.members) &&
     r.members.sort().join('|') === key
   );
-  if (exist) {
-    return joinRoom(exist.id);
-  }
+  if (exist) return joinRoom(exist.id);
+
   const create = await fetch(`${API_URL}/rooms`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
     },
-    body: JSON.stringify({
-      is_group: false,
-      members:  [userNickname, otherNick]
-    })
+    body: JSON.stringify({ is_group: false, members: [userNickname, otherNick] })
   });
-  if (!create.ok) {
-    console.error('Ошибка создания чата:', await create.text());
-    return;
-  }
+  if (!create.ok) return console.error(await create.text());
   const { roomId } = await create.json();
   await loadRooms();
   joinRoom(roomId);
 }
 
-// 4) Вход в комнату, установка WS и загрузка истории
+// 4) Вход в комнату + WS + история
 async function joinRoom(roomId) {
   if (socket) socket.close();
   currentRoom = roomId;
@@ -155,19 +122,21 @@ async function joinRoom(roomId) {
     }
   };
 
-  // REST-история текстовых сообщений
   const histRes = await fetch(`${API_URL}/rooms/${roomId}/messages`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
-  if (!histRes.ok) {
-    console.error('Ошибка загрузки истории:', await histRes.text());
-    return;
-  }
+  if (!histRes.ok) return console.error(await histRes.text());
   const history = await histRes.json();
-  history.forEach(m => appendMessage(m.sender_nickname, m.text, m.time));
+  history.forEach(m => {
+    if (m.file_id) {
+      appendFile(m.sender_nickname, m.file_id, m.filename, m.mime_type, m.time);
+    } else {
+      appendMessage(m.sender_nickname, m.text, m.time);
+    }
+  });
 }
 
-// 5) Отрисовка текстового сообщения
+// 5) appendMessage
 function appendMessage(sender, text, time) {
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
@@ -196,7 +165,7 @@ function appendMessage(sender, text, time) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// 6) Отрисовка файлового сообщения с разным рендерингом
+// 6) appendFile
 function appendFile(sender, fileId, filename, mimeType, time) {
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
@@ -214,7 +183,6 @@ function appendFile(sender, fileId, filename, mimeType, time) {
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble';
 
-  // Определяем тип и создаём соответствующий элемент
   let contentEl;
   if (mimeType.startsWith('image/')) {
     contentEl = document.createElement('img');
@@ -231,7 +199,6 @@ function appendFile(sender, fileId, filename, mimeType, time) {
     contentEl.style.maxWidth = '200px';
     contentEl.src = `${API_URL}/files/${fileId}`;
   } else {
-    // Остальные — ссылка на скачивание
     contentEl = document.createElement('a');
     contentEl.href = `${API_URL}/files/${fileId}`;
     contentEl.textContent = `📎 ${filename}`;
@@ -245,7 +212,7 @@ function appendFile(sender, fileId, filename, mimeType, time) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// 7) Отправка текстового сообщения
+// 7) sendMessage
 function sendMessage() {
   const inp = document.getElementById('message');
   const text = inp.value.trim();
