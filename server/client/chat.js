@@ -211,7 +211,8 @@ function appendFile(sender, fileId, filename, mimeType, time) {
   })}`;
 
   const bubble = document.createElement('div');
-  bubble.className = 'message-bubble';
+  bubble.className = 'message-bubble media-bubble';
+
 
   let contentEl;
   if (mimeType.startsWith('image/')) {
