@@ -11,6 +11,7 @@ async function login() {
   const password = document.getElementById('password').value;
   localStorage.setItem('login', login);
 
+  // 1) Логинимся
   const res = await fetch(`${API_URL}/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -22,10 +23,12 @@ async function login() {
     return;
   }
 
+  // Сохраняем token и userId
   const { token, id } = await res.json();
   localStorage.setItem('token', token);
   localStorage.setItem('userId', id);
 
+  // 2) Подгружаем профиль
   const profileRes = await fetch(`${API_URL}/profile`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
@@ -36,6 +39,7 @@ async function login() {
     }
   }
 
+  // 3) Переходим в чат
   window.location.href = 'chat.html';
 }
 
@@ -55,6 +59,7 @@ async function register() {
     return;
   }
 
+  // Автологин после регистрации
   const loginRes = await fetch(`${API_URL}/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
