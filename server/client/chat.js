@@ -264,10 +264,6 @@ document.getElementById('message').addEventListener('keypress', e => {
     sendMessage();
   }
 });
-
-// Инициализация
-loadRooms();
-loadUsers();
 // Lightbox elements
 const overlay = document.getElementById('lightbox-overlay');
 const lightboxImg = document.getElementById('lightbox-image');
@@ -317,3 +313,7 @@ btnDownload.onclick = () => {
 overlay.addEventListener('click', e => {
   if (e.target === overlay) btnClose.click();
 });
+
+// Инициализация
+loadRooms();
+loadUsers();
