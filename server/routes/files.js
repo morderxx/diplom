@@ -1,14 +1,15 @@
 // server/routes/files.js
-const express = require('express');
-const multer  = require('multer');
-const pool    = require('../db');
-const jwt     = require('jsonwebtoken');
+const express   = require('express');
+const multer    = require('multer');
+const pool      = require('../db');
+const jwt       = require('jsonwebtoken');
 const { getWss } = require('../chat');
-const router  = express.Router();
+const router    = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
-const upload = multer({ storage: multer.memoryStorage() });
+const upload     = multer({ storage: multer.memoryStorage() });
 
+// JWT → req.userId
 function authMiddleware(req, res, next) {
   const header = req.headers.authorization;
   if (!header) return res.status(401).send('No token');
@@ -20,6 +21,7 @@ function authMiddleware(req, res, next) {
   }
 }
 
+// POST /api/files — загрузка файлов
 router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
   const file   = req.file;
   const roomId = parseInt(req.body.roomId, 10);
@@ -28,6 +30,7 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
   }
 
   try {
+    // Сохраняем файл в БД
     const { rows } = await pool.query(
       `INSERT INTO files(room_id, uploader_id, filename, mime_type, content)
          VALUES ($1,$2,$3,$4,$5)
@@ -36,17 +39,19 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
     );
     const meta = rows[0];
 
+    // Сохраняем сообщение с file_id
     const u = await pool.query(`SELECT nickname FROM users WHERE id = $1`, [req.userId]);
     const sender = u.rows[0]?.nickname || 'Unknown';
-
     await pool.query(
       `INSERT INTO messages(room_id, sender_nickname, file_id, time)
          VALUES ($1,$2,$3,$4)`,
       [roomId, sender, meta.id, meta.time]
     );
 
+    // Отдаём клиенту метаданные
     res.json(meta);
 
+    // Шлём WS-уведомление
     const wss = getWss();
     if (wss) {
       const msg = {
@@ -68,6 +73,7 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
   }
 });
 
+// GET /api/files/:id — загрузка/просмотр файла
 router.get('/:id', async (req, res) => {
   const fileId = parseInt(req.params.id, 10);
   try {
