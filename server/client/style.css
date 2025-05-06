@@ -277,31 +277,25 @@ button:hover {
 }
 
 /* =============================== */
-/*  Улучшенное отображение медиа  */
+/*  Специальные стили для media   */
 /* =============================== */
 
-/* Изображения и видео растягиваем почти во весь пузырь */
-.message-bubble img,
-.message-bubble video {
+/* Сбрасываем фон и padding у .media-bubble */
+.media-bubble {
+    background: transparent !important;
+    padding: 0 !important;
+    max-width: none !important;
+}
+
+/* Изображения и видео занимают всю ширину пузыря */
+.media-bubble img,
+.media-bubble video {
     display: block;
-    width: 100%;          /* ширина 100% пузыря */
-    height: auto;         /* сохраняем пропорции */
-    max-height: 70vh;     /* не выше 70% экрана */
-    margin: 0;            /* убираем внутренние отступы */
-    border-radius: 8px;   /* скруглённые углы */
-    box-shadow: none;     /* без тени */
-    background: none;     /* без фона */
-}
-
-/* Убираем фон и padding пузыря для чистого медиа */
-.message-bubble img,
-.message-bubble video {
-    padding: 0;
-    background: transparent;
-}
-
-/* Если вдруг нужно сохранить текстовый пузырь перед медиа — можно так */
-.message-text + .message-bubble img,
-.message-text + .message-bubble video {
-    /* оставляем всё как выше */
+    width: 100% !important;
+    height: auto !important;
+    max-height: 70vh !important;
+    border-radius: 8px;
+    box-shadow: none;
+    background: none;
+    margin: 0;
 }
