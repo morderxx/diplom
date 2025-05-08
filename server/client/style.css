@@ -386,43 +386,75 @@ body.lightbox-open {
 }
 
 /* =============== Окно звонка =============== */
-#call-window {
+.call-window {
   position: fixed;
-  top: 100px;
-  left: 100px;
-  width: 250px;
+  top: 120px;
+  left: 120px;
+  width: 300px;
   background: #fff;
-  border: 1px solid #ccc;
-  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
   z-index: 1000;
   font-family: Arial, sans-serif;
+  border: 1px solid #ccc;
+  transition: transform 0.2s;
 }
-#call-window.hidden {
+.call-window.hidden {
   display: none;
 }
 .call-header {
-  background: #f0f0f0;
-  padding: 5px;
+  background: #4CAF50;
+  color: #fff;
+  padding: 8px;
   display: flex;
   justify-content: space-between;
+  align-items: center;
   cursor: move;
 }
 .call-header button {
   background: none;
   border: none;
+  color: #fff;
   font-size: 16px;
   cursor: pointer;
+  margin-left: 8px;
 }
 .call-body {
-  padding: 10px;
+  padding: 16px;
   text-align: center;
 }
 #call-status {
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   font-weight: bold;
 }
 #call-timer {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: bold;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
+.call-controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+.action-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 20px;
+  background: #4CAF50;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+.action-btn:hover {
+  background: #45a049;
+}
+.action-btn.cancel {
+  background: #f44336;
+}
+.action-btn.cancel:hover {
+  background: #d32f2f;
+}
+/* ============================================ */
