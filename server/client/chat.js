@@ -21,28 +21,72 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // UI elements
   document.getElementById('current-user').textContent = userNickname;
-  const textarea   = document.getElementById('message');
-  const voiceBtn   = document.getElementById('voice-btn');
-  const callBtn    = document.getElementById('call-btn');
-  const fileInput  = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.style.display = 'none';
-        document.body.appendChild(fileInput);
+  const textarea     = document.getElementById('message');
+  const attachBtn    = document.getElementById('attach-btn');
+  const callBtn      = document.getElementById('call-btn');
+  const sendBtn      = document.getElementById('send-btn');
+  const voiceBtn     = document.getElementById('voice-btn');
 
-  // Call window elements (assumes <div id="call-window"> exists in HTML)
+  // File input
+  const fileInput    = document.createElement('input');
+  fileInput.type     = 'file';
+  fileInput.style.display = 'none';
+  document.body.appendChild(fileInput);
+
+  // Call window elements
   const callWindow   = document.getElementById('call-window');
   const callTitle    = document.getElementById('call-title');
   const callStatus   = document.getElementById('call-status');
   const callTimerEl  = document.getElementById('call-timer');
-  const callMinBtn   = document.getElementById('call-minimize');
-  const callCloseBtn = document.getElementById('call-close');
+  const answerBtn    = document.getElementById('call-answer');
+  const cancelBtn    = document.getElementById('call-cancel');
+  const minimizeBtn  = document.getElementById('call-minimize');
+  const closeBtn     = document.getElementById('call-close');
   const remoteAudio  = document.getElementById('remote-audio');
 
-  // Lightbox elements (assumes overlay exists in HTML)
+  // Lightbox elements
   const overlay      = document.getElementById('lightbox-overlay');
   const lightboxImg  = document.getElementById('lightbox-image');
-  const btnClose     = document.getElementById('lightbox-close');
-  const btnDownload  = document.getElementById('lightbox-download');
+  const lbCloseBtn   = document.getElementById('lightbox-close');
+  const lbDownloadBtn= document.getElementById('lightbox-download');
+
+  // Helpers
+  function appendSystem(text) {
+    const chatBox = document.getElementById('chat-box');
+    const el = document.createElement('div');
+    el.className = 'system-message';
+    el.textContent = text;
+    chatBox.appendChild(el);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function showCallWindow(peer, incoming = false) {
+    callTitle.textContent = `Звонок с ${peer}`;
+    callStatus.textContent = incoming ? 'Входящий звонок' : 'Ожидание ответа';
+    callTimerEl.textContent = '00:00';
+    answerBtn.style.display = incoming ? 'inline-block' : 'none';
+    cancelBtn.textContent = incoming ? 'Отклонить' : 'Отмена';
+    callWindow.classList.remove('hidden');
+    callStartTime = Date.now();
+    callTimerIntvl = setInterval(() => {
+      const sec = Math.floor((Date.now() - callStartTime) / 1000);
+      const m = String(Math.floor(sec / 60)).padStart(2, '0');
+      const s = String(sec % 60).padStart(2, '0');
+      callTimerEl.textContent = `${m}:${s}`;
+    }, 1000);
+  }
+
+  function hideCallWindow() {
+    clearInterval(callTimerIntvl);
+    callWindow.classList.add('hidden');
+  }
+
+  function endCall(message) {
+    if (pc) pc.close();
+    pc = null;
+    hideCallWindow();
+    appendSystem(message || `Звонок завершён. Длительность ${callTimerEl.textContent}`);
+  }
 
   // Auto-resize textarea
   textarea.addEventListener('input', () => {
@@ -51,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // File attach
-  document.getElementById('attach-btn').onclick = () => fileInput.click();
+  attachBtn.onclick = () => fileInput.click();
   fileInput.onchange = async () => {
     if (!currentRoom) return alert('Сначала выберите чат');
     const file = fileInput.files[0];
@@ -104,83 +148,69 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Show/hide call window
-  function showCallWindow(peerName) {
-    callTitle.textContent = `Звонок с ${peerName}`;
-    callStatus.textContent = 'Ожидание ответа...';
-    callTimerEl.textContent = '00:00';
-    callWindow.classList.remove('hidden');
-    callStartTime = Date.now();
-    callTimerIntvl = setInterval(() => {
-      const sec = Math.floor((Date.now() - callStartTime) / 1000);
-      const m = String(Math.floor(sec / 60)).padStart(2, '0');
-      const s = String(sec % 60).padStart(2, '0');
-      callTimerEl.textContent = `${m}:${s}`;
-    }, 1000);
-  }
-  function hideCallWindow() {
-    callWindow.classList.add('hidden');
-    clearInterval(callTimerIntvl);
-  }
-  function appendSystemMessage(text) {
-    const chatBox = document.getElementById('chat-box');
-    const el = document.createElement('div');
-    el.className = 'system-message';
-    el.textContent = text;
-    chatBox.appendChild(el);
-    chatBox.scrollTop = chatBox.scrollHeight;
-  }
-  callMinBtn.onclick = () => { callWindow.style.display = 'none'; };
-  callCloseBtn.onclick = () => {
-    if (pc) pc.close();
-    pc = null;
-    appendSystemMessage(`Звонок завершён. Длительность: ${callTimerEl.textContent}`);
-    hideCallWindow();
-  };
-
   // WebRTC setup
   function createPeerConnection() {
     pc = new RTCPeerConnection(stunConfig);
-    pc.onicecandidate = ({ candidate }) => {
-      if (candidate && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: 'webrtc-ice', payload: candidate }));
+    pc.onicecandidate = e => {
+      if (e.candidate && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'webrtc-ice', payload: e.candidate }));
       }
     };
-    pc.ontrack = ev => {
-      remoteAudio.srcObject = ev.streams[0];
+    pc.ontrack = e => {
+      remoteAudio.srcObject = e.streams[0];
     };
   }
+
   async function startCall() {
-    if (pc) return;
-    showCallWindow('собеседником');
     createPeerConnection();
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     stream.getTracks().forEach(t => pc.addTrack(t, stream));
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
+    showCallWindow('собеседником', false);
     socket.send(JSON.stringify({ type: 'webrtc-offer', payload: offer }));
   }
+
   async function handleOffer(offer) {
-    showCallWindow('собеседником');
     createPeerConnection();
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     stream.getTracks().forEach(t => pc.addTrack(t, stream));
     await pc.setRemoteDescription(offer);
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
+    showCallWindow('собеседником', true);
     socket.send(JSON.stringify({ type: 'webrtc-answer', payload: answer }));
   }
+
   async function handleAnswer(answer) {
-    if (pc) await pc.setRemoteDescription(answer);
+    if (pc) {
+      await pc.setRemoteDescription(answer);
+      callStatus.textContent = 'В разговоре';
+      answerBtn.style.display = 'none';
+    }
   }
+
   async function handleIce(candidate) {
     if (pc) await pc.addIceCandidate(candidate);
   }
+
+  // Call controls
   callBtn.onclick = () => {
     if (socket && socket.readyState === WebSocket.OPEN) startCall();
   };
+  answerBtn.onclick = () => {
+    socket.send(JSON.stringify({ type: 'webrtc-accept' }));
+    callStatus.textContent = 'В разговоре';
+    answerBtn.style.display = 'none';
+  };
+  cancelBtn.onclick = () => {
+    socket.send(JSON.stringify({ type: 'webrtc-cancel' }));
+    endCall('Звонок отменён');
+  };
+  closeBtn.onclick = () => endCall();
+  minimizeBtn.onclick = () => callWindow.style.display = 'none';
 
-  // Drag call window
+  // Drag window
   let dragging = false, dx = 0, dy = 0;
   document.querySelector('.call-header').addEventListener('mousedown', e => {
     dragging = true;
@@ -196,60 +226,46 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('mouseup', () => { dragging = false; });
 
   // Lightbox handlers
-  if (overlay && lightboxImg && btnClose && btnDownload) {
-    document.getElementById('chat-box').addEventListener('click', e => {
-      if (e.target.tagName === 'IMG' && e.target.src.includes('/api/files/')) {
-        lightboxImg.src          = e.target.src;
-        overlay.dataset.url      = e.target.src;
-        const parts              = e.target.src.split('/');
-        overlay.dataset.filename = decodeURIComponent(parts.pop());
-        overlay.classList.remove('hidden');
-      }
-    });
-    btnClose.onclick = () => {
-      overlay.classList.add('hidden');
-      lightboxImg.src = '';
-    };
-    btnDownload.onclick = () => {
-      const url = overlay.dataset.url;
-      const filename = overlay.dataset.filename;
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    };
-    overlay.addEventListener('click', e => {
-      if (e.target === overlay) btnClose.click();
-    });
-  }
+  document.getElementById('chat-box').addEventListener('click', e => {
+    if (e.target.tagName === 'IMG' && e.target.src.includes('/api/files/')) {
+      lightboxImg.src = e.target.src;
+      overlay.dataset.url = e.target.src;
+      const parts = e.target.src.split('/');
+      overlay.dataset.filename = decodeURIComponent(parts.pop());
+      overlay.classList.remove('hidden');
+    }
+  });
+  lbCloseBtn.onclick = () => overlay.classList.add('hidden');
+  lbDownloadBtn.onclick = () => {
+    const url = overlay.dataset.url;
+    const filename = overlay.dataset.filename;
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.add('hidden'); });
 
-  // Load rooms
+  // Chat & signaling
+
   async function loadRooms() {
-    const res = await fetch(`${API_URL}/rooms`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const res = await fetch(`${API_URL}/rooms`, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) return console.error(await res.text());
     const rooms = await res.json();
     const ul = document.getElementById('rooms-list');
     ul.innerHTML = '';
     rooms.forEach(r => {
       const li = document.createElement('li');
-      li.dataset.id = r.id;
       li.textContent = r.is_group
         ? (r.name || `Группа #${r.id}`)
         : (r.members.find(n => n !== userNickname) || '(без имени)');
+      li.dataset.id = r.id;
       li.onclick = () => joinRoom(r.id);
       ul.appendChild(li);
     });
   }
 
-  // Load users
   async function loadUsers() {
-    const res = await fetch(`${API_URL}/users`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const res = await fetch(`${API_URL}/users`, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) return console.error(await res.text());
     const users = await res.json();
     const ul = document.getElementById('users-list');
@@ -263,11 +279,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Open private chat
   async function openPrivateChat(otherNick) {
-    const rr = await fetch(`${API_URL}/rooms`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const rr = await fetch(`${API_URL}/rooms`, { headers: { Authorization: `Bearer ${token}` } });
     const rooms = rr.ok ? await rr.json() : [];
     const key = [userNickname, otherNick].sort().join('|');
     const ex = rooms.find(r =>
@@ -275,6 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
       r.members.sort().join('|') === key
     );
     if (ex) return joinRoom(ex.id);
+
     const cr = await fetch(`${API_URL}/rooms`, {
       method: 'POST',
       headers: {
@@ -288,7 +302,6 @@ document.addEventListener('DOMContentLoaded', () => {
     joinRoom(roomId);
   }
 
-  // Join room + WebSocket + history
   async function joinRoom(roomId) {
     if (socket) socket.close();
     currentRoom = roomId;
@@ -299,16 +312,29 @@ document.addEventListener('DOMContentLoaded', () => {
     socket.onopen = () => socket.send(JSON.stringify({ type: 'join', token, roomId }));
     socket.onmessage = ev => {
       const msg = JSON.parse(ev.data);
-      if (msg.type === 'message') {
-        appendMessage(msg.sender, msg.text, msg.time);
-      } else if (msg.type === 'file') {
-        appendFile(msg.sender, msg.fileId, msg.filename, msg.mimeType, msg.time);
-      } else if (msg.type === 'webrtc-offer') {
-        handleOffer(msg.payload);
-      } else if (msg.type === 'webrtc-answer') {
-        handleAnswer(msg.payload);
-      } else if (msg.type === 'webrtc-ice') {
-        handleIce(msg.payload);
+      switch (msg.type) {
+        case 'message':
+          appendMessage(msg.sender, msg.text, msg.time);
+          break;
+        case 'file':
+          appendFile(msg.sender, msg.fileId, msg.filename, msg.mimeType, msg.time);
+          break;
+        case 'webrtc-offer':
+          handleOffer(msg.payload);
+          break;
+        case 'webrtc-answer':
+          handleAnswer(msg.payload);
+          break;
+        case 'webrtc-ice':
+          handleIce(msg.payload);
+          break;
+        case 'webrtc-accept':
+          callStatus.textContent = 'В разговоре';
+          answerBtn.style.display = 'none';
+          break;
+        case 'webrtc-cancel':
+          endCall('Собеседник отменил звонок');
+          break;
       }
     };
 
@@ -326,7 +352,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Render text message
   function appendMessage(sender, text, time) {
     const chatBox = document.getElementById('chat-box');
     const wrapper = document.createElement('div');
@@ -350,15 +375,14 @@ document.addEventListener('DOMContentLoaded', () => {
     chatBox.scrollTop = chatBox.scrollHeight;
   }
 
-  // Download file helper
   async function downloadFile(fileId, filename) {
     try {
       const res = await fetch(`${API_URL}/files/${fileId}`);
       if (!res.ok) throw new Error('Fetch error');
       const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
       a.download = filename;
       document.body.appendChild(a);
       a.click();
@@ -370,10 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Render file message
   function appendFile(sender, fileId, filename, mimeType, time) {
-    let displayName = filename;
-    try { displayName = decodeURIComponent(escape(filename)); } catch {}
     const chatBox = document.getElementById('chat-box');
     const wrapper = document.createElement('div');
     wrapper.className = 'message-wrapper';
@@ -386,7 +407,6 @@ document.addEventListener('DOMContentLoaded', () => {
     })}`;
     const bubble = document.createElement('div');
     bubble.className = 'message-bubble media-bubble';
-
     let contentEl;
     if (mimeType.startsWith('image/')) {
       contentEl = document.createElement('img');
@@ -402,11 +422,10 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       contentEl = document.createElement('a');
       contentEl.href = '#';
-      contentEl.textContent = `📎 ${displayName}`;
-      contentEl.style.color = '#065fd4';
+      contentEl.textContent = `📎 ${filename}`;
       contentEl.onclick = e => {
         e.preventDefault();
-        downloadFile(fileId, displayName);
+        downloadFile(fileId, filename);
       };
     }
     bubble.appendChild(contentEl);
@@ -416,14 +435,13 @@ document.addEventListener('DOMContentLoaded', () => {
     chatBox.scrollTop = chatBox.scrollHeight;
   }
 
-  // Send text message
   function sendMessage() {
     const text = textarea.value.trim();
     if (!text || !socket || socket.readyState !== WebSocket.OPEN) return;
     socket.send(JSON.stringify({ type: 'message', token, roomId: currentRoom, text }));
     textarea.value = '';
   }
-  document.getElementById('send-btn').onclick = sendMessage;
+  sendBtn.onclick = sendMessage;
   textarea.addEventListener('keypress', e => {
     if (e.key === 'Enter') {
       e.preventDefault();
