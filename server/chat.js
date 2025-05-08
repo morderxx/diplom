@@ -1,4 +1,3 @@
-// server/chat.js
 const WebSocket = require('ws');
 const jwt       = require('jsonwebtoken');
 const pool      = require('./db');
@@ -76,7 +75,6 @@ function setupWebSocket(server) {
 
       // FILE MESSAGE (signaling done via files route)
       if (msg.type === 'file') {
-        // файл уже сохранён HTTP роутом, просто ретранслируем
         const senderInfo = clients.get(ws);
         if (!senderInfo) return;
         wss.clients.forEach(c => {
@@ -109,6 +107,25 @@ function setupWebSocket(server) {
             }));
           }
         });
+        return;
+      }
+
+      // ✅ ДОБАВЛЕНО: ОБРАБОТКА webrtc-cancel
+      if (msg.type === 'webrtc-cancel') {
+        const senderInfo = clients.get(ws);
+        if (!senderInfo) return;
+
+        wss.clients.forEach(c => {
+          const info = clients.get(c);
+          if (c !== ws && info && info.roomId === senderInfo.roomId && c.readyState === WebSocket.OPEN) {
+            c.send(JSON.stringify({
+              type:   'webrtc-cancel',
+              from:   senderInfo.nickname,
+              roomId: senderInfo.roomId
+            }));
+          }
+        });
+        return;
       }
     });
 
