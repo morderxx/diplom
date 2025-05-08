@@ -213,10 +213,18 @@ function endCall(message) {
   answerBtn.style.display = 'none';
 };
 
-  cancelBtn.onclick = () => {
-    socket.send(JSON.stringify({ type: 'webrtc-cancel' }));
-    endCall('Звонок отменён');
-  };
+ cancelBtn.onclick = () => {
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    // шлём отмену и roomId, чтобы сервер переслал другому
+    socket.send(JSON.stringify({
+      type:   'webrtc-cancel',
+      roomId: currentRoom
+    }));
+  }
+  // своё окно закрываем
+  endCall('Вы отменили звонок');
+};
+
  // minimizeBtn.onclick = () => callWindow.classList.toggle('minimized');
 
   // Перетаскивание окна звонка
@@ -320,6 +328,9 @@ function endCall(message) {
     socket.onmessage = ev => {
       const msg = JSON.parse(ev.data);
       switch (msg.type) {
+        case 'webrtc-cancel':
+          endCall('Собеседник отменил звонок');
+          break;
         case 'message':
           appendMessage(msg.sender, msg.text, msg.time);
           break;
@@ -334,9 +345,6 @@ function endCall(message) {
           break;
         case 'webrtc-ice':
           handleIce(msg.payload);
-          break;
-        case 'webrtc-cancel':
-          endCall('Собеседник отменил звонок');
           break;
       }
     };
