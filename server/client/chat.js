@@ -84,8 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Завершить звонок
- function endCall(message) {
-  hideCallWindow(); // ← Всегда вызывается
+function endCall(message) {
   clearInterval(callTimerIntvl);
   if (pc) pc.close();
   pc = null;
@@ -94,7 +93,9 @@ document.addEventListener('DOMContentLoaded', () => {
     localStream = null;
   }
   appendSystem(message || `Звонок завершён. Длительность ${callTimerEl.textContent}`);
+  hideCallWindow();
 }
+
 
 
   // Авто-рост textarea
