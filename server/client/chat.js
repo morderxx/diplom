@@ -201,10 +201,15 @@ document.addEventListener('DOMContentLoaded', () => {
   callBtn.onclick = () => {
     if (socket && socket.readyState === WebSocket.OPEN) startCall();
   };
-  answerBtn.onclick = () => {
-    const answer = pc.localDescription;
-    socket.send(JSON.stringify({ type: 'webrtc-answer', payload: answer }));
-  };
+ answerBtn.onclick = async () => {
+  if (!pc) return;
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  socket.send(JSON.stringify({ type: 'webrtc-answer', payload: answer }));
+  callStatus.textContent = 'В разговоре';
+  answerBtn.style.display = 'none';
+};
+
   cancelBtn.onclick = () => {
     socket.send(JSON.stringify({ type: 'webrtc-cancel' }));
     endCall('Звонок отменён');
