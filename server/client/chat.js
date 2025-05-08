@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let mediaRecorder;
   let audioChunks    = [];
   let pc             = null;
+  let localStream    = null;
   let callStartTime  = null;
   let callTimerIntvl = null;
 
@@ -41,7 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const answerBtn    = document.getElementById('call-answer');
   const cancelBtn    = document.getElementById('call-cancel');
   const minimizeBtn  = document.getElementById('call-minimize');
-  const closeBtn     = document.getElementById('call-close');
   const remoteAudio  = document.getElementById('remote-audio');
 
   // Lightbox elements
@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const lbCloseBtn   = document.getElementById('lightbox-close');
   const lbDownloadBtn= document.getElementById('lightbox-download');
 
-  // Helpers
+  // Добавляет системное сообщение в чат
   function appendSystem(text) {
     const chatBox = document.getElementById('chat-box');
     const el = document.createElement('div');
@@ -60,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chatBox.scrollTop = chatBox.scrollHeight;
   }
 
+  // Показать окно звонка
   function showCallWindow(peer, incoming = false) {
     callTitle.textContent = `Звонок с ${peer}`;
     callStatus.textContent = incoming ? 'Входящий звонок' : 'Ожидание ответа';
@@ -76,25 +77,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 1000);
   }
 
+  // Скрыть окно звонка
   function hideCallWindow() {
     clearInterval(callTimerIntvl);
     callWindow.classList.add('hidden');
   }
 
+  // Завершить звонок
   function endCall(message) {
     if (pc) pc.close();
     pc = null;
+    if (localStream) {
+      localStream.getTracks().forEach(t => t.stop());
+      localStream = null;
+    }
     hideCallWindow();
     appendSystem(message || `Звонок завершён. Длительность ${callTimerEl.textContent}`);
   }
 
-  // Auto-resize textarea
+  // Авто-рост textarea
   textarea.addEventListener('input', () => {
     textarea.style.height = 'auto';
     textarea.style.height = textarea.scrollHeight + 'px';
   });
 
-  // File attach
+  // Прикрепление файла
   attachBtn.onclick = () => fileInput.click();
   fileInput.onchange = async () => {
     if (!currentRoom) return alert('Сначала выберите чат');
@@ -112,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fileInput.value = '';
   };
 
-  // Voice recording
+  // Голосовое сообщение
   voiceBtn.onclick = async () => {
     if (!currentRoom) return alert('Сначала выберите чат');
     if (mediaRecorder && mediaRecorder.state === 'recording') {
@@ -148,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // WebRTC setup
+  // Настройка WebRTC
   function createPeerConnection() {
     pc = new RTCPeerConnection(stunConfig);
     pc.onicecandidate = e => {
@@ -163,54 +170,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function startCall() {
     createPeerConnection();
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    stream.getTracks().forEach(t => pc.addTrack(t, stream));
+    showCallWindow('собеседником', false);
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    showCallWindow('собеседником', false);
     socket.send(JSON.stringify({ type: 'webrtc-offer', payload: offer }));
   }
 
   async function handleOffer(offer) {
     createPeerConnection();
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    stream.getTracks().forEach(t => pc.addTrack(t, stream));
-    await pc.setRemoteDescription(offer);
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
     showCallWindow('собеседником', true);
-    socket.send(JSON.stringify({ type: 'webrtc-answer', payload: answer }));
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+    await pc.setRemoteDescription(offer);
   }
 
   async function handleAnswer(answer) {
-    if (pc) {
-      await pc.setRemoteDescription(answer);
-      callStatus.textContent = 'В разговоре';
-      answerBtn.style.display = 'none';
-    }
+    if (!pc) return;
+    await pc.setRemoteDescription(answer);
+    callStatus.textContent = 'В разговоре';
+    answerBtn.style.display = 'none';
   }
 
   async function handleIce(candidate) {
     if (pc) await pc.addIceCandidate(candidate);
   }
 
-  // Call controls
+  // Управление звонком
   callBtn.onclick = () => {
     if (socket && socket.readyState === WebSocket.OPEN) startCall();
   };
   answerBtn.onclick = () => {
-    socket.send(JSON.stringify({ type: 'webrtc-accept' }));
-    callStatus.textContent = 'В разговоре';
-    answerBtn.style.display = 'none';
+    const answer = pc.localDescription;
+    socket.send(JSON.stringify({ type: 'webrtc-answer', payload: answer }));
   };
   cancelBtn.onclick = () => {
     socket.send(JSON.stringify({ type: 'webrtc-cancel' }));
     endCall('Звонок отменён');
   };
-  closeBtn.onclick = () => endCall();
-  minimizeBtn.onclick = () => callWindow.style.display = 'none';
+  minimizeBtn.onclick = () => callWindow.classList.toggle('minimized');
 
-  // Drag window
+  // Перетаскивание окна звонка
   let dragging = false, dx = 0, dy = 0;
   document.querySelector('.call-header').addEventListener('mousedown', e => {
     dragging = true;
@@ -225,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.addEventListener('mouseup', () => { dragging = false; });
 
-  // Lightbox handlers
+  // Обработчики лайтбокса
   document.getElementById('chat-box').addEventListener('click', e => {
     if (e.target.tagName === 'IMG' && e.target.src.includes('/api/files/')) {
       lightboxImg.src = e.target.src;
@@ -245,8 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.add('hidden'); });
 
-  // Chat & signaling
-
+  // Загрузка и отправка чата
   async function loadRooms() {
     const res = await fetch(`${API_URL}/rooms`, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) return console.error(await res.text());
@@ -284,8 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const rooms = rr.ok ? await rr.json() : [];
     const key = [userNickname, otherNick].sort().join('|');
     const ex = rooms.find(r =>
-      !r.is_group &&
-      r.members.sort().join('|') === key
+      !r.is_group && r.members.sort().join('|') === key
     );
     if (ex) return joinRoom(ex.id);
 
@@ -327,10 +326,6 @@ document.addEventListener('DOMContentLoaded', () => {
           break;
         case 'webrtc-ice':
           handleIce(msg.payload);
-          break;
-        case 'webrtc-accept':
-          callStatus.textContent = 'В разговоре';
-          answerBtn.style.display = 'none';
           break;
         case 'webrtc-cancel':
           endCall('Собеседник отменил звонок');
