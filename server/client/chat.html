@@ -17,20 +17,31 @@
 
     <section id="chat-section" class="chat-container">
       <div id="chat-box" class="chat-box"></div>
-  <div class="input-container">
-  <button id="attach-btn" class="icon-btn">📎</button>
-  <button id="call-btn" class="icon-btn">☎️</button>
-  <textarea id="message" placeholder="Введите сообщение..." rows="1"></textarea>
-  <button id="send-btn"   class="icon-btn">➤</button>
-  <button id="voice-btn"  class="icon-btn">🎤</button>
-</div>
-
-
+      <div class="input-container">
+        <button id="attach-btn" class="icon-btn">📎</button>
+        <button id="call-btn"    class="icon-btn">☎️</button>
+        <textarea id="message" placeholder="Введите сообщение..." rows="1"></textarea>
+        <button id="send-btn"    class="icon-btn">➤</button>
+        <button id="voice-btn"   class="icon-btn">🎤</button>
+      </div>
     </section>
   </div>
 
-  <script src="chat.js"></script>
-    <!-- Lightbox Overlay -->
+  <!-- Окно звонка -->
+  <div id="call-window" class="hidden">
+    <div class="call-header">
+      <span id="call-title">Звонок с ...</span>
+      <button id="call-minimize">_</button>
+      <button id="call-close">×</button>
+    </div>
+    <div class="call-body">
+      <div id="call-status">Ожидание ответа...</div>
+      <div id="call-timer">00:00</div>
+      <audio id="remote-audio" autoplay></audio>
+    </div>
+  </div>
+
+  <!-- Lightbox Overlay -->
   <div id="lightbox-overlay" class="hidden">
     <div id="lightbox-content">
       <button id="lightbox-close">✕</button>
@@ -39,5 +50,6 @@
     </div>
   </div>
 
+  <script src="chat.js"></script>
 </body>
 </html>
