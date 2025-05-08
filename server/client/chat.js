@@ -84,16 +84,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Завершить звонок
-  function endCall(message) {
-    if (pc) pc.close();
-    pc = null;
-    if (localStream) {
-      localStream.getTracks().forEach(t => t.stop());
-      localStream = null;
-    }
-    hideCallWindow();
-    appendSystem(message || `Звонок завершён. Длительность ${callTimerEl.textContent}`);
+ function endCall(message) {
+  hideCallWindow(); // ← Всегда вызывается
+  clearInterval(callTimerIntvl);
+  if (pc) pc.close();
+  pc = null;
+  if (localStream) {
+    localStream.getTracks().forEach(t => t.stop());
+    localStream = null;
   }
+  appendSystem(message || `Звонок завершён. Длительность ${callTimerEl.textContent}`);
+}
+
 
   // Авто-рост textarea
   textarea.addEventListener('input', () => {
