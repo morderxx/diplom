@@ -217,7 +217,7 @@ function endCall(message) {
     socket.send(JSON.stringify({ type: 'webrtc-cancel' }));
     endCall('Звонок отменён');
   };
-  minimizeBtn.onclick = () => callWindow.classList.toggle('minimized');
+ // minimizeBtn.onclick = () => callWindow.classList.toggle('minimized');
 
   // Перетаскивание окна звонка
   let dragging = false, dx = 0, dy = 0;
