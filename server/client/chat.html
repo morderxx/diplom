@@ -28,16 +28,20 @@
   </div>
 
   <!-- Окно звонка -->
-  <div id="call-window" class="hidden">
+  <div id="call-window" class="call-window hidden">
     <div class="call-header">
       <span id="call-title">Звонок с ...</span>
       <button id="call-minimize">_</button>
       <button id="call-close">×</button>
     </div>
     <div class="call-body">
-      <div id="call-status">Ожидание ответа...</div>
+      <div id="call-status">Ожидание...</div>
       <div id="call-timer">00:00</div>
       <audio id="remote-audio" autoplay></audio>
+      <div class="call-controls">
+        <button id="call-answer" class="action-btn">Ответить</button>
+        <button id="call-cancel" class="action-btn cancel">Отмена</button>
+      </div>
     </div>
   </div>
 
