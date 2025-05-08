@@ -9,23 +9,40 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  let socket      = null;
-  let currentRoom = null;
+  let socket         = null;
+  let currentRoom    = null;
   let mediaRecorder;
-  let audioChunks = [];
-  let pc = null;
+  let audioChunks    = [];
+  let pc             = null;
+  let callStartTime  = null;
+  let callTimerIntvl = null;
 
   const stunConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
   // UI elements
   document.getElementById('current-user').textContent = userNickname;
-  const textarea = document.getElementById('message');
-  const voiceBtn = document.getElementById('voice-btn');
-  const callBtn  = document.getElementById('call-btn');
-  const fileInput = document.createElement('input');
-  fileInput.type = 'file';
-  fileInput.style.display = 'none';
-  document.body.appendChild(fileInput);
+  const textarea   = document.getElementById('message');
+  const voiceBtn   = document.getElementById('voice-btn');
+  const callBtn    = document.getElementById('call-btn');
+  const fileInput  = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.style.display = 'none';
+        document.body.appendChild(fileInput);
+
+  // Call window elements (assumes <div id="call-window"> exists in HTML)
+  const callWindow   = document.getElementById('call-window');
+  const callTitle    = document.getElementById('call-title');
+  const callStatus   = document.getElementById('call-status');
+  const callTimerEl  = document.getElementById('call-timer');
+  const callMinBtn   = document.getElementById('call-minimize');
+  const callCloseBtn = document.getElementById('call-close');
+  const remoteAudio  = document.getElementById('remote-audio');
+
+  // Lightbox elements (assumes overlay exists in HTML)
+  const overlay      = document.getElementById('lightbox-overlay');
+  const lightboxImg  = document.getElementById('lightbox-image');
+  const btnClose     = document.getElementById('lightbox-close');
+  const btnDownload  = document.getElementById('lightbox-download');
 
   // Auto-resize textarea
   textarea.addEventListener('input', () => {
@@ -87,6 +104,40 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  // Show/hide call window
+  function showCallWindow(peerName) {
+    callTitle.textContent = `Звонок с ${peerName}`;
+    callStatus.textContent = 'Ожидание ответа...';
+    callTimerEl.textContent = '00:00';
+    callWindow.classList.remove('hidden');
+    callStartTime = Date.now();
+    callTimerIntvl = setInterval(() => {
+      const sec = Math.floor((Date.now() - callStartTime) / 1000);
+      const m = String(Math.floor(sec / 60)).padStart(2, '0');
+      const s = String(sec % 60).padStart(2, '0');
+      callTimerEl.textContent = `${m}:${s}`;
+    }, 1000);
+  }
+  function hideCallWindow() {
+    callWindow.classList.add('hidden');
+    clearInterval(callTimerIntvl);
+  }
+  function appendSystemMessage(text) {
+    const chatBox = document.getElementById('chat-box');
+    const el = document.createElement('div');
+    el.className = 'system-message';
+    el.textContent = text;
+    chatBox.appendChild(el);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+  callMinBtn.onclick = () => { callWindow.style.display = 'none'; };
+  callCloseBtn.onclick = () => {
+    if (pc) pc.close();
+    pc = null;
+    appendSystemMessage(`Звонок завершён. Длительность: ${callTimerEl.textContent}`);
+    hideCallWindow();
+  };
+
   // WebRTC setup
   function createPeerConnection() {
     pc = new RTCPeerConnection(stunConfig);
@@ -96,19 +147,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
     pc.ontrack = ev => {
-      let audio = document.getElementById('remote-audio');
-      if (!audio) {
-        audio = document.createElement('audio');
-        audio.id = 'remote-audio';
-        audio.autoplay = true;
-        document.body.appendChild(audio);
-      }
-      audio.srcObject = ev.streams[0];
+      remoteAudio.srcObject = ev.streams[0];
     };
   }
-
   async function startCall() {
     if (pc) return;
+    showCallWindow('собеседником');
     createPeerConnection();
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     stream.getTracks().forEach(t => pc.addTrack(t, stream));
@@ -116,34 +160,76 @@ document.addEventListener('DOMContentLoaded', () => {
     await pc.setLocalDescription(offer);
     socket.send(JSON.stringify({ type: 'webrtc-offer', payload: offer }));
   }
-
   async function handleOffer(offer) {
-    if (pc) return;
+    showCallWindow('собеседником');
     createPeerConnection();
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     stream.getTracks().forEach(t => pc.addTrack(t, stream));
-    await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    await pc.setRemoteDescription(offer);
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     socket.send(JSON.stringify({ type: 'webrtc-answer', payload: answer }));
   }
-
   async function handleAnswer(answer) {
-    if (!pc) return;
-    await pc.setRemoteDescription(new RTCSessionDescription(answer));
+    if (pc) await pc.setRemoteDescription(answer);
   }
-
   async function handleIce(candidate) {
-    if (pc) await pc.addIceCandidate(new RTCIceCandidate(candidate));
+    if (pc) await pc.addIceCandidate(candidate);
   }
-
   callBtn.onclick = () => {
     if (socket && socket.readyState === WebSocket.OPEN) startCall();
   };
 
+  // Drag call window
+  let dragging = false, dx = 0, dy = 0;
+  document.querySelector('.call-header').addEventListener('mousedown', e => {
+    dragging = true;
+    dx = e.clientX - callWindow.offsetLeft;
+    dy = e.clientY - callWindow.offsetTop;
+  });
+  document.addEventListener('mousemove', e => {
+    if (dragging) {
+      callWindow.style.left = `${e.clientX - dx}px`;
+      callWindow.style.top  = `${e.clientY - dy}px`;
+    }
+  });
+  document.addEventListener('mouseup', () => { dragging = false; });
+
+  // Lightbox handlers
+  if (overlay && lightboxImg && btnClose && btnDownload) {
+    document.getElementById('chat-box').addEventListener('click', e => {
+      if (e.target.tagName === 'IMG' && e.target.src.includes('/api/files/')) {
+        lightboxImg.src          = e.target.src;
+        overlay.dataset.url      = e.target.src;
+        const parts              = e.target.src.split('/');
+        overlay.dataset.filename = decodeURIComponent(parts.pop());
+        overlay.classList.remove('hidden');
+      }
+    });
+    btnClose.onclick = () => {
+      overlay.classList.add('hidden');
+      lightboxImg.src = '';
+    };
+    btnDownload.onclick = () => {
+      const url = overlay.dataset.url;
+      const filename = overlay.dataset.filename;
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    };
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) btnClose.click();
+    });
+  }
+
   // Load rooms
   async function loadRooms() {
-    const res = await fetch(`${API_URL}/rooms`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const res = await fetch(`${API_URL}/rooms`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     if (!res.ok) return console.error(await res.text());
     const rooms = await res.json();
     const ul = document.getElementById('rooms-list');
@@ -161,7 +247,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Load users
   async function loadUsers() {
-    const res = await fetch(`${API_URL}/users`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const res = await fetch(`${API_URL}/users`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     if (!res.ok) return console.error(await res.text());
     const users = await res.json();
     const ul = document.getElementById('users-list');
@@ -177,25 +265,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Open private chat
   async function openPrivateChat(otherNick) {
-    const roomsRes = await fetch(`${API_URL}/rooms`, { headers: { 'Authorization': `Bearer ${token}` } });
-    const rooms = roomsRes.ok ? await roomsRes.json() : [];
+    const rr = await fetch(`${API_URL}/rooms`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const rooms = rr.ok ? await rr.json() : [];
     const key = [userNickname, otherNick].sort().join('|');
-    const exist = rooms.find(r =>
+    const ex = rooms.find(r =>
       !r.is_group &&
-      Array.isArray(r.members) &&
       r.members.sort().join('|') === key
     );
-    if (exist) return joinRoom(exist.id);
-    const create = await fetch(`${API_URL}/rooms`, {
+    if (ex) return joinRoom(ex.id);
+    const cr = await fetch(`${API_URL}/rooms`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        Authorization: `Bearer ${token}`
       },
       body: JSON.stringify({ is_group: false, members: [userNickname, otherNick] })
     });
-    if (!create.ok) return console.error(await create.text());
-    const { roomId } = await create.json();
+    const { roomId } = await cr.json();
     await loadRooms();
     joinRoom(roomId);
   }
@@ -225,7 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const histRes = await fetch(`${API_URL}/rooms/${roomId}/messages`, {
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` }
     });
     if (!histRes.ok) return console.error(await histRes.text());
     const history = await histRes.json();
@@ -265,7 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Download file helper
   async function downloadFile(fileId, filename) {
     try {
-      const res  = await fetch(`${API_URL}/files/${fileId}`);
+      const res = await fetch(`${API_URL}/files/${fileId}`);
       if (!res.ok) throw new Error('Fetch error');
       const blob = await res.blob();
       const url  = URL.createObjectURL(blob);
@@ -321,7 +409,6 @@ document.addEventListener('DOMContentLoaded', () => {
         downloadFile(fileId, displayName);
       };
     }
-
     bubble.appendChild(contentEl);
     msgEl.append(info, bubble);
     wrapper.appendChild(msgEl);
@@ -329,43 +416,19 @@ document.addEventListener('DOMContentLoaded', () => {
     chatBox.scrollTop = chatBox.scrollHeight;
   }
 
-  // Lightbox
-  const overlay     = document.getElementById('lightbox-overlay');
-  const lightboxImg = document.getElementById('lightbox-image');
-  const btnClose    = document.getElementById('lightbox-close');
-  const btnDownload = document.getElementById('lightbox-download');
-
-  if (overlay && lightboxImg && btnClose && btnDownload) {
-    document.getElementById('chat-box').addEventListener('click', e => {
-      if (e.target.tagName === 'IMG' && e.target.src.includes('/api/files/')) {
-        lightboxImg.src         = e.target.src;
-        overlay.dataset.url     = e.target.src;
-        const parts             = e.target.src.split('/');
-        overlay.dataset.filename = decodeURIComponent(parts.pop());
-        overlay.classList.remove('hidden');
-      }
-    });
-    btnClose.onclick = () => { overlay.classList.add('hidden'); lightboxImg.src = ''; };
-    btnDownload.onclick = () => {
-      const url      = overlay.dataset.url;
-      const filename = overlay.dataset.filename;
-      downloadFile(url.split('/').pop(), filename);
-    };
-    overlay.addEventListener('click', e => { if (e.target===overlay) btnClose.click(); });
-  }
-
   // Send text message
   function sendMessage() {
-    const inp = document.getElementById('message');
-    const text = inp.value.trim();
+    const text = textarea.value.trim();
     if (!text || !socket || socket.readyState !== WebSocket.OPEN) return;
-    socket.send(JSON.stringify({ type:'message', token, roomId:currentRoom, text }));
-    inp.value = '';
+    socket.send(JSON.stringify({ type: 'message', token, roomId: currentRoom, text }));
+    textarea.value = '';
   }
-
   document.getElementById('send-btn').onclick = sendMessage;
-  document.getElementById('message').addEventListener('keypress', e => {
-    if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
+  textarea.addEventListener('keypress', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      sendMessage();
+    }
   });
 
   // Initialization
