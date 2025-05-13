@@ -433,20 +433,21 @@ async function endCall(message, status = 'finished') {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (!histRes.ok) return console.error(await histRes.text());
-    const history = await histRes.json();
-history.forEach(m => {
-  if (m.status) {
-    // звонок
-    appendCall({
-      initiator:   m.initiator,
-      recipient:   m.recipient,
-      status:      m.status,
-      happened_at: m.happened_at, // <- было m.started_at
-      ended_at:    m.ended_at,
-      duration:    m.duration
-    });
-  }
- else if (m.file_id) {
+     const history = await histRes.json();
+    history.forEach(m => {
+      // 1) Звонок: проверяем по полю type
+      if (m.type === 'call') {
+        appendCall({
+          initiator:   m.initiator,
+          recipient:   m.recipient,
+          status:      m.status,
+          happened_at: m.happened_at,  // ← вот здесь правильное поле
+          ended_at:    m.ended_at,
+          duration:    m.duration
+        });
+      }
+      // 2) Файл (старый вариант проверки)
+      else if (m.file_id) {
         appendFile(
           m.sender_nickname,
           m.file_id,
@@ -455,7 +456,7 @@ history.forEach(m => {
           m.time
         );
       }
-      // 3) Обычное текстовое сообщение
+      // 3) Текстовое сообщение
       else {
         appendMessage(
           m.sender_nickname,
