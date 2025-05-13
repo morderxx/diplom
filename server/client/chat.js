@@ -402,8 +402,12 @@ async function joinRoom(roomId) {
   document.getElementById('chat-section').classList.add('active');
 
   // Настраиваем WebSocket
-  socket = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
-  socket.onopen = () => socket.send(JSON.stringify({ type: 'join', token, roomId }));
+  socket = new WebSocket(
+    (location.protocol === 'https:' ? 'wss://' : 'ws://') +
+      location.host
+  );
+  socket.onopen = () =>
+    socket.send(JSON.stringify({ type: 'join', token, roomId }));
   socket.onmessage = ev => {
     const msg = JSON.parse(ev.data);
     switch (msg.type) {
@@ -414,7 +418,13 @@ async function joinRoom(roomId) {
         appendMessage(msg.sender, msg.text, msg.time);
         break;
       case 'file':
-        appendFile(msg.sender, msg.fileId, msg.filename, msg.mimeType, msg.time);
+        appendFile(
+          msg.sender,
+          msg.fileId,
+          msg.filename,
+          msg.mimeType,
+          msg.time
+        );
         break;
       case 'webrtc-offer':
         currentPeer = msg.from;
@@ -429,12 +439,12 @@ async function joinRoom(roomId) {
         break;
       case 'call':
         appendCall({
-          initiator:   msg.initiator,
-          recipient:   msg.recipient,
-          status:      msg.status,
+          initiator: msg.initiator,
+          recipient: msg.recipient,
+          status: msg.status,
           happened_at: msg.started_at,
-          ended_at:    msg.ended_at,
-          duration:    msg.duration
+          ended_at: msg.ended_at,
+          duration: msg.duration
         });
         break;
     }
@@ -453,12 +463,16 @@ async function joinRoom(roomId) {
   console.log('=== history payload ===');
   console.table(history);
 
-  // ─── Рендерим каждый элемент в том виде, как раньше ──────────────────────
-history.forEach(m => {
-    if (m.type === 'message') {
-      appendMessage(m.sender_nickname, m.text, m.time);
+  // ─── Рендерим историю ─────────────────────────────────────────────────────
+  history.forEach(m => {
+    // 1) Событие звонка
+    if (m.type === 'call') {
+      appendCallEvent(m.text);  // или appendSystem(m.text)
+      return;
     }
-    else if (m.file_id) {
+
+    // 2) Файл (картинка/аудио/видео)
+    if (m.file_id !== null) {
       appendFile(
         m.sender_nickname,
         m.file_id,
@@ -466,30 +480,20 @@ history.forEach(m => {
         m.mime_type,
         m.time
       );
+      return;
     }
-    else if (m.type === 'call') {
-      // м.б. через appendSystem или appendCall — как вам удобнее
-      appendSystem(m.text);
+
+    // 3) Текстовое сообщение
+    if (m.text !== null) {
+      appendMessage(m.sender_nickname, m.text, m.time);
+      return;
     }
+
+    // 4) На всякий случай
+    console.warn('Неизвестный элемент истории:', m);
   });
+}  // <-- закрыли функцию joinRoom
 
-  // 4) Событие звонка (если вы всё-таки хотите дальше их обрабатывать через appendCall)
-  if (m.type === 'call') {
-    appendCall({
-      initiator:   m.initiator,
-      recipient:   m.recipient,
-      status:      m.status,
-      happened_at: m.started_at || m.time,
-      ended_at:    m.ended_at,
-      duration:    m.duration
-    });
-    return;
-  }
-
-  console.warn('Неизвестный элемент истории:', m);
-});
-
-}
 
 
   
