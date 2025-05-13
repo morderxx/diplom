@@ -44,54 +44,34 @@ router.get('/:roomId/messages', authMiddleware, async (req, res) => {
       return res.status(403).send('Not a member');
     }
 
+    // Получаем из сообщений все записи: тексты, файлы и системные уведомления о звонках
     const { rows } = await pool.query(
       `
-      WITH combined AS (
-        -- 1) Обычные сообщения и файлы (включая системные сообщения)
-        SELECT
-          'message'         AS type,
-          sender_nickname   AS sender_nickname,
-          sender_nickname   AS initiator,
-          NULL::text        AS recipient,
-          text,
-          time              AS time,
-          time              AS happened_at,
-          file_id,
-          filename,
-          mime_type,
-          NULL::timestamptz AS ended_at,
-          NULL::int         AS duration,
-          NULL::text        AS status
-        FROM messages
-        WHERE room_id = $1
-
-        UNION ALL
-
-        -- 2) Звонки (как отдельные события)
-        SELECT
-          'call'            AS type,
-          initiator         AS sender_nickname,
-          initiator,
-          recipient,
-          NULL::text        AS text,
-          started_at        AS time,
-          started_at        AS happened_at,
-          NULL::int         AS file_id,
-          NULL::text        AS filename,
-          NULL::text        AS mime_type,
-          ended_at,
-          duration,
-          status
-        FROM calls
-        WHERE room_id = $1
-      )
-      SELECT *
-      FROM combined
-      ORDER BY happened_at;
+      SELECT
+        CASE
+          WHEN m.call_id IS NOT NULL THEN 'call'
+          WHEN m.file_id IS NOT NULL THEN 'file'
+          ELSE 'message'
+        END AS type,
+        m.sender_nickname,
+        m.text,
+        m.time,
+        m.file_id,
+        m.filename,
+        m.mime_type,
+        c.recipient,
+        c.status,
+        c.duration,
+        c.ended_at
+      FROM messages m
+      LEFT JOIN calls c ON m.call_id = c.id
+      WHERE m.room_id = $1
+      ORDER BY m.time;
       `,
       [roomId]
     );
 
+    console.log(`Fetched ${rows.length} items for room ${roomId}:`, rows);
     res.json(rows);
   } catch (err) {
     console.error('Error fetching messages:', err);
