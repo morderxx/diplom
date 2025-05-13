@@ -96,6 +96,9 @@ router.get('/:roomId/messages', authMiddleware, async (req, res) => {
       [roomId]
     );
 
+    // Логирование результата для отладки
+    console.log(`Fetched ${rows.length} items for room ${roomId}:`, rows);
+
     res.json(rows);
   } catch (err) {
     console.error('Error fetching messages:', err);
