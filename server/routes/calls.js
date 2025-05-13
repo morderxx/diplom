@@ -1,5 +1,3 @@
-перепиши мне тогда
-server/routes/calls.js
 const express   = require('express');
 const pool      = require('../db');
 const jwt       = require('jsonwebtoken');
