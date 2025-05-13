@@ -453,33 +453,30 @@ async function joinRoom(roomId) {
   console.table(history);
 
   // ─── Рендерим каждый элемент в том виде, как раньше ──────────────────────
- history.forEach(m => {
-  // 1) мультимедиа (файлы)
+history.forEach(m => {
+  // 1) Сообщение из таблицы messages, привязанное к звонку
+  if (m.call_id !== null) {
+    // text там же хранится в m.text
+    appendCallEvent(m.text);
+    return;
+  }
+
+  // 2) Файл (картинка / аудио / видео)
   if (m.file_id !== null) {
-    appendFile(
-      m.sender_nickname,
-      m.file_id,
-      m.filename,
-      m.mime_type,
-      m.time
-    );
+    appendFile(m.sender_nickname, m.file_id, m.filename, m.mime_type, m.time);
     return;
   }
 
-  // 2) обычное текстовое сообщение
+  // 3) Обычное текстовое сообщение
   if (m.text !== null) {
-    appendMessage(
-      m.sender_nickname,
-      m.text,
-      m.time
-    );
+    appendMessage(m.sender_nickname, m.text, m.time);
     return;
   }
 
-  // 3) событие звонка
+  // 4) Событие звонка (если вы всё-таки хотите дальше их обрабатывать через appendCall)
   if (m.type === 'call') {
     appendCall({
-      initiator:   m.initiator,    // или m.sender_nickname
+      initiator:   m.initiator,
       recipient:   m.recipient,
       status:      m.status,
       happened_at: m.started_at || m.time,
@@ -489,13 +486,21 @@ async function joinRoom(roomId) {
     return;
   }
 
-  // на всякий случай
   console.warn('Неизвестный элемент истории:', m);
 });
 
 }
 
+function appendCallEvent(text) {
+  const chatBox = document.getElementById('chat-box');
+  const el = document.createElement('div');
+  el.className = 'call-event';
+  el.textContent = text;
+  chatBox.appendChild(el);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
 
+  
   function appendMessage(sender, text, time) {
     const chatBox = document.getElementById('chat-box');
     const wrapper = document.createElement('div');
