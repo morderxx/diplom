@@ -312,7 +312,16 @@ async function endCall(message, status = 'finished') {
         ? (r.name || `Группа #${r.id}`)
         : (r.members.find(n => n !== userNickname) || '(без имени)');
       li.dataset.id = r.id;
-      li.onclick = () => joinRoom(r.id);
+        li.onclick = () => {
+       // если это не группа — один на один, то peer = другой участник
+       if (!r.is_group) {
+         currentPeer = r.members.find(n => n !== userNickname);
+       } else {
+         // для групп — либо имя группы, либо заголовок по id
+         currentPeer = r.name || `Группа #${r.id}`;
+       }
+       joinRoom(r.id);
+     };
       ul.appendChild(li);
     });
   }
