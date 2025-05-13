@@ -485,7 +485,7 @@ async function joinRoom(roomId) {
 
     // 3) Текстовое сообщение
     if (m.text !== null) {
-      appendMessage(m.sender_nickname, m.text, m.time);
+     appendMessage(m.sender_nickname, m.text, m.time, m.call_id);
       return;
     }
 
@@ -497,28 +497,45 @@ async function joinRoom(roomId) {
 
 
   
-  function appendMessage(sender, text, time) {
-    const chatBox = document.getElementById('chat-box');
-    const wrapper = document.createElement('div');
-    wrapper.className = 'message-wrapper';
-    const msgEl = document.createElement('div');
-    msgEl.className = sender === userNickname ? 'my-message' : 'other-message';
-    const info = document.createElement('div');
-    info.className = 'message-info';
-    info.textContent = `${sender} • ${new Date(time).toLocaleTimeString([], {
-      hour: '2-digit', minute: '2-digit'
-    })}`;
-    const bubble = document.createElement('div');
-    bubble.className = 'message-bubble';
-    const textEl = document.createElement('div');
-    textEl.className = 'message-text';
-    textEl.textContent = text;
-    bubble.appendChild(textEl);
-    msgEl.append(info, bubble);
-    wrapper.appendChild(msgEl);
+function appendMessage(sender, text, time, callId = null) {
+  const chatBox = document.getElementById('chat-box');
+  const wrapper = document.createElement('div');
+  wrapper.className = 'message-wrapper';
+
+  // если это сообщение «прикреплённое» к звонку
+  if (callId !== null) {
+    const el = document.createElement('div');
+    el.className = 'call-event';    // центр + синий через CSS
+    el.textContent = text;
+    wrapper.appendChild(el);
     chatBox.appendChild(wrapper);
     chatBox.scrollTop = chatBox.scrollHeight;
+    return;
   }
+
+  // обычное поведение
+  const msgEl = document.createElement('div');
+  msgEl.className = sender === userNickname ? 'my-message' : 'other-message';
+
+  const info = document.createElement('div');
+  info.className = 'message-info';
+  info.textContent = `${sender} • ${new Date(time).toLocaleTimeString([], {
+    hour: '2-digit', minute: '2-digit'
+  })}`;
+
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble';
+  const textEl = document.createElement('div');
+  textEl.className = 'message-text';
+  textEl.textContent = text;
+  bubble.appendChild(textEl);
+
+  msgEl.append(info, bubble);
+  wrapper.appendChild(msgEl);
+  chatBox.appendChild(wrapper);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
 
   async function downloadFile(fileId, filename) {
     try {
