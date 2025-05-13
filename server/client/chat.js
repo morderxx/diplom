@@ -460,9 +460,6 @@ async function joinRoom(roomId) {
   }
   const history = await res.json();
 
-  console.log('=== history payload ===');
-  console.table(history);
-
 console.log('=== Проверка call_id в history ===');
 history.forEach(m => {
    console.log(i, 'type:', m.type, 'text:', m.text, 'call_id:', m.call_id);
