@@ -33,7 +33,7 @@ async function authMiddleware(req, res, next) {
   }
 }
 
-// GET /api/rooms/:roomId/messages — история сообщений и звонков
+// GET /api/rooms/:roomId/messages — история всех сообщений и системных уведомлений о звонках
 router.get('/:roomId/messages', authMiddleware, async (req, res) => {
   const { roomId } = req.params;
   try {
@@ -46,58 +46,34 @@ router.get('/:roomId/messages', authMiddleware, async (req, res) => {
       return res.status(403).send('Not a member');
     }
 
-    // Отдаём объединённую историю
+    // Получаем все записи из messages — текстовые, файловые и системные уведомления по звонкам
     const { rows } = await pool.query(
       `
-      WITH combined AS (
-        -- 1) Все текстовые и файло-сообщения (включая системные уведомления о звонках)
-        SELECT
-          'message'         AS type,
-          sender_nickname   AS sender_nickname,
-          sender_nickname   AS initiator,
-          NULL::text        AS recipient,
-          text,
-          time              AS time,
-          time              AS happened_at,
-          file_id,
-          filename,
-          mime_type,
-          NULL::timestamptz AS ended_at,
-          NULL::int         AS duration,
-          NULL::text        AS status
-        FROM messages
-        WHERE room_id = $1
-
-        UNION ALL
-
-        -- 2) Звонки (устаревший, можно удалить после миграции)
-        SELECT
-          'call'            AS type,
-          initiator         AS sender_nickname,
-          initiator,
-          recipient,
-          NULL::text        AS text,
-          started_at        AS time,
-          started_at        AS happened_at,
-          NULL::int         AS file_id,
-          NULL::text        AS filename,
-          NULL::text        AS mime_type,
-          ended_at,
-          duration,
-          status
-        FROM calls
-        WHERE room_id = $1
-      )
-      SELECT *
-      FROM combined
+      SELECT
+        -- Определяем тип для фронтенда
+        CASE
+          WHEN call_id IS NOT NULL THEN 'call'
+          WHEN file_id IS NOT NULL THEN 'file'
+          ELSE 'message'
+        END AS type,
+        sender_nickname,
+        text,
+        time,
+        time AS happened_at,
+        file_id,
+        filename,
+        mime_type,
+        ended_at,
+        duration,
+        status
+      FROM messages
+      WHERE room_id = $1
       ORDER BY happened_at;
       `,
       [roomId]
     );
 
-    // Логирование результата для отладки
     console.log(`Fetched ${rows.length} items for room ${roomId}:`, rows);
-
     res.json(rows);
   } catch (err) {
     console.error('Error fetching messages:', err);
