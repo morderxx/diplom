@@ -446,19 +446,24 @@ history.forEach(m => {
       duration:    m.duration
     });
   }
-  else if (m.file_id) {
-    // (если у вас есть файловая ветка — её можно оставить)
-    appendFile(m.initiator, m.file_id, m.filename, m.mime_type, m.happened_at);
-  }
-  else {
-    // текстовое сообщение
-    appendMessage(
-      m.initiator,       // вместо m.sender_nickname
-      m.text,
-      m.happened_at      // вместо m.time
-    );
-  }
-});
+ else if (m.file_id) {
+        appendFile(
+          m.sender_nickname,
+          m.file_id,
+          m.filename,
+          m.mime_type,
+          m.time
+        );
+      }
+      // 3) Обычное текстовое сообщение
+      else {
+        appendMessage(
+          m.sender_nickname,
+          m.text,
+          m.time
+        );
+      }
+    });
     
   }
 
