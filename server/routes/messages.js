@@ -50,7 +50,7 @@ router.get('/:roomId/messages', authMiddleware, async (req, res) => {
     const { rows } = await pool.query(
       `
       WITH combined AS (
-        -- 1) Текстовые и файло-сообщения (без звонков)
+        -- 1) Все текстовые и файло-сообщения (включая системные уведомления о звонках)
         SELECT
           'message'         AS type,
           sender_nickname   AS sender_nickname,
@@ -67,11 +67,10 @@ router.get('/:roomId/messages', authMiddleware, async (req, res) => {
           NULL::text        AS status
         FROM messages
         WHERE room_id = $1
-          AND call_id IS NULL
 
         UNION ALL
 
-        -- 2) Звонки
+        -- 2) Звонки (устаревший, можно удалить после миграции)
         SELECT
           'call'            AS type,
           initiator         AS sender_nickname,
