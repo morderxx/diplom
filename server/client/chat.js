@@ -464,25 +464,15 @@ async function joinRoom(roomId) {
   console.table(history);
 
   // ─── Рендерим историю ─────────────────────────────────────────────────────
- history.forEach(m => {
-  // 1) системное событие из calls
+ // ─── Рендерим историю ─────────────────────────────────────────────────────
+history.forEach(m => {
+  // 1) «Чистый» звонок из таблицы calls
   if (m.type === 'call') {
     appendCallEvent(m.text);
     return;
   }
 
-  // 2) сообщения, привязанные к звонку
-  if (m.call_id !== null) {
-    appendMessage(
-      m.sender_nickname,
-      m.text,
-      m.time,
-      m.call_id   // <— здесь передаём call_id
-    );
-    return;
-  }
-
-  // 3) файлы
+  // 2) Файловое сообщение (картинка/аудио/видео)
   if (m.file_id !== null) {
     appendFile(
       m.sender_nickname,
@@ -494,13 +484,24 @@ async function joinRoom(roomId) {
     return;
   }
 
-  // 4) обычные текстовые сообщения
+  // 3) Текстовое сообщение, привязанное к звонку (call_id)
+  if (m.call_id !== null) {
+    appendMessage(
+      m.sender_nickname,
+      m.text,
+      m.time,
+      m.call_id
+    );
+    return;
+  }
+
+  // 4) Обычное текстовое сообщение
   if (m.text !== null) {
     appendMessage(
       m.sender_nickname,
       m.text,
       m.time
-      // без четвёртого аргумента, у callId будет default = null
+      // callId не передаём — по умолчанию null
     );
     return;
   }
@@ -508,21 +509,18 @@ async function joinRoom(roomId) {
   console.warn('Неизвестный элемент истории:', m);
 });
 
+
 }  // <-- закрыли функцию joinRoom
 
 
 
   
-/**
- * sender, text, time — как раньше
- * callId — если != null, то это «привязанное к звонку» сообщение
- */
 function appendMessage(sender, text, time, callId = null) {
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
   wrapper.className = 'message-wrapper';
 
-  // 1) если это сообщение с call_id — рисуем по центру голубым
+  // если это «звонковое» текстовое сообщение
   if (callId !== null) {
     const el = document.createElement('div');
     el.className = 'call-event';
@@ -533,7 +531,7 @@ function appendMessage(sender, text, time, callId = null) {
     return;
   }
 
-  // 2) иначе — обычный рендер
+  // обычное текстовое сообщение
   const msgEl = document.createElement('div');
   msgEl.className = sender === userNickname ? 'my-message' : 'other-message';
 
@@ -555,8 +553,6 @@ function appendMessage(sender, text, time, callId = null) {
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
-
-
 
   async function downloadFile(fileId, filename) {
     try {
