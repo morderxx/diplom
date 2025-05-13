@@ -394,109 +394,109 @@ async function endCall(message, status = 'finished') {
     chatBox.scrollTop = chatBox.scrollHeight;
   }
   
-  async function joinRoom(roomId) {
-    if (socket) socket.close();
-    currentRoom = roomId;
-    document.getElementById('chat-box').innerHTML = '';
-    document.getElementById('chat-section').classList.add('active');
+async function joinRoom(roomId) {
+  if (socket) socket.close();
+  currentRoom = roomId;
+  document.getElementById('chat-box').innerHTML = '';
+  document.getElementById('chat-section').classList.add('active');
 
-    socket = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
-    socket.onopen = () => socket.send(JSON.stringify({ type: 'join', token, roomId }));
-    socket.onmessage = ev => {
-      const msg = JSON.parse(ev.data);
-      switch (msg.type) {
-        case 'webrtc-cancel':
-          endCall('Собеседник отменил звонок', 'cancelled');
-          break;
-        case 'message':
-          appendMessage(msg.sender, msg.text, msg.time);
-          break;
-        case 'file':
-          appendFile(msg.sender, msg.fileId, msg.filename, msg.mimeType, msg.time);
-          break;
-        case 'webrtc-offer':
-          // msg.from — это ник того, кто звонил
-          currentPeer = msg.from;
-          handleOffer(msg.payload);
-          showCallWindow(currentPeer, true);
-          break;
-        case 'webrtc-answer':
-          handleAnswer(msg.payload);
-          break;
-        case 'webrtc-ice':
-          handleIce(msg.payload);
-          break;
-          case 'call':
-  appendCall({
-    initiator:  msg.initiator,
-    recipient:  msg.recipient,
-    status:     msg.status,
-    happened_at: msg.started_at,
-    ended_at:   msg.ended_at,
-    duration:   msg.duration
-  });
-  break;
-      }
-    };
-
-    const histRes = await fetch(`${API_URL}/rooms/${roomId}/messages`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!histRes.ok) return console.error(await histRes.text());
-     const history = await histRes.json();
-    console.log('🕵️ History payload:', history);
-    history.forEach(m => {
-      // 1) Звонок: проверяем по полю type
-      if (m.type === 'call') {
+  // Настраиваем WebSocket
+  socket = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
+  socket.onopen = () => socket.send(JSON.stringify({ type: 'join', token, roomId }));
+  socket.onmessage = ev => {
+    const msg = JSON.parse(ev.data);
+    switch (msg.type) {
+      case 'webrtc-cancel':
+        endCall('Собеседник отменил звонок', 'cancelled');
+        break;
+      case 'message':
+        appendMessage(msg.sender, msg.text, msg.time);
+        break;
+      case 'file':
+        appendFile(msg.sender, msg.fileId, msg.filename, msg.mimeType, msg.time);
+        break;
+      case 'webrtc-offer':
+        currentPeer = msg.from;
+        handleOffer(msg.payload);
+        showCallWindow(currentPeer, true);
+        break;
+      case 'webrtc-answer':
+        handleAnswer(msg.payload);
+        break;
+      case 'webrtc-ice':
+        handleIce(msg.payload);
+        break;
+      case 'call':
         appendCall({
-          initiator:   m.initiator,
-          recipient:   m.recipient,
-          status:      m.status,
-          happened_at: m.happened_at,  // ← вот здесь правильное поле
-          ended_at:    m.ended_at,
-          duration:    m.duration
+          initiator:   msg.initiator,
+          recipient:   msg.recipient,
+          status:      msg.status,
+          happened_at: msg.started_at,
+          ended_at:    msg.ended_at,
+          duration:    msg.duration
         });
+        break;
+    }
+  };
+
+  // ─── Загрузка истории сообщений и звонков ────────────────────────────────
+  const [histRes, callsRes] = await Promise.all([
+    fetch(`${API_URL}/rooms/${roomId}/messages`, { headers: { Authorization: `Bearer ${token}` } }),
+    fetch(`${API_URL}/rooms/${roomId}/calls`,    { headers: { Authorization: `Bearer ${token}` } })
+  ]);
+  if (!histRes.ok) return console.error(await histRes.text());
+  if (!callsRes.ok) console.error('Не удалось загрузить историю звонков:', await callsRes.text());
+
+  const history      = await histRes.json();            // текст и файлы
+  const callsHistory = callsRes.ok ? await callsRes.json() : []; // события звонков
+
+  // ─── Преобразуем звонки в «системные» сообщения ─────────────────────────
+  const callEvents = callsHistory.map(c => {
+    let text;
+    switch (c.status) {
+      case 'cancelled':
+        text = `${c.initiator} отменил(а) звонок`;
+        break;
+      case 'missed':
+        text = `Пропущенный звонок от ${c.initiator}`;
+        break;
+      case 'finished': {
+        const mm = String(Math.floor(c.duration / 60)).padStart(2, '0');
+        const ss = String(c.duration % 60).padStart(2, '0');
+        text = `Звонок с ${c.recipient} завершён. Длительность ${mm}:${ss}`;
+        break;
       }
-      // 2) Файл (старый вариант проверки)
-      else if (m.file_id) {
-        appendFile(
-          m.sender_nickname,
-          m.file_id,
-          m.filename,
-          m.mime_type,
-          m.time
-        );
-      }
-      // 3) Текстовое сообщение
-      else {
-        appendMessage(
-          m.sender_nickname,
-          m.text,
-          m.time
-        );
-      }
-    });
-    // 2) Подгружаем историю звонков
-const callsRes = await fetch(`${API_URL}/rooms/${roomId}/calls`, {
-  headers: { 'Authorization': `Bearer ${token}` }
-});
-if (!callsRes.ok) {
-  console.error('Не удалось загрузить историю звонков:', await callsRes.text());
-} else {
-  const callsHistory = await callsRes.json();
-  callsHistory.forEach(c => {
-    appendCall({
-      initiator:   c.initiator,    // кто звонил
-      recipient:   c.recipient,    // кому
-      status:      c.status,       // “missed”, “finished” и т.п.
-      happened_at: c.started_at,   // время начала
-      ended_at:    c.ended_at,     // время окончания
-      duration:    c.duration      // длительность в секундах
-    });
+      default:
+        text = `Статус звонка: ${c.status}`;
+    }
+    return { type: 'system', text, time: c.started_at };
+  });
+
+  // ─── Приводим обычные записи к единому формату ───────────────────────────
+  const textMsgs = history.map(m => ({
+    type: m.type === 'message' ? 'message' : m.file_id ? 'file' : m.type,
+    text: m.text,
+    time: m.time,
+    meta: m
+  }));
+
+  // ─── Объединяем и сортируем по времени ───────────────────────────────────
+  const merged = [...textMsgs, ...callEvents]
+    .sort((a, b) => new Date(a.time) - new Date(b.time));
+
+  // ─── Рендерим объединённую хронологическую ленту ─────────────────────────
+  merged.forEach(item => {
+    if (item.type === 'message') {
+      appendMessage(item.meta.sender_nickname, item.text, item.time);
+    } else if (item.type === 'file') {
+      const m = item.meta;
+      appendFile(m.sender_nickname, m.file_id, m.filename, m.mime_type, m.time);
+    } else if (item.type === 'system') {
+      appendSystem(item.text);
+    }
   });
 }
 
-  }
 
   function appendMessage(sender, text, time) {
     const chatBox = document.getElementById('chat-box');
