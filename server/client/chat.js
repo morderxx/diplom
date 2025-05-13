@@ -444,6 +444,7 @@ async function endCall(message, status = 'finished') {
     });
     if (!histRes.ok) return console.error(await histRes.text());
      const history = await histRes.json();
+    console.log('🕵️ History payload:', history);
     history.forEach(m => {
       // 1) Звонок: проверяем по полю type
       if (m.type === 'call') {
