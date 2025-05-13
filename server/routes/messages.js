@@ -33,7 +33,7 @@ async function authMiddleware(req, res, next) {
   }
 }
 
-// GET /api/rooms/:roomId/messages — история всех сообщений и системных уведомлений о звонках
+// GET /api/rooms/:roomId/messages — история сообщений и системных уведомлений о звонках
 router.get('/:roomId/messages', authMiddleware, async (req, res) => {
   const { roomId } = req.params;
   try {
@@ -46,29 +46,30 @@ router.get('/:roomId/messages', authMiddleware, async (req, res) => {
       return res.status(403).send('Not a member');
     }
 
-    // Получаем все записи из messages — текстовые, файловые и системные уведомления по звонкам
+    // Получаем все записи из messages — текст, файлы и уведомления о звонках
     const { rows } = await pool.query(
       `
       SELECT
-        -- Определяем тип для фронтенда
         CASE
-          WHEN call_id IS NOT NULL THEN 'call'
           WHEN file_id IS NOT NULL THEN 'file'
+          WHEN call_id IS NOT NULL THEN 'call'
           ELSE 'message'
         END AS type,
         sender_nickname,
         text,
         time,
-        time AS happened_at,
+        /* Для файлов */
         file_id,
         filename,
         mime_type,
-        ended_at,
+        /* Для звонков */
+        call_id,
+        status,
         duration,
-        status
+        ended_at
       FROM messages
       WHERE room_id = $1
-      ORDER BY happened_at;
+      ORDER BY time;
       `,
       [roomId]
     );
