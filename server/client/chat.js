@@ -454,23 +454,27 @@ async function joinRoom(roomId) {
 
   // ─── Рендерим каждый элемент в том виде, как раньше ──────────────────────
   history.forEach(m => {
-    if (m.type === 'message') {
-      appendMessage(m.sender_nickname, m.text, m.time);
-    }
-    else if (m.file_id) {
-      appendFile(
-        m.sender_nickname,
-        m.file_id,
-        m.filename,
-        m.mime_type,
-        m.time
-      );
-    }
-    else if (m.type === 'call') {
-      // м.б. через appendSystem или appendCall — как вам удобнее
-      appendSystem(m.text);
-    }
-  });
+  // мультимедиа (изображение, аудио, видео)
+  if (m.file_id) {
+    appendFile(m.sender_nickname, m.file_id, m.filename, m.mime_type, m.time);
+    return;
+  }
+
+  // чисто текстовое сообщение
+  if (m.type === 'message' && m.text) {
+    appendMessage(m.sender_nickname, m.text, m.time);
+    return;
+  }
+
+  // событие звонка
+  if (m.type === 'call') {
+    appendSystem(m.text);
+    return;
+  }
+
+  // всё остальное на всякий случай
+  console.warn('Неизвестный элемент истории:', m);
+});
 
 }
 
