@@ -366,14 +366,6 @@ async function endCall(message, status = 'finished') {
     joinRoom(roomId);
   }
   
-  function appendCallEvent(text) {
-  const chatBox = document.getElementById('chat-box');
-  const el = document.createElement('div');
-  el.className = 'call-event';
-  el.textContent = text;   // сюда передаём готовый текст, например: "Иван отменил звонок"
-  chatBox.appendChild(el);
-  chatBox.scrollTop = chatBox.scrollHeight;
-}
 
   function appendCall({ initiator, recipient, status, happened_at, ended_at, duration }) {
     const chatBox = document.getElementById('chat-box');
@@ -463,28 +455,23 @@ async function joinRoom(roomId) {
 
   // ─── Рендерим каждый элемент в том виде, как раньше ──────────────────────
 history.forEach(m => {
-  // 1) Событие звонка
-  if (m.type === 'call') {
-    // Если ты генерировал текст на сервере и он лежит в m.text:
-    appendCallEvent(m.text);
-    return;
-  }
-
-  // 2) Файл (картинка / аудио / видео)
-  if (m.file_id !== null) {
-    appendFile(m.sender_nickname, m.file_id, m.filename, m.mime_type, m.time);
-    return;
-  }
-
-  // 3) Обычное текстовое сообщение
-  if (m.type === 'message' && m.text !== null) {
-    appendMessage(m.sender_nickname, m.text, m.time);
-    return;
-  }
-
-  // Остальное (на всякий случай)
-  console.warn('Неизвестный элемент истории:', m);
-});
+    if (m.type === 'message') {
+      appendMessage(m.sender_nickname, m.text, m.time);
+    }
+    else if (m.file_id) {
+      appendFile(
+        m.sender_nickname,
+        m.file_id,
+        m.filename,
+        m.mime_type,
+        m.time
+      );
+    }
+    else if (m.type === 'call') {
+      // м.б. через appendSystem или appendCall — как вам удобнее
+      appendSystem(m.text);
+    }
+  });
 
   // 4) Событие звонка (если вы всё-таки хотите дальше их обрабатывать через appendCall)
   if (m.type === 'call') {
