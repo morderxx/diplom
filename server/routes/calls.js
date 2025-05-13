@@ -20,50 +20,65 @@ async function authMiddleware(req, res, next) {
   }
 }
 
-// POST /api/rooms/:roomId/calls — сохранить звонок и расслать по WS
+// POST /api/rooms/:roomId/calls — сохранить звонок, добавить в сообщения и расслать по WS
 router.post('/:roomId/calls', authMiddleware, async (req, res) => {
   const roomId    = +req.params.roomId;
   const { initiator, recipient, started_at, ended_at, status, duration } = req.body;
 
+  const client = await pool.connect();
   try {
-    // Сохраняем звонок
-    const { rows } = await pool.query(
+    await client.query('BEGIN');
+
+    // 1) Сохраняем звонок
+    const { rows: [call] } = await client.query(
       `INSERT INTO calls
          (room_id, initiator, recipient, started_at, ended_at, status, duration)
        VALUES ($1,$2,$3,$4,$5,$6,$7)
-       RETURNING id, initiator, recipient, started_at, ended_at, status, duration`,
+       RETURNING id, started_at`,
       [roomId, initiator, recipient, started_at, ended_at, status, duration]
     );
-    const call = rows[0];
 
-    // Отправляем ответ клиенту
+    // 2) Добавляем запись в messages для унифицированной истории
+    await client.query(
+      `INSERT INTO messages
+         (room_id, sender_nickname, call_id, time)
+       VALUES ($1, $2, $3, $4)`,
+      [roomId, initiator, call.id, call.started_at]
+    );
+
+    await client.query('COMMIT');
+
+    // 3) Возвращаем сохранённый звонок клиенту
     res.status(201).json(call);
 
-    // Рассылаем событие через WebSocket
+    // 4) Рассылаем событие через WebSocket всем клиентам
     const wss = getWss();
     if (wss) {
       const msg = {
         type:       'call',
-        initiator:  call.initiator,
-        recipient:  call.recipient,
-        started_at: call.started_at,
-        ended_at:   call.ended_at,
-        status:     call.status,
-        duration:   call.duration
+        initiator,
+        recipient,
+        started_at,
+        ended_at,
+        status,
+        duration
       };
-      wss.clients.forEach(client => {
-        if (client.readyState === client.OPEN) {
-          client.send(JSON.stringify(msg));
+      wss.clients.forEach(clientWs => {
+        if (clientWs.readyState === clientWs.OPEN) {
+          clientWs.send(JSON.stringify(msg));
         }
       });
     }
   } catch (err) {
+    await client.query('ROLLBACK');
     console.error('Error saving call:', err);
     res.status(500).send('Error saving call');
+  } finally {
+    client.release();
   }
 });
 
-// GET /api/rooms/:roomId/calls — получить историю звонков
+// GET /api/rooms/:roomId/calls — получить историю звонков (если нужно отдельно)
 router.get('/:roomId/calls', authMiddleware, async (req, res) => {
   const roomId = +req.params.roomId;
   try {
