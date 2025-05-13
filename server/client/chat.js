@@ -463,7 +463,7 @@ async function joinRoom(roomId) {
 console.log('=== Проверка call_id в history ===');
 history.forEach(m => {
   // Сразу логируем номер, тип и call_id каждого элемента:
-  console.log(i, 'type:', m.type, 'text:', m.text, 'call_id:', m.call_id);
+  console.log( 'type:', m.type, 'text:', m.text, 'call_id:', m.call_id);
   // 1) «Чистый» звонок из таблицы calls
   if (m.type === 'call') {
     appendCallEvent(m.text);
