@@ -476,7 +476,26 @@ async function endCall(message, status = 'finished') {
         );
       }
     });
-    
+    // 2) Подгружаем историю звонков
+const callsRes = await fetch(`${API_URL}/rooms/${roomId}/calls`, {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+if (!callsRes.ok) {
+  console.error('Не удалось загрузить историю звонков:', await callsRes.text());
+} else {
+  const callsHistory = await callsRes.json();
+  callsHistory.forEach(c => {
+    appendCall({
+      initiator:   c.initiator,    // кто звонил
+      recipient:   c.recipient,    // кому
+      status:      c.status,       // “missed”, “finished” и т.п.
+      happened_at: c.started_at,   // время начала
+      ended_at:    c.ended_at,     // время окончания
+      duration:    c.duration      // длительность в секундах
+    });
+  });
+}
+
   }
 
   function appendMessage(sender, text, time) {
