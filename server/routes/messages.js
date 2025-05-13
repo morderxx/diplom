@@ -14,7 +14,6 @@ async function authMiddleware(req, res, next) {
     const payload = jwt.verify(token, JWT_SECRET);
     req.userLogin = payload.login;
 
-    // подтягиваем nickname
     const prof = await pool.query(
       `SELECT u.nickname
          FROM users u
@@ -37,7 +36,6 @@ async function authMiddleware(req, res, next) {
 router.get('/:roomId/messages', authMiddleware, async (req, res) => {
   const { roomId } = req.params;
   try {
-    // Проверяем, что пользователь — участник комнаты
     const mem = await pool.query(
       'SELECT 1 FROM room_members WHERE room_id = $1 AND nickname = $2',
       [roomId, req.userNickname]
@@ -46,11 +44,10 @@ router.get('/:roomId/messages', authMiddleware, async (req, res) => {
       return res.status(403).send('Not a member');
     }
 
-    // Отдаём объединённую историю
     const { rows } = await pool.query(
       `
       WITH combined AS (
-        -- 1) Текстовые и файло-сообщения (включая системные уведомления о звонках)
+        -- 1) Обычные сообщения и файлы (включая системные сообщения)
         SELECT
           'message'         AS type,
           sender_nickname   AS sender_nickname,
@@ -62,15 +59,15 @@ router.get('/:roomId/messages', authMiddleware, async (req, res) => {
           file_id,
           filename,
           mime_type,
-          ended_at,
-          duration,
-          status
+          NULL::timestamptz AS ended_at,
+          NULL::int         AS duration,
+          NULL::text        AS status
         FROM messages
         WHERE room_id = $1
 
         UNION ALL
 
-        -- 2) Звонки (из старой таблицы для обратной совместимости)
+        -- 2) Звонки (как отдельные события)
         SELECT
           'call'            AS type,
           initiator         AS sender_nickname,
@@ -95,7 +92,6 @@ router.get('/:roomId/messages', authMiddleware, async (req, res) => {
       [roomId]
     );
 
-    console.log(`Fetched ${rows.length} items for room ${roomId}:`, rows);
     res.json(rows);
   } catch (err) {
     console.error('Error fetching messages:', err);
