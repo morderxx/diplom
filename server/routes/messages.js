@@ -1,22 +1,21 @@
 // Импорт необходимых модулей
 const express = require('express');
-const jwt = require('jsonwebtoken');
-const pool = require('../db');
-const router = express.Router();
+const jwt     = require('jsonwebtoken');
+const pool    = require('../db');
+const router  = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
-// Middleware: Извлечение login и nickname из токена
+// Middleware: извлечение login и nickname из токена
 async function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth) return res.status(401).send('No token');
 
   try {
-    const token = auth.split(' ')[1];
+    const token   = auth.split(' ')[1];
     const payload = jwt.verify(token, JWT_SECRET);
     req.userLogin = payload.login;
 
-    // Запрос на получение никнейма пользователя
     const { rows } = await pool.query(`
       SELECT u.nickname
       FROM users u
@@ -36,15 +35,15 @@ async function authMiddleware(req, res, next) {
   }
 }
 
-// GET /api/rooms/:roomId/messages — История сообщений и звонков
+// GET /api/rooms/:roomId/messages — история сообщений и звонков
 router.get('/:roomId/messages', authMiddleware, async (req, res) => {
   const { roomId } = req.params;
 
   try {
-    // Проверка, является ли пользователь членом комнаты
+    // Проверка членства
     const membership = await pool.query(`
-      SELECT 1 
-      FROM room_members 
+      SELECT 1
+      FROM room_members
       WHERE room_id = $1 AND nickname = $2;
     `, [roomId, req.userNickname]);
 
@@ -52,10 +51,10 @@ router.get('/:roomId/messages', authMiddleware, async (req, res) => {
       return res.status(403).send('Not a member');
     }
 
-    // Запрос на получение сообщений и звонков
+    // Собираем историю с call_id
     const { rows } = await pool.query(`
       WITH combined AS (
-        -- 1) Обычные сообщения и файлы (включая системные сообщения)
+        -- 1) Обычные сообщения и файлы (включая системные)
         SELECT
           'message'         AS type,
           sender_nickname   AS sender_nickname,
@@ -69,7 +68,8 @@ router.get('/:roomId/messages', authMiddleware, async (req, res) => {
           mime_type,
           NULL::timestamptz AS ended_at,
           NULL::int         AS duration,
-          NULL::text        AS status
+          NULL::text        AS status,
+          call_id           -- <--- добавили сюда
         FROM messages
         WHERE room_id = $1
 
@@ -89,7 +89,8 @@ router.get('/:roomId/messages', authMiddleware, async (req, res) => {
           NULL::text        AS mime_type,
           ended_at,
           duration,
-          status
+          status,
+          id                AS call_id   -- <--- и здесь
         FROM calls
         WHERE room_id = $1
       )
