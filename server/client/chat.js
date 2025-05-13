@@ -491,14 +491,6 @@ history.forEach(m => {
 
 }
 
-function appendCallEvent(text) {
-  const chatBox = document.getElementById('chat-box');
-  const el = document.createElement('div');
-  el.className = 'call-event';
-  el.textContent = text;
-  chatBox.appendChild(el);
-  chatBox.scrollTop = chatBox.scrollHeight;
-}
 
   
   function appendMessage(sender, text, time) {
