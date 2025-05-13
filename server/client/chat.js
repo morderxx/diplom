@@ -205,13 +205,14 @@ async function endCall(message, status = 'finished') {
 
   async function startCall() {
     createPeerConnection();
-    showCallWindow('собеседником', false);
+    showCallWindow(currentPeer, false);
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
      socket.send(JSON.stringify({
     type: 'webrtc-offer',
+    from: userNickname,
     to: currentPeer,        // **передаём**, чтобы на другом конце знали, кто звонит
     payload: offer
   }));
@@ -219,7 +220,7 @@ async function endCall(message, status = 'finished') {
 
   async function handleOffer(offer) {
     createPeerConnection();
-    showCallWindow('собеседником', true);
+    showCallWindow(currentPeer, true);
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
     await pc.setRemoteDescription(offer);
@@ -245,7 +246,7 @@ async function endCall(message, status = 'finished') {
   if (!pc) return;
   const answer = await pc.createAnswer();
   await pc.setLocalDescription(answer);
-  socket.send(JSON.stringify({ type: 'webrtc-answer', payload: answer }));
+  socket.send(JSON.stringify({ type: 'webrtc-answer',from: userNickname, payload: answer }));
   callStatus.textContent = 'В разговоре';
   answerBtn.style.display = 'none';
 };
@@ -255,6 +256,7 @@ async function endCall(message, status = 'finished') {
     // шлём отмену и roomId, чтобы сервер переслал другому
     socket.send(JSON.stringify({
       type:   'webrtc-cancel',
+      from: userNickname,
       roomId: currentRoom
     }));
   }
@@ -417,7 +419,7 @@ async function endCall(message, status = 'finished') {
           currentPeer = msg.from;
           handleOffer(msg.payload);
           showCallWindow(currentPeer, true);
-          break;;
+          break;
         case 'webrtc-answer':
           handleAnswer(msg.payload);
           break;
