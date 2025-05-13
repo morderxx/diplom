@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let socket         = null;
   let currentRoom    = null;
+  let currentPeer = null;  
   let mediaRecorder;
   let audioChunks    = [];
   let pc             = null;
@@ -62,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Показать окно звонка
   function showCallWindow(peer, incoming = false) {
+    currentPeer = peer;  
     callTitle.textContent = `Звонок с ${peer}`;
     callStatus.textContent = incoming ? 'Входящий звонок' : 'Ожидание ответа';
     callTimerEl.textContent = '00:00';
@@ -84,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Завершить звонок
-function endCall(message) {
+async function endCall(message, status = 'finished') {
   clearInterval(callTimerIntvl);
   if (pc) pc.close();
   pc = null;
@@ -92,9 +94,39 @@ function endCall(message) {
     localStream.getTracks().forEach(t => t.stop());
     localStream = null;
   }
+
+  // 1) Локальное уведомление
   appendSystem(message || `Звонок завершён. Длительность ${callTimerEl.textContent}`);
+
+  // 2) Собираем данные звонка
+  const startedISO  = new Date(callStartTime).toISOString();
+  const endedISO    = new Date().toISOString();
+  const durationSec = Math.floor((Date.now() - callStartTime) / 1000);
+
+  // 3) Отправляем на бэкенд
+  try {
+    await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        initiator:  userNickname,
+        recipient:  currentPeer,
+        started_at: startedISO,
+        ended_at:   endedISO,
+        status:     status,      // 'finished' или 'cancelled'
+        duration:   durationSec
+      })
+    });
+  } catch (err) {
+    console.error('Не удалось сохранить звонок в БД:', err);
+  }
+
   hideCallWindow();
 }
+
 
 
 
@@ -178,7 +210,11 @@ function endCall(message) {
     localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    socket.send(JSON.stringify({ type: 'webrtc-offer', payload: offer }));
+     socket.send(JSON.stringify({
+    type: 'webrtc-offer',
+    to: currentPeer,        // **передаём**, чтобы на другом конце знали, кто звонит
+    payload: offer
+  }));
   }
 
   async function handleOffer(offer) {
@@ -204,6 +240,7 @@ function endCall(message) {
   callBtn.onclick = () => {
     if (socket && socket.readyState === WebSocket.OPEN) startCall();
   };
+  
  answerBtn.onclick = async () => {
   if (!pc) return;
   const answer = await pc.createAnswer();
@@ -222,7 +259,7 @@ function endCall(message) {
     }));
   }
   // своё окно закрываем
-  endCall('Вы отменили звонок');
+  endCall('Вы отменили звонок', 'cancelled');
 };
 
  // minimizeBtn.onclick = () => callWindow.classList.toggle('minimized');
@@ -296,6 +333,7 @@ function endCall(message) {
   }
 
   async function openPrivateChat(otherNick) {
+    currentPeer = otherNick;
     const rr = await fetch(`${API_URL}/rooms`, { headers: { Authorization: `Bearer ${token}` } });
     const rooms = rr.ok ? await rr.json() : [];
     const key = [userNickname, otherNick].sort().join('|');
@@ -316,6 +354,7 @@ function endCall(message) {
     await loadRooms();
     joinRoom(roomId);
   }
+  
   function appendCall({ initiator, recipient, status, happened_at, ended_at, duration }) {
     const chatBox = document.getElementById('chat-box');
     const wrapper = document.createElement('div');
@@ -356,7 +395,7 @@ function endCall(message) {
       const msg = JSON.parse(ev.data);
       switch (msg.type) {
         case 'webrtc-cancel':
-          endCall('Собеседник отменил звонок');
+          endCall('Собеседник отменил звонок', 'cancelled');
           break;
         case 'message':
           appendMessage(msg.sender, msg.text, msg.time);
@@ -365,8 +404,11 @@ function endCall(message) {
           appendFile(msg.sender, msg.fileId, msg.filename, msg.mimeType, msg.time);
           break;
         case 'webrtc-offer':
+          // msg.from — это ник того, кто звонил
+          currentPeer = msg.from;
           handleOffer(msg.payload);
-          break;
+          showCallWindow(currentPeer, true);
+          break;;
         case 'webrtc-answer':
           handleAnswer(msg.payload);
           break;
@@ -381,37 +423,27 @@ function endCall(message) {
     });
     if (!histRes.ok) return console.error(await histRes.text());
     const history = await histRes.json();
-    history.forEach(m => {
-      // 1) Это звонок, если есть поле status (или started_at)
-      if (m.status) {
-        appendCall({
-          initiator:  m.initiator,
-          recipient:  m.recipient,
-          status:     m.status,
-          happened_at: m.started_at,  // время, когда начался звонок
-          ended_at:   m.ended_at,
-          duration:   m.duration
-        });
-      }
-      // 2) Это файл (= сообщение с file_id)
-      else if (m.file_id) {
-        appendFile(
-          m.sender_nickname,
-          m.file_id,
-          m.filename,
-          m.mime_type,
-          m.time
-        );
-      }
-      // 3) Обычное текстовое сообщение
-      else {
-        appendMessage(
-          m.sender_nickname,
-          m.text,
-          m.time
-        );
-      }
+  history.forEach(m => {
+  if (m.status) {
+    // звонок
+    appendCall({
+      initiator:   m.initiator,
+      recipient:   m.recipient,
+      status:      m.status,
+      happened_at: m.started_at,
+      ended_at:    m.ended_at,
+      duration:    m.duration
     });
+  }
+  else if (m.file_id) {
+    // файл
+    appendFile(m.sender_nickname, m.file_id, m.filename, m.mime_type, m.time);
+  }
+  else {
+    // текст
+    appendMessage(m.sender_nickname, m.text, m.time);
+  }
+});
     
   }
 
