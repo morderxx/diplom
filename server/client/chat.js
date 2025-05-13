@@ -518,20 +518,18 @@ history.forEach(m => {
 function appendMessage(sender, text, time, callId = null) {
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
-  wrapper.className = 'message-wrapper';
 
-  // если это «звонковое» текстовое сообщение
+  // 1) Если это сообщение с call_id — делаем весь wrapper “call-event”
   if (callId !== null) {
-    const el = document.createElement('div');
-    el.className = 'call-event';
-    el.textContent = text;
-    wrapper.appendChild(el);
+    wrapper.className = 'message-wrapper call-event';
+    wrapper.textContent = text;
     chatBox.appendChild(wrapper);
     chatBox.scrollTop = chatBox.scrollHeight;
     return;
   }
 
-  // обычное текстовое сообщение
+  // 2) Обычное сообщение
+  wrapper.className = 'message-wrapper';
   const msgEl = document.createElement('div');
   msgEl.className = sender === userNickname ? 'my-message' : 'other-message';
 
@@ -553,6 +551,7 @@ function appendMessage(sender, text, time, callId = null) {
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
+
 
   async function downloadFile(fileId, filename) {
     try {
