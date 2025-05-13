@@ -426,6 +426,16 @@ async function endCall(message, status = 'finished') {
         case 'webrtc-ice':
           handleIce(msg.payload);
           break;
+          case 'call':
+  appendCall({
+    initiator:  msg.initiator,
+    recipient:  msg.recipient,
+    status:     msg.status,
+    happened_at: msg.started_at,
+    ended_at:   msg.ended_at,
+    duration:   msg.duration
+  });
+  break;
       }
     };
 
