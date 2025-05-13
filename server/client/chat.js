@@ -449,6 +449,9 @@ async function joinRoom(roomId) {
   }
   const history = await res.json();
 
+  console.log('=== history payload ===');
+  console.table(history);
+
   // ─── Рендерим каждый элемент в том виде, как раньше ──────────────────────
   history.forEach(m => {
     if (m.type === 'message') {
