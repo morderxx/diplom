@@ -50,38 +50,39 @@ router.get('/:roomId/messages', authMiddleware, async (req, res) => {
     const { rows } = await pool.query(
       `
       WITH combined AS (
-        -- 1) Текстовые и файло-сообщения
+        -- 1) Текстовые и файло-сообщения (без звонков)
         SELECT
-          'message'        AS type,
-          sender_nickname  AS sender_nickname,
-          sender_nickname  AS initiator,
-          NULL::text       AS recipient,
+          'message'         AS type,
+          sender_nickname   AS sender_nickname,
+          sender_nickname   AS initiator,
+          NULL::text        AS recipient,
           text,
-          time             AS time,
-          time             AS happened_at,
+          time              AS time,
+          time              AS happened_at,
           file_id,
           filename,
           mime_type,
           NULL::timestamptz AS ended_at,
-          NULL::int        AS duration,
-          NULL::text       AS status
+          NULL::int         AS duration,
+          NULL::text        AS status
         FROM messages
         WHERE room_id = $1
+          AND call_id IS NULL
 
         UNION ALL
 
         -- 2) Звонки
         SELECT
-          'call'           AS type,
-          initiator        AS sender_nickname,
+          'call'            AS type,
+          initiator         AS sender_nickname,
           initiator,
           recipient,
-          NULL::text       AS text,
-          started_at       AS time,
-          started_at       AS happened_at,
-          NULL::int        AS file_id,
-          NULL::text       AS filename,
-          NULL::text       AS mime_type,
+          NULL::text        AS text,
+          started_at        AS time,
+          started_at        AS happened_at,
+          NULL::int         AS file_id,
+          NULL::text        AS filename,
+          NULL::text        AS mime_type,
           ended_at,
           duration,
           status
