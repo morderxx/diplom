@@ -33,7 +33,7 @@ async function authMiddleware(req, res, next) {
   }
 }
 
-// GET /api/rooms/:roomId/messages — история сообщений и системных уведомлений о звонках
+// GET /api/rooms/:roomId/messages — история сообщений и звонков
 router.get('/:roomId/messages', authMiddleware, async (req, res) => {
   const { roomId } = req.params;
   try {
@@ -46,30 +46,51 @@ router.get('/:roomId/messages', authMiddleware, async (req, res) => {
       return res.status(403).send('Not a member');
     }
 
-    // Получаем все записи из messages — текст, файлы и уведомления о звонках
+    // Отдаём объединённую историю
     const { rows } = await pool.query(
       `
-      SELECT
-        CASE
-          WHEN file_id IS NOT NULL THEN 'file'
-          WHEN call_id IS NOT NULL THEN 'call'
-          ELSE 'message'
-        END AS type,
-        sender_nickname,
-        text,
-        time,
-        /* Для файлов */
-        file_id,
-        filename,
-        mime_type,
-        /* Для звонков */
-        call_id,
-        status,
-        duration,
-        ended_at
-      FROM messages
-      WHERE room_id = $1
-      ORDER BY time;
+      WITH combined AS (
+        -- 1) Текстовые и файло-сообщения (включая системные уведомления о звонках)
+        SELECT
+          'message'         AS type,
+          sender_nickname   AS sender_nickname,
+          sender_nickname   AS initiator,
+          NULL::text        AS recipient,
+          text,
+          time              AS time,
+          time              AS happened_at,
+          file_id,
+          filename,
+          mime_type,
+          ended_at,
+          duration,
+          status
+        FROM messages
+        WHERE room_id = $1
+
+        UNION ALL
+
+        -- 2) Звонки (из старой таблицы для обратной совместимости)
+        SELECT
+          'call'            AS type,
+          initiator         AS sender_nickname,
+          initiator,
+          recipient,
+          NULL::text        AS text,
+          started_at        AS time,
+          started_at        AS happened_at,
+          NULL::int         AS file_id,
+          NULL::text        AS filename,
+          NULL::text        AS mime_type,
+          ended_at,
+          duration,
+          status
+        FROM calls
+        WHERE room_id = $1
+      )
+      SELECT *
+      FROM combined
+      ORDER BY happened_at;
       `,
       [roomId]
     );
