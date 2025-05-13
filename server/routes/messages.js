@@ -1,30 +1,34 @@
+// Импорт необходимых модулей
 const express = require('express');
-const jwt     = require('jsonwebtoken');
-const pool    = require('../db');
-const router  = express.Router();
+const jwt = require('jsonwebtoken');
+const pool = require('../db');
+const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
-// Middleware: из JWT достаём login и nickname
+// Middleware: Извлечение login и nickname из токена
 async function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth) return res.status(401).send('No token');
+
   try {
-    const token   = auth.split(' ')[1];
+    const token = auth.split(' ')[1];
     const payload = jwt.verify(token, JWT_SECRET);
     req.userLogin = payload.login;
 
-    const prof = await pool.query(
+    // Запрос на получение никнейма пользователя
+    const { rows } = await pool.query(`
       SELECT u.nickname
-         FROM users u
-         JOIN secret_profile s ON s.id = u.id
-        WHERE s.login = $1,
-      [req.userLogin]
-    );
-    if (prof.rows.length === 0) {
+      FROM users u
+      JOIN secret_profile s ON s.id = u.id
+      WHERE s.login = $1;
+    `, [req.userLogin]);
+
+    if (rows.length === 0) {
       return res.status(400).send('Complete your profile first');
     }
-    req.userNickname = prof.rows[0].nickname;
+
+    req.userNickname = rows[0].nickname;
     next();
   } catch (e) {
     console.error('JWT error:', e);
@@ -32,20 +36,24 @@ async function authMiddleware(req, res, next) {
   }
 }
 
-// GET /api/rooms/:roomId/messages — история сообщений и звонков
+// GET /api/rooms/:roomId/messages — История сообщений и звонков
 router.get('/:roomId/messages', authMiddleware, async (req, res) => {
   const { roomId } = req.params;
+
   try {
-    const mem = await pool.query(
-      'SELECT 1 FROM room_members WHERE room_id = $1 AND nickname = $2',
-      [roomId, req.userNickname]
-    );
-    if (mem.rowCount === 0) {
+    // Проверка, является ли пользователь членом комнаты
+    const membership = await pool.query(`
+      SELECT 1 
+      FROM room_members 
+      WHERE room_id = $1 AND nickname = $2;
+    `, [roomId, req.userNickname]);
+
+    if (membership.rowCount === 0) {
       return res.status(403).send('Not a member');
     }
 
-    const { rows } = await pool.query(
-      
+    // Запрос на получение сообщений и звонков
+    const { rows } = await pool.query(`
       WITH combined AS (
         -- 1) Обычные сообщения и файлы (включая системные сообщения)
         SELECT
@@ -88,9 +96,7 @@ router.get('/:roomId/messages', authMiddleware, async (req, res) => {
       SELECT *
       FROM combined
       ORDER BY happened_at;
-      ,
-      [roomId]
-    );
+    `, [roomId]);
 
     res.json(rows);
   } catch (err) {
