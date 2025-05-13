@@ -445,7 +445,6 @@ async function endCall(message, status = 'finished') {
     if (!histRes.ok) return console.error(await histRes.text());
      const history = await histRes.json();
     history.forEach(m => {
-      console.log('Item:', m.type, m.sender_nickname, m.time, m.file_id);
       // 1) Звонок: проверяем по полю type
       if (m.type === 'call') {
         appendCall({
