@@ -13,7 +13,7 @@ async function authMiddleware(req, res, next) {
     const token   = auth.split(' ')[1];
     const payload = jwt.verify(token, JWT_SECRET);
     req.userLogin = payload.login;
-
+    // подтягиваем nickname
     const prof = await pool.query(
       `SELECT u.nickname
          FROM users u
@@ -32,10 +32,11 @@ async function authMiddleware(req, res, next) {
   }
 }
 
-// GET /api/rooms/:roomId/messages — история сообщений и звонков
+// GET /api/rooms/:roomId/messages — история сообщений
 router.get('/:roomId/messages', authMiddleware, async (req, res) => {
   const { roomId } = req.params;
   try {
+    // Проверяем, что пользователь участник
     const mem = await pool.query(
       'SELECT 1 FROM room_members WHERE room_id = $1 AND nickname = $2',
       [roomId, req.userNickname]
@@ -44,35 +45,36 @@ router.get('/:roomId/messages', authMiddleware, async (req, res) => {
       return res.status(403).send('Not a member');
     }
 
-    // Получаем из сообщений все записи: тексты, файлы и системные уведомления о звонках
-    const { rows } = await pool.query(
-      `
-      SELECT
-        CASE
-          WHEN m.call_id IS NOT NULL THEN 'call'
-          WHEN m.file_id IS NOT NULL THEN 'file'
-          ELSE 'message'
-        END AS type,
-        m.sender_nickname,
-        m.text,
-        m.time,
-        m.file_id,
-        m.filename,
-        m.mime_type,
-        c.recipient,
-        c.status,
-        c.duration,
-        c.ended_at
-      FROM messages m
-      LEFT JOIN calls c ON m.call_id = c.id
-      WHERE m.room_id = $1
-      ORDER BY m.time;
-      `,
-      [roomId]
-    );
-
-    console.log(`Fetched ${rows.length} items for room ${roomId}:`, rows);
-    res.json(rows);
+    // Отдаем историю
+    
+  const { rows } = await pool.query(
+     `SELECT
+        'message' AS type,
+        sender_nickname AS initiator,
+        NULL::text       AS recipient,
+        text,
+        time            AS happened_at,
+        NULL::timestamptz AS ended_at,
+        NULL::int       AS duration,
+        NULL::text      AS status
+      FROM messages
+    WHERE room_id = $1
+    UNION ALL
+    SELECT
+        'call'     AS type,
+        initiator,
+        recipient,
+        NULL::text      AS text,
+        started_at      AS happened_at,
+        ended_at,
+        duration,
+        status
+      FROM calls
+    WHERE room_id = $1
+    ORDER BY happened_at`,
+  [roomId]
+ );
+ res.json(rows);
   } catch (err) {
     console.error('Error fetching messages:', err);
     res.status(500).send('Error fetching messages');
