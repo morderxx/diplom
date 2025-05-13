@@ -439,62 +439,36 @@ async function joinRoom(roomId) {
     }
   };
 
-  // ─── Загрузка истории сообщений и звонков ────────────────────────────────
-  const [histRes, callsRes] = await Promise.all([
-    fetch(`${API_URL}/rooms/${roomId}/messages`, { headers: { Authorization: `Bearer ${token}` } }),
-    fetch(`${API_URL}/rooms/${roomId}/calls`,    { headers: { Authorization: `Bearer ${token}` } })
-  ]);
-  if (!histRes.ok) return console.error(await histRes.text());
-  if (!callsRes.ok) console.error('Не удалось загрузить историю звонков:', await callsRes.text());
-
-  const history      = await histRes.json();            // текст и файлы
-  const callsHistory = callsRes.ok ? await callsRes.json() : []; // события звонков
-
-  // ─── Преобразуем звонки в «системные» сообщения ─────────────────────────
-  const callEvents = callsHistory.map(c => {
-    let text;
-    switch (c.status) {
-      case 'cancelled':
-        text = `${c.initiator} отменил(а) звонок`;
-        break;
-      case 'missed':
-        text = `Пропущенный звонок от ${c.initiator}`;
-        break;
-      case 'finished': {
-        const mm = String(Math.floor(c.duration / 60)).padStart(2, '0');
-        const ss = String(c.duration % 60).padStart(2, '0');
-        text = `Звонок с ${c.recipient} завершён. Длительность ${mm}:${ss}`;
-        break;
-      }
-      default:
-        text = `Статус звонка: ${c.status}`;
-    }
-    return { type: 'system', text, time: c.started_at };
+  // ─── Загрузка всей истории из одного эндпоинта ───────────────────────────
+  const res = await fetch(`${API_URL}/rooms/${roomId}/messages`, {
+    headers: { Authorization: `Bearer ${token}` }
   });
+  if (!res.ok) {
+    console.error(await res.text());
+    return;
+  }
+  const history = await res.json();
 
-  // ─── Приводим обычные записи к единому формату ───────────────────────────
-  const textMsgs = history.map(m => ({
-    type: m.type === 'message' ? 'message' : m.file_id ? 'file' : m.type,
-    text: m.text,
-    time: m.time,
-    meta: m
-  }));
-
-  // ─── Объединяем и сортируем по времени ───────────────────────────────────
-  const merged = [...textMsgs, ...callEvents]
-    .sort((a, b) => new Date(a.time) - new Date(b.time));
-
-  // ─── Рендерим объединённую хронологическую ленту ─────────────────────────
-  merged.forEach(item => {
-    if (item.type === 'message') {
-      appendMessage(item.meta.sender_nickname, item.text, item.time);
-    } else if (item.type === 'file') {
-      const m = item.meta;
-      appendFile(m.sender_nickname, m.file_id, m.filename, m.mime_type, m.time);
-    } else if (item.type === 'system') {
-      appendSystem(item.text);
+  // ─── Рендерим каждый элемент в том виде, как раньше ──────────────────────
+  history.forEach(m => {
+    if (m.type === 'message') {
+      appendMessage(m.sender_nickname, m.text, m.time);
+    }
+    else if (m.file_id) {
+      appendFile(
+        m.sender_nickname,
+        m.file_id,
+        m.filename,
+        m.mime_type,
+        m.time
+      );
+    }
+    else if (m.type === 'call') {
+      // м.б. через appendSystem или appendCall — как вам удобнее
+      appendSystem(m.text);
     }
   });
+
 }
 
 
