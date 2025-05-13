@@ -296,6 +296,12 @@ button:hover {
 }
 
 /* Специальный стиль для «системных» сообщений о звонках */
+.call-event {
+    text-align: center;
+    color: #007bff;     /* ярко-голубой */
+    margin: 1em 0;
+    font-style: italic;
+}
 
 
 /* =============================== */
