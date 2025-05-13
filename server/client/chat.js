@@ -463,9 +463,9 @@ async function joinRoom(roomId) {
   console.log('=== history payload ===');
   console.table(history);
 
-  // ─── Рендерим историю ─────────────────────────────────────────────────────
- // ─── Рендерим историю ─────────────────────────────────────────────────────
+console.log('=== Проверка call_id в history ===');
 history.forEach(m => {
+   console.log(i, 'type:', m.type, 'text:', m.text, 'call_id:', m.call_id);
   // 1) «Чистый» звонок из таблицы calls
   if (m.type === 'call') {
     appendCallEvent(m.text);
