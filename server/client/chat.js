@@ -463,12 +463,6 @@ async function joinRoom(roomId) {
 console.log('=== Проверка call_id в history ===');
 history.forEach(m => {
 
-  // 1) «Чистый» звонок из таблицы calls
-  if (m.type === 'call') {
-    appendCallEvent(m.text);
-    return;
-  }
-
   // 2) Файловое сообщение (картинка/аудио/видео)
   if (m.file_id !== null) {
     appendFile(
