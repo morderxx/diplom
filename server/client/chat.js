@@ -434,25 +434,29 @@ async function endCall(message, status = 'finished') {
     });
     if (!histRes.ok) return console.error(await histRes.text());
     const history = await histRes.json();
-  history.forEach(m => {
+history.forEach(m => {
   if (m.status) {
     // звонок
     appendCall({
       initiator:   m.initiator,
       recipient:   m.recipient,
       status:      m.status,
-      happened_at: m.started_at,
+      happened_at: m.happened_at, // <- было m.started_at
       ended_at:    m.ended_at,
       duration:    m.duration
     });
   }
   else if (m.file_id) {
-    // файл
-    appendFile(m.sender_nickname, m.file_id, m.filename, m.mime_type, m.time);
+    // (если у вас есть файловая ветка — её можно оставить)
+    appendFile(m.initiator, m.file_id, m.filename, m.mime_type, m.happened_at);
   }
   else {
-    // текст
-    appendMessage(m.sender_nickname, m.text, m.time);
+    // текстовое сообщение
+    appendMessage(
+      m.initiator,       // вместо m.sender_nickname
+      m.text,
+      m.happened_at      // вместо m.time
+    );
   }
 });
     
