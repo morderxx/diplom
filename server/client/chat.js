@@ -119,7 +119,7 @@ async function endCall(message, status = 'finished') {
   }
 
   // Локальное уведомление (объединенное)
-  appendCenterCall(callMessage);
+ // appendCenterCall(callMessage);
 
   // Отправляем на бэкенд
   const startedISO = new Date(callStartTime).toISOString();
