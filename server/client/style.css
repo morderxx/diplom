@@ -295,15 +295,25 @@ button:hover {
     color: #000;
 }
 
-/* Специальный стиль для «системных» сообщений о звонках */
-.centered-message {
-  text-align: center;
-  background-color: #e0f7fa;
-  margin: 10px auto;
-  max-width: 60%;
-  border-radius: 12px;
-  padding: 10px;
+/* Обёртка для центрирования */
+.system-call-wrapper {
+  display: flex;
+  justify-content: center;
+  margin: 10px 0;
 }
+
+/* Сама «рамочка» */
+.system-call {
+  background-color: #E0F7FF;
+  color: #003366;
+  padding: 8px 12px;
+  border: 1px solid #99CCFF;
+  border-radius: 8px;
+  max-width: 60%;
+  text-align: center;
+  font-style: italic;
+}
+
 
 
 
