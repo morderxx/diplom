@@ -225,13 +225,24 @@ function createPeerConnection() {
   };
 
   // При получении потока добавляем его в аудиоплеер
+// При получении потока добавляем его в аудиоплеер и явно запускаем воспроизведение
   pc.ontrack = e => {
-    if (e.streams && e.streams[0]) {
-      remoteAudio.srcObject = e.streams[0];
-      console.log('Получен аудиопоток от собеседника.');
-    } else {
+    const stream = e.streams && e.streams[0];
+    if (!stream) {
       console.warn('Аудиопоток не получен.');
+      return;
     }
+    console.log('Получен аудиопоток от собеседника, tracks=', stream.getAudioTracks());
+
+    // Назначаем стрим и снимаем возможные заглушки
+    remoteAudio.srcObject = stream;
+    remoteAudio.muted = false;
+    remoteAudio.volume = 1.0;
+
+    // Пробуем сразу запустить (ловим ошибку автоплей)
+    remoteAudio.play()
+      .then(() => console.log('remoteAudio.play() успешно'))
+      .catch(err => console.error('remoteAudio.play() отклонён:', err));
   };
 }
 
