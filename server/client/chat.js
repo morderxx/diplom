@@ -523,13 +523,17 @@ async function joinRoom(roomId) {
         break;
 
       case 'file':
-        appendFile(
-          msg.sender,
-          msg.fileId,
-          msg.filename,
-          msg.mimeType,
-          msg.time
-        );
+         // если уже отрисовывали этот fileId — пропускаем
+     if (!renderedFileIds.has(msg.fileId)) {
+       renderedFileIds.add(msg.fileId);
+       appendFile(
+         msg.sender,
+         msg.fileId,
+         msg.filename,
+         msg.mimeType,
+         msg.time
+       );
+     }
         break;
 
       case 'webrtc-offer':
