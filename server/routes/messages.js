@@ -1,4 +1,4 @@
-// Импорт необходимых модулей
+// server/routes/messages.js
 const express = require('express');
 const jwt     = require('jsonwebtoken');
 const pool    = require('../db');
@@ -36,7 +36,8 @@ async function authMiddleware(req, res, next) {
 }
 
 // GET /api/rooms/:roomId/messages — история сообщений и звонков
-router.get('/:roomId/messages', authMiddleware, async (req, res) => {
+// Теперь внутри этого роутера мы обрабатываем просто GET '/'
+router.get('/', authMiddleware, async (req, res) => {
   const { roomId } = req.params;
 
   try {
@@ -52,52 +53,52 @@ router.get('/:roomId/messages', authMiddleware, async (req, res) => {
     }
 
     // Собираем историю с call_id
-const { rows } = await pool.query(`
-  WITH combined AS (
-    -- 1) Обычные сообщения и файлы
-    SELECT
-      'message'         AS type,
-      sender_nickname   AS sender_nickname,
-      NULL::text        AS initiator,
-      NULL::text        AS recipient,
-      text,
-      time              AS time,
-      time              AS happened_at,
-      file_id,
-      filename,
-      mime_type,
-      NULL::timestamptz AS ended_at,
-      NULL::int         AS duration,
-      NULL::text        AS status,
-      NULL::int         AS call_id      -- Заменяем messages.call_id на NULL
-    FROM messages
-    WHERE room_id = $1
+    const { rows } = await pool.query(`
+      WITH combined AS (
+        -- 1) Обычные сообщения и файлы
+        SELECT
+          'message'         AS type,
+          sender_nickname   AS sender_nickname,
+          NULL::text        AS initiator,
+          NULL::text        AS recipient,
+          text,
+          time              AS time,
+          time              AS happened_at,
+          file_id,
+          filename,
+          mime_type,
+          NULL::timestamptz AS ended_at,
+          NULL::int         AS duration,
+          NULL::text        AS status,
+          NULL::int         AS call_id
+        FROM messages
+        WHERE room_id = $1
 
-    UNION ALL
+        UNION ALL
 
-    -- 2) Звонки (как отдельные события)
-    SELECT
-      'call'            AS type,
-      initiator         AS sender_nickname,
-      initiator,
-      recipient,
-      NULL::text        AS text,
-      started_at        AS time,
-      started_at        AS happened_at,
-      NULL::int         AS file_id,
-      NULL::text        AS filename,
-      NULL::text        AS mime_type,
-      ended_at,
-      duration,
-      status,
-      id                AS call_id
-    FROM calls
-    WHERE room_id = $1
-  )
-  SELECT *
-  FROM combined
-  ORDER BY happened_at;
-`, [roomId]);
+        -- 2) Звонки (как отдельные события)
+        SELECT
+          'call'            AS type,
+          initiator         AS sender_nickname,
+          initiator,
+          recipient,
+          NULL::text        AS text,
+          started_at        AS time,
+          started_at        AS happened_at,
+          NULL::int         AS file_id,
+          NULL::text        AS filename,
+          NULL::text        AS mime_type,
+          ended_at,
+          duration,
+          status,
+          id                AS call_id
+        FROM calls
+        WHERE room_id = $1
+      )
+      SELECT *
+      FROM combined
+      ORDER BY happened_at;
+    `, [roomId]);
 
     res.json(rows);
   } catch (err) {
