@@ -14,7 +14,11 @@ function setupWebSocket(server) {
   wss.on('connection', ws => {
     ws.on('message', async raw => {
       let msg;
-      try { msg = JSON.parse(raw); } catch { return; }
+      try {
+        msg = JSON.parse(raw);
+      } catch {
+        return;
+      }
 
       // JOIN
       if (msg.type === 'join') {
@@ -28,7 +32,7 @@ function setupWebSocket(server) {
               WHERE s.login = $1`,
             [login]
           );
-          const nick = r.rows[0]?.nickname;
+          const nick = r.rows[0] && r.rows[0].nickname;
           if (!nick) throw new Error('No nick');
           clients.set(ws, { nickname: nick, roomId: msg.roomId });
         } catch (e) {
@@ -49,14 +53,13 @@ function setupWebSocket(server) {
               WHERE s.login = $1`,
             [login]
           );
-          const sender = r.rows[0]?.nickname;
+          const sender = r.rows[0] && r.rows[0].nickname;
           if (!sender) return;
 
           const time = new Date().toISOString();
-
           await pool.query(
             `INSERT INTO messages (room_id, sender_nickname, text, time)
-               VALUES ($1,$2,$3,$4)`,
+               VALUES ($1, $2, $3, $4)`,
             [msg.roomId, sender, msg.text, time]
           );
 
@@ -80,7 +83,8 @@ function setupWebSocket(server) {
       // FILE MESSAGE
       if (msg.type === 'file') {
         let senderInfo = clients.get(ws);
-        if (!senderInfo && msg.roomId) {
+        if (!senderInfo && msg.roomId && msg.sender) {
+          // если JOIN ещё не успел, подхватываем из сообщения
           senderInfo = { nickname: msg.sender, roomId: msg.roomId };
           clients.set(ws, senderInfo);
         }
@@ -108,7 +112,12 @@ function setupWebSocket(server) {
         if (!senderInfo) return;
         wss.clients.forEach(c => {
           const info = clients.get(c);
-          if (c !== ws && info && info.roomId === senderInfo.roomId && c.readyState === WebSocket.OPEN) {
+          if (
+            c !== ws &&
+            info &&
+            info.roomId === senderInfo.roomId &&
+            c.readyState === WebSocket.OPEN
+          ) {
             c.send(JSON.stringify({
               type:    msg.type,
               from:    senderInfo.nickname,
@@ -124,7 +133,12 @@ function setupWebSocket(server) {
         if (!senderInfo) return;
         wss.clients.forEach(c => {
           const info = clients.get(c);
-          if (c !== ws && info && info.roomId === senderInfo.roomId && c.readyState === WebSocket.OPEN) {
+          if (
+            c !== ws &&
+            info &&
+            info.roomId === senderInfo.roomId &&
+            c.readyState === WebSocket.OPEN
+          ) {
             c.send(JSON.stringify({
               type:   'webrtc-cancel',
               from:   senderInfo.nickname,
@@ -132,7 +146,6 @@ function setupWebSocket(server) {
             }));
           }
         });
-        return;
       }
     });
 
