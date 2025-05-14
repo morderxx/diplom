@@ -10,7 +10,7 @@ const usersRoutes    = require('./routes/users');
 const roomsRoutes    = require('./routes/rooms');
 const messagesRoutes = require('./routes/messages');
 const filesRoutes    = require('./routes/files');
-const callsRouter = require('./routes/calls');
+const callsRouter    = require('./routes/calls');
 
 const setupWebSocket = require('./chat');
 
@@ -39,5 +39,5 @@ app.get(/^\/(?!api).*/, (req, res) =>
 
 // 5) Запуск HTTP и WebSocket
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(Server listening on ${PORT}));
+server.listen(PORT, () => console.log(`Server listening on ${PORT}`));
 setupWebSocket(server);
