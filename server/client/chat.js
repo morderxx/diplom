@@ -60,7 +60,20 @@ document.addEventListener('DOMContentLoaded', () => {
     chatBox.appendChild(el);
     chatBox.scrollTop = chatBox.scrollHeight;
   }
+// В самом начале chat.js:
+function appendCenterCall(text) {
+  const chatBox = document.getElementById('chat-box');
+  const wrapper = document.createElement('div');
+  wrapper.className = 'system-call-wrapper';
 
+  const el = document.createElement('div');
+  el.className = 'system-call';
+  el.textContent = text;
+
+  wrapper.appendChild(el);
+  chatBox.appendChild(wrapper);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
   // Показать окно звонка
   function showCallWindow(peer, incoming = false) {
     currentPeer = peer;  
@@ -490,7 +503,7 @@ history.forEach(m => {
 
   // 3) Текстовое сообщение, привязанное к звонку (call_id)
   if (m.call_id !== null) {
-    appendSystemCall(m.text);
+    appendCenterCall(m.text);
     return;
   }
 
@@ -509,27 +522,6 @@ history.forEach(m => {
 
 
 }  // <-- закрыли функцию joinRoom
-
-
-// где‑то вверху chat.js
-function appendCenterCall(text) {
-  const chatBox = document.getElementById('chat-box');
-
-  // создаём контейнер-обёртку, чтобы flex-centering сработало
-  const wrapper = document.createElement('div');
-  wrapper.className = 'system-call-wrapper';
-
-  // сам блок с текстом
-  const el = document.createElement('div');
-  el.className = 'system-call';
-  el.textContent = text;
-
-  wrapper.appendChild(el);
-  chatBox.appendChild(wrapper);
-  chatBox.scrollTop = chatBox.scrollHeight;
-}
-
-
   
 function appendMessage(sender, text, time, callId = null) {
   const chatBox = document.getElementById('chat-box');
