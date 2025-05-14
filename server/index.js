@@ -22,25 +22,13 @@ app.use(cors());
 app.use(express.json());
 
 // 2) API
-app.use('/api',       authRoutes);
-app.use('/api/users', usersRoutes);
+app.use('/api/auth',      authRoutes);                     // /api/auth/login, /api/auth/register и т.д.
+app.use('/api/users',     usersRoutes);                    // /api/users      (здесь уже стоит authMiddleware)
+app.use('/api/rooms/:roomId/messages', messagesRoutes);    // /api/rooms/123/messages
+app.use('/api/rooms/:roomId/calls',    callsRouter);       // /api/rooms/123/calls
+app.use('/api/rooms',     roomsRoutes);                    // /api/rooms, /api/rooms/:roomId и т.п.
+app.use('/api/files',     filesRoutes);                    // /api/files
 
-// Сообщения внутри конкретной комнаты
-app.use(
-  '/api/rooms/:roomId/messages',
-  messagesRoutes
-);
-
-// Звонки внутри конкретной комнаты
-app.use(
-  '/api/rooms/:roomId/calls',
-  callsRouter
-);
-
-// Остальные операции с комнатами
-app.use('/api/rooms', roomsRoutes);
-
-app.use('/api/files', filesRoutes);
 
 // 3) Статика клиента
 app.use(express.static(path.join(__dirname, 'client')));
