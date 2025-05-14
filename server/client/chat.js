@@ -162,45 +162,57 @@ async function endCall(message, status = 'finished') {
 
   // Прикрепление файла
   attachBtn.onclick = () => fileInput.click();
-fileInput.onchange = async () => {
-  if (!currentRoom) return alert('Сначала выберите чат');
-  const file = fileInput.files[0];
-  if (!file) return;
+fileInput.onchange = () => {
+  (async () => {
+    try {
+      if (!currentRoom) {
+        alert('Сначала выберите чат');
+        return;
+      }
+      const file = fileInput.files[0];
+      if (!file) return;
 
-  // 1) Загружаем файл на сервер
-  const form = new FormData();
-  form.append('file', file);
-  form.append('roomId', currentRoom);
-  const res = await fetch(`${API_URL}/files`, {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${token}` },
-    body: form
-  });
-  if (!res.ok) {
-    console.error('Ошибка загрузки файла:', await res.text());
-    fileInput.value = '';
-    return;
-  }
+      // 1) Загружаем файл
+      const form = new FormData();
+      form.append('file', file);
+      form.append('roomId', currentRoom);
+      const res = await fetch(`${API_URL}/files`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: form
+      });
+      if (!res.ok) {
+        console.error('Ошибка загрузки файла:', await res.text());
+        return;
+      }
 
-  // 2) Берём ответ сервера с метаданными
-  const { fileId, filename, mimeType, time } = await res.json();
-  fileInput.value = '';
+      // 2) Ответ сервера
+      const { fileId, filename, mimeType, time } = await res.json();
 
-  // 3) Рассылаем по WebSocket всем в комнате (добавили roomId)
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    socket.send(JSON.stringify({
-      type:     'file',
-      roomId:   currentRoom,    // ← вот этот ключ нужно обязательно передавать
-      sender:   userNickname,
-      fileId,
-      filename,
-      mimeType,
-      time
-    }));
-  }
+      // 3) WS‑рассылка
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+          type:     'file',
+          roomId:   currentRoom,
+          sender:   userNickname,
+          fileId,
+          filename,
+          mimeType,
+          time
+        }));
+      }
 
-  // 4) Локально отображаем у себя
-  appendFile(userNickname, fileId, filename, mimeType, time);
+      // 4) Локальный рендер
+      appendFile(userNickname, fileId, filename, mimeType, time);
+
+    } catch (err) {
+      console.error('Ошибка в fileInput.onchange:', err);
+    } finally {
+      // сброс input и восстановление кнопки send
+      fileInput.value = '';
+      sendBtn.disabled = false;   // если вдруг был disabled
+    }
+  })();
 };
 
 
