@@ -12,7 +12,8 @@ const callsRouter    = require('./routes/calls');
 const roomsRoutes    = require('./routes/rooms');
 const filesRoutes    = require('./routes/files');
 
-const setupWebSocket = require('./chat');
+const { setupWebSocket } = require('./chat');
+
 
 const app    = express();
 const server = http.createServer(app);
