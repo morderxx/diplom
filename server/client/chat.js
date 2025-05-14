@@ -386,14 +386,15 @@ answerBtn.onclick = async () => {
 // 2) Обработчик клика для Lightbox — открывает blob: или прямой URL и качает по data-src
 document.getElementById('chat-box').addEventListener('click', e => {
   if (e.target.tagName === 'IMG' && e.target.dataset.src) {
-    // Показываем либо blob-url, либо прямой в превью
+    // Показываем превью (это будет blob: или прямой URL в зависимости от состояния)
     lightboxImg.src = e.target.src;
-    // Кнопка download всегда берёт оригинальный API URL
+    // Скачивать будем по исходному API-URL
     overlay.dataset.url      = e.target.dataset.src;
     overlay.dataset.filename = e.target.dataset.filename;
     overlay.classList.remove('hidden');
   }
 });
+
 
 
   lbCloseBtn.onclick = () => overlay.classList.add('hidden');
@@ -696,30 +697,11 @@ function appendMessage(sender, text, time, callId = null) {
 
 
 async function appendFile(sender, fileId, filename, mimeType, time) {
-  // 1) Если уже отрисовали — выходим
+  // 1) Дубли
   if (renderedFileIds.has(fileId)) return;
   renderedFileIds.add(fileId);
 
-  // 2) Для картинок сначала подгружаем или фэллбеким URL
-  let finalSrc = null;
-  if (mimeType.startsWith('image/')) {
-    const apiSrc = `${API_URL}/files/${fileId}`;
-    try {
-      const res = await fetch(apiSrc, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error(res.statusText);
-      const blob = await res.blob();
-      finalSrc = URL.createObjectURL(blob);
-      // через минуту можно освободить:
-      // setTimeout(() => URL.revokeObjectURL(finalSrc), 60_000);
-    } catch (err) {
-      console.warn('Blob-загрузка картинки упала, фэллбеким на прямой src:', err);
-      finalSrc = apiSrc;
-    }
-  }
-
-  // 3) Теперь строим DOM-узлы уже с готовым finalSrc
+  // 2) Общая разметка
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
   wrapper.className = 'message-wrapper';
@@ -736,17 +718,45 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble media-bubble';
 
+  // Сразу вставляем в DOM (без ожидания fetch)
+  msgEl.append(info, bubble);
+  wrapper.appendChild(msgEl);
+  chatBox.appendChild(wrapper);
+  chatBox.scrollTop = chatBox.scrollHeight;
+
+  // 3) Тип изображения
   if (mimeType.startsWith('image/')) {
-    // IMG — с готовым finalSrc и дата-атрибутами для лайтбокса
+    const apiSrc = `${API_URL}/files/${fileId}`;
     const img = document.createElement('img');
-    img.src = finalSrc;
-    img.alt = filename;
-    img.dataset.src      = `${API_URL}/files/${fileId}`;
+    // убираем alt, чтобы не писался текст «Загрузка…»
+    img.alt = '';
+    // для лайтбокса
+    img.dataset.src      = apiSrc;
     img.dataset.fileId   = fileId;
     img.dataset.filename = filename;
     bubble.appendChild(img);
 
-  } else if (mimeType.startsWith('audio/')) {
+    // асинхронно подтягиваем blob, по готовности ставим src
+    fetch(apiSrc, { headers: { 'Authorization': `Bearer ${token}` } })
+      .then(res => {
+        if (!res.ok) throw new Error(res.statusText);
+        return res.blob();
+      })
+      .then(blob => {
+        img.src = URL.createObjectURL(blob);
+        // через минуту можно очистить:
+        // setTimeout(() => URL.revokeObjectURL(img.src), 60_000);
+      })
+      .catch(err => {
+        console.warn('Не получилось blob-загрузить, делаем fallback:', err);
+        img.src = apiSrc;
+      });
+
+    return;  // на этом выходим и НЕ идём в последующие блоки
+  }
+
+  // 4) Остальные типы (аудио, видео, файл)
+  if (mimeType.startsWith('audio/')) {
     const audio = document.createElement('audio');
     audio.controls = true;
     audio.src = `${API_URL}/files/${fileId}`;
@@ -768,12 +778,6 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
     };
     bubble.appendChild(link);
   }
-
-  // Финальная сборка
-  msgEl.append(info, bubble);
-  wrapper.appendChild(msgEl);
-  chatBox.appendChild(wrapper);
-  chatBox.scrollTop = chatBox.scrollHeight;
 }
 
 
