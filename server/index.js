@@ -24,8 +24,8 @@ app.use(express.json());
 // 2) API
 app.use('/api',          authRoutes);
 app.use('/api/users',    usersRoutes);
-app.use('/api/rooms',    roomsRoutes);
 app.use('/api/rooms',    messagesRoutes);
+app.use('/api/rooms',    roomsRoutes);
 app.use('/api/files',    filesRoutes);
 app.use('/api/rooms', callsRouter);
 // 3) Статика клиента
