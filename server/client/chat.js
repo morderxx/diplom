@@ -202,8 +202,7 @@ fileInput.onchange = () => {
         }));
       }
 
-      // 4) Локальный рендер
-      appendFile(userNickname, fileId, filename, mimeType, time);
+      
 
     } catch (err) {
       console.error('Ошибка в fileInput.onchange:', err);
