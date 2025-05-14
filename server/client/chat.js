@@ -485,7 +485,7 @@ async function joinRoom(roomId) {
     return;
   }
   const history = await res.json();
-console.log('HISTORY RAW SAMPLE:', history[0]);
+console.log('HISTORY RAW SAMPLE:', history[1]);
 console.log('=== Проверка call_id в history ===');
 history.forEach(m => {
   // 3) Текстовое сообщение, привязанное к звонку (call_id)
