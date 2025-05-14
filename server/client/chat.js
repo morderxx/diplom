@@ -489,20 +489,38 @@ async function joinRoom(roomId) {
 console.log('RAW HISTORY:', JSON.stringify(history, null, 2));
 
 history.forEach(m => {
-  // 1) Текстовое сообщение, привязанное к звонку (из таблицы messages)
-  if (m.type === 'message' && m.call_id != null) {
-    appendCenterCall(m.text);
-    return;
-  }
 
-  // 2) «Чистое» событие звонка (из таблицы calls)
+// 1) Событие звонка из таблицы calls
   if (m.type === 'call') {
+    // форматируем время и длительность
     const time = new Date(m.happened_at)
       .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const durStr = m.duration
       ? new Date(m.duration * 1000).toISOString().substr(11, 8)
-      : '--:--:--';
-    const text = `📞 ${m.initiator} → ${m.recipient} • ${m.status} • ${durStr} • ${time}`;
+      : '00:00:00';
+
+    let text;
+    switch (m.status) {
+      case 'finished':
+        // завершён нормально
+        text = `📞 Звонок от ${m.initiator} к ${m.recipient} длился ${durStr}.`;
+        break;
+
+      case 'cancelled':
+        if (m.duration === 0) {
+          // просто не ответили
+          text = `📞 Исходящий вызов от ${m.initiator} к ${m.recipient} не был принят.`;
+        } else {
+          // сброшен во время разговора
+          text = `📞 Звонок от ${m.initiator} к ${m.recipient} был сброшен. Длительность ${durStr}.`;
+        }
+        break;
+
+      default:
+        // на всякий случай
+        text = `📞 ${m.initiator} → ${m.recipient} • ${m.status} • ${durStr} • ${time}`;
+    }
+
     appendCenterCall(text);
     return;
   }
