@@ -502,8 +502,14 @@ history.forEach(m => {
   }
 
   // 3) Текстовое сообщение, привязанное к звонку (call_id)
-  if (m.call_id !== null) {
-    appendCenterCall(m.text);
+if (m.type === 'call') {
+    const time = new Date(m.happened_at)
+      .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const durStr = m.duration
+      ? new Date(m.duration * 1000).toISOString().substr(11, 8)
+      : '--:--:--';
+    const text = `📞 ${m.initiator} → ${m.recipient} • ${m.status} • ${durStr} • ${time}`;
+    appendCenterCall(text);
     return;
   }
 
