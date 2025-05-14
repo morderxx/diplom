@@ -477,12 +477,7 @@ history.forEach(m => {
 
   // 3) Текстовое сообщение, привязанное к звонку (call_id)
   if (m.call_id !== null) {
-    appendMessage(
-      m.sender_nickname,
-      m.text,
-      m.time,
-      m.call_id
-    );
+    appendSystemCall(m.text);
     return;
   }
 
@@ -503,30 +498,55 @@ history.forEach(m => {
 }  // <-- закрыли функцию joinRoom
 
 
-
-  
-function appendMessage(sender, text, time, call_id = null) {
+// в самом верху, рядом с appendSystem
+function appendSystemCall(text) {
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
-  wrapper.className = 'message-wrapper';
+  wrapper.className = 'system-call-wrapper';
 
-  const msgEl = document.createElement('div');
-  msgEl.className = 'message';
+  const el = document.createElement('div');
+  el.className = 'system-call';
+  el.textContent = text;
 
-  if (call_id !== null) {
-    msgEl.classList.add('centered-message');
+  wrapper.appendChild(el);
+  chatBox.appendChild(wrapper);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+  
+function appendMessage(sender, text, time, callId = null) {
+  const chatBox = document.getElementById('chat-box');
+
+  // 1) Сообщение, привязанное к звонку — отдельный div
+  if (callId !== null) {
+    const el = document.createElement('div');
+    el.className = 'call-event';    // <-- только этот класс
+    el.textContent = text;
+    chatBox.appendChild(el);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    return;
   }
 
-  const meta = document.createElement('div');
-  meta.className = 'message-meta';
-  meta.textContent = `${sender} • ${new Date(time).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}`;
+  // 2) Обычное сообщение — как было раньше
+  const wrapper = document.createElement('div');
+  wrapper.className = 'message-wrapper';
+  const msgEl = document.createElement('div');
+  msgEl.className = sender === userNickname ? 'my-message' : 'other-message';
 
-  const body = document.createElement('div');
-  body.className = 'message-text';
-  body.textContent = text;
+  const info = document.createElement('div');
+  info.className = 'message-info';
+  info.textContent = `${sender} • ${new Date(time).toLocaleTimeString([], {
+    hour: '2-digit', minute: '2-digit'
+  })}`;
 
-  msgEl.appendChild(meta);
-  msgEl.appendChild(body);
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble';
+  const textEl = document.createElement('div');
+  textEl.className = 'message-text';
+  textEl.textContent = text;
+  bubble.appendChild(textEl);
+
+  msgEl.append(info, bubble);
   wrapper.appendChild(msgEl);
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
