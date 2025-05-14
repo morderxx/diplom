@@ -489,7 +489,15 @@ async function joinRoom(roomId) {
 console.log('=== Проверка call_id в history ===');
 history.forEach(m => {
   // 3) Текстовое сообщение, привязанное к звонку (call_id)
-if (m.type === 'call') {
+  // 1) Текстовые сообщения, привязанные к звонку
+  if (m.call_id != null) {
+    // Приведём текст к тому же формату или просто выведем m.text
+    appendCenterCall(m.text);
+    return;
+  }
+
+  // 2) «Чистые» события звонка
+  if (m.type === 'call') {
     const time = new Date(m.happened_at)
       .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const durStr = m.duration
