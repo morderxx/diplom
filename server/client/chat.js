@@ -18,6 +18,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let localStream    = null;
   let callStartTime  = null;
   let callTimerIntvl = null;
+  let isIncoming = false;
+  let answerTimeout = null;
+
 
   const stunConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
@@ -75,22 +78,29 @@ function appendCenterCall(text) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
   // Показать окно звонка
-  function showCallWindow(peer, incoming = false) {
-    currentPeer = peer;  
-    callTitle.textContent = `Звонок с ${peer}`;
-    callStatus.textContent = incoming ? 'Входящий звонок' : 'Ожидание ответа';
-    callTimerEl.textContent = '00:00';
-    answerBtn.style.display = incoming ? 'inline-block' : 'none';
-    cancelBtn.textContent = incoming ? 'Отклонить' : 'Отмена';
-    callWindow.classList.remove('hidden');
-    callStartTime = Date.now();
-    callTimerIntvl = setInterval(() => {
-      const sec = Math.floor((Date.now() - callStartTime) / 1000);
-      const m = String(Math.floor(sec / 60)).padStart(2, '0');
-      const s = String(sec % 60).padStart(2, '0');
-      callTimerEl.textContent = `${m}:${s}`;
-    }, 1000);
+ function showCallWindow(peer, incoming = false) {
+  currentPeer = peer;
+  isIncoming = incoming;
+  callTitle.textContent = `Звонок с ${peer}`;
+  callStatus.textContent = incoming ? 'Входящий звонок' : 'Ожидание ответа';
+  callTimerEl.textContent = '00:00';
+  answerBtn.style.display = incoming ? 'inline-block' : 'none';
+  cancelBtn.textContent = incoming ? 'Отклонить' : 'Отмена';
+  callWindow.classList.remove('hidden');
+
+  // Если это исходящий — через 60 сек считаем «пропущенным»
+  if (!incoming) {
+    answerTimeout = setTimeout(() => {
+      endCall('Исходящий вызов не был принят', 'missed');
+    }, 60_000);
   }
+
+  callStartTime = Date.now();
+  callTimerIntvl = setInterval(() => {
+    const sec = Math.floor((Date.now() - callStartTime) / 1000);
+    callTimerEl.textContent = `${String(Math.floor(sec/60)).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`;
+  }, 1000);
+}
 
   // Скрыть окно звонка
   function hideCallWindow() {
@@ -264,18 +274,43 @@ async function endCall(message, status = 'finished') {
   answerBtn.style.display = 'none';
 };
 
- cancelBtn.onclick = () => {
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    // шлём отмену и roomId, чтобы сервер переслал другому
+cancelBtn.onclick = () => {
+  // если был таймер «пропуска» — чистим его
+  if (answerTimeout) {
+    clearTimeout(answerTimeout);
+    answerTimeout = null;
+  }
+
+  // решаем статус по текущему состоянию
+  let status, message;
+  const inCall = callStatus.textContent === 'В разговоре';
+
+  if (inCall) {
+    // сбросили во время разговора
+    status  = 'cancelled_by_recipient_during';
+    message = `Вы завершили разговор. Длительность ${callTimerEl.textContent}`;
+  } else if (isIncoming) {
+    // входящий вызов — отклонили до ответа
+    status  = 'cancelled_by_recipient';
+    message = 'Вы отклонили входящий звонок';
+  } else {
+    // исходящий до ответа — инициатор отменил
+    status  = 'cancelled_by_initiator';
+    message = 'Вы отменили исходящий вызов';
+  }
+
+  // Если нужно оповестить собеседника о «webrtc-cancel»
+  if (socket && socket.readyState === WebSocket.OPEN && !inCall) {
     socket.send(JSON.stringify({
       type:   'webrtc-cancel',
-      from: userNickname,
+      from:   userNickname,
       roomId: currentRoom
     }));
   }
-  // своё окно закрываем
-  endCall('Вы отменили звонок', 'cancelled');
+
+  endCall(message, status);
 };
+
 
  // minimizeBtn.onclick = () => callWindow.classList.toggle('minimized');
 
@@ -425,7 +460,7 @@ async function joinRoom(roomId) {
     const msg = JSON.parse(ev.data);
     switch (msg.type) {
       case 'webrtc-cancel':
-        endCall('Собеседник отменил звонок', 'cancelled');
+        endCall('Собеседник отменил звонок', 'cancelled_by_initiator');
         break;
 
       case 'message':
