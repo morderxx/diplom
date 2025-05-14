@@ -386,15 +386,15 @@ answerBtn.onclick = async () => {
 // 2) Обработчик клика для Lightbox — открывает blob: или прямой URL и качает по data-src
 document.getElementById('chat-box').addEventListener('click', e => {
   if (e.target.tagName === 'IMG' && e.target.dataset.src) {
-    // показываем текущее изображение (blob: или прямой)
+    // Показываем либо blob-url, либо прямой в превью
     lightboxImg.src = e.target.src;
-
-    // для скачивания используем оригинальный URL
+    // Кнопка download всегда берёт оригинальный API URL
     overlay.dataset.url      = e.target.dataset.src;
     overlay.dataset.filename = e.target.dataset.filename;
     overlay.classList.remove('hidden');
   }
 });
+
 
   lbCloseBtn.onclick = () => overlay.classList.add('hidden');
   lbDownloadBtn.onclick = () => {
@@ -695,14 +695,31 @@ function appendMessage(sender, text, time, callId = null) {
   }
 
 
-
-// 1) appendFile: защищённая загрузка через fetch+blob + fallback + лайтксбокс
 async function appendFile(sender, fileId, filename, mimeType, time) {
-  // фильтрация дублей
+  // 1) Если уже отрисовали — выходим
   if (renderedFileIds.has(fileId)) return;
   renderedFileIds.add(fileId);
 
-  // создаём разметку
+  // 2) Для картинок сначала подгружаем или фэллбеким URL
+  let finalSrc = null;
+  if (mimeType.startsWith('image/')) {
+    const apiSrc = `${API_URL}/files/${fileId}`;
+    try {
+      const res = await fetch(apiSrc, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error(res.statusText);
+      const blob = await res.blob();
+      finalSrc = URL.createObjectURL(blob);
+      // через минуту можно освободить:
+      // setTimeout(() => URL.revokeObjectURL(finalSrc), 60_000);
+    } catch (err) {
+      console.warn('Blob-загрузка картинки упала, фэллбеким на прямой src:', err);
+      finalSrc = apiSrc;
+    }
+  }
+
+  // 3) Теперь строим DOM-узлы уже с готовым finalSrc
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
   wrapper.className = 'message-wrapper';
@@ -719,40 +736,17 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble media-bubble';
 
-  // вставляем каркас
-  msgEl.append(info, bubble);
-  wrapper.appendChild(msgEl);
-  chatBox.appendChild(wrapper);
-  chatBox.scrollTop = chatBox.scrollHeight;
-
-  // разные типы
   if (mimeType.startsWith('image/')) {
-    // IMG: сначала пустой, потом blob или fallback
+    // IMG — с готовым finalSrc и дата-атрибутами для лайтбокса
     const img = document.createElement('img');
-    img.alt = 'Загрузка…';
-    // для Lightbox и fallback
+    img.src = finalSrc;
+    img.alt = filename;
     img.dataset.src      = `${API_URL}/files/${fileId}`;
     img.dataset.fileId   = fileId;
     img.dataset.filename = filename;
     bubble.appendChild(img);
 
-    try {
-      const res = await fetch(img.dataset.src, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error(res.statusText);
-      const blob = await res.blob();
-      img.src = URL.createObjectURL(blob);
-      // через минуту можно очистить:
-      // setTimeout(() => URL.revokeObjectURL(img.src), 60_000);
-    } catch (err) {
-      console.warn('Blob-загрузка упала, fallback на прямой src:', err);
-      img.src = img.dataset.src;
-    }
-    return;
-  }
-
-  if (mimeType.startsWith('audio/')) {
+  } else if (mimeType.startsWith('audio/')) {
     const audio = document.createElement('audio');
     audio.controls = true;
     audio.src = `${API_URL}/files/${fileId}`;
@@ -774,9 +768,13 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
     };
     bubble.appendChild(link);
   }
+
+  // Финальная сборка
+  msgEl.append(info, bubble);
+  wrapper.appendChild(msgEl);
+  chatBox.appendChild(wrapper);
+  chatBox.scrollTop = chatBox.scrollHeight;
 }
-
-
 
 
   function sendMessage() {
