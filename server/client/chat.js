@@ -98,7 +98,7 @@ function appendCenterCall(text) {
     callWindow.classList.add('hidden');
   }
 
-  // Завершить звонок
+// Завершить звонок
 async function endCall(message, status = 'finished') {
   clearInterval(callTimerIntvl);
   if (pc) pc.close();
@@ -108,20 +108,27 @@ async function endCall(message, status = 'finished') {
     localStream = null;
   }
 
-  // Собираем текст с учетом статуса
-  const callMessage = status === 'cancelled' && callTimerEl.textContent === '00:00' 
-    ? `📞 Звонок от ${userNickname} к ${currentPeer} был отменен.` 
-    : `📞 Звонок от ${userNickname} к ${currentPeer} был завершен. Длительность ${callTimerEl.textContent}.`;
+  // Формируем текст уведомления в зависимости от статуса
+  let callMessage = '';
+  if (status === 'cancelled' && callTimerEl.textContent === '00:00') {
+    callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} был отменен.`;
+  } else if (status === 'cancelled') {
+    callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} был сброшен. Длительность ${callTimerEl.textContent}.`;
+  } else if (callTimerEl.textContent === '00:00') {
+    callMessage = `📞 Исходящий вызов от ${userNickname} к ${currentPeer} не был принят.`;
+  } else {
+    callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} завершен. Длительность ${callTimerEl.textContent}.`;
+  }
 
   // Локальное уведомление
   appendCenterCall(callMessage);
 
-  // 2) Собираем данные звонка
+  // Собираем данные звонка
   const startedISO = new Date(callStartTime).toISOString();
   const endedISO = new Date().toISOString();
   const durationSec = Math.floor((Date.now() - callStartTime) / 1000);
 
-  // 3) Отправляем на бэкенд
+  // Отправляем на бэкенд
   try {
     await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
       method: 'POST',
@@ -136,39 +143,6 @@ async function endCall(message, status = 'finished') {
         ended_at: endedISO,
         status: status,
         duration: durationSec
-      })
-    });
-  } catch (err) {
-    console.error('Не удалось сохранить звонок в БД:', err);
-  }
-
-  hideCallWindow();
-}
-
-
-  // 1) Локальное уведомление
-  appendSystem(message || `Звонок завершён. Длительность ${callTimerEl.textContent}`);
-
-  // 2) Собираем данные звонка
-  const startedISO  = new Date(callStartTime).toISOString();
-  const endedISO    = new Date().toISOString();
-  const durationSec = Math.floor((Date.now() - callStartTime) / 1000);
-
-  // 3) Отправляем на бэкенд
-  try {
-    await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        initiator:  userNickname,
-        recipient:  currentPeer,
-        started_at: startedISO,
-        ended_at:   endedISO,
-        status:     status,      // 'finished' или 'cancelled'
-        duration:   durationSec
       })
     });
   } catch (err) {
@@ -528,38 +502,23 @@ console.log('RAW HISTORY:', JSON.stringify(history, null, 2));
 
 history.forEach(m => {
 
-// 1) Событие звонка из таблицы calls
-  if (m.type === 'call') {
-    // форматируем время и длительность
-    const time = new Date(m.happened_at)
-      .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+ if (m.type === 'call') {
     const durStr = m.duration
       ? new Date(m.duration * 1000).toISOString().substr(11, 8)
       : '00:00:00';
 
-    let text;
-    switch (m.status) {
-      case 'finished':
-        // завершён нормально
-        text = `📞 Звонок от ${m.initiator} к ${m.recipient} длился ${durStr}.`;
-        break;
-
-      case 'cancelled':
-        if (m.duration === 0) {
-          // просто не ответили
-          text = `📞 Исходящий вызов от ${m.initiator} к ${m.recipient} не был принят.`;
-        } else {
-          // сброшен во время разговора
-          text = `📞 Звонок от ${m.initiator} к ${m.recipient} был сброшен. Длительность ${durStr}.`;
-        }
-        break;
-
-      default:
-        // на всякий случай
-        text = `📞 ${m.initiator} → ${m.recipient} • ${m.status} • ${durStr} • ${time}`;
+    let callMessage;
+    if (m.status === 'cancelled' && m.duration === 0) {
+      callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} был отменен.`;
+    } else if (m.status === 'cancelled') {
+      callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} был сброшен. Длительность ${durStr}.`;
+    } else if (m.duration === 0) {
+      callMessage = `📞 Исходящий вызов от ${m.initiator} к ${m.recipient} не был принят.`;
+    } else {
+      callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} завершен. Длительность ${durStr}.`;
     }
 
-    appendCenterCall(text);
+    appendCenterCall(callMessage);
     return;
   }
 
