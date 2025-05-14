@@ -499,6 +499,7 @@ answerBtn.onclick = async () => {
   
 async function joinRoom(roomId) {
   if (socket) socket.close();
+  // начинаем с чистого списка отрисованных файлов
   renderedFileIds.clear();
   currentRoom = roomId;
   document.getElementById('chat-box').innerHTML = '';
@@ -522,19 +523,17 @@ async function joinRoom(roomId) {
         appendMessage(msg.sender, msg.text, msg.time);
         break;
 
-      case 'file':
-         // если уже отрисовывали этот fileId — пропускаем
-     if (!renderedFileIds.has(msg.fileId)) {
-       renderedFileIds.add(msg.fileId);
-       appendFile(
-         msg.sender,
-         msg.fileId,
-         msg.filename,
-         msg.mimeType,
-         msg.time
-       );
-     }
-        break;
+   case 'file':
+      // просто вызываем appendFile —
+      // дубли отсеется там само́й
+      appendFile(
+        msg.sender,
+        msg.fileId,
+        msg.filename,
+        msg.mimeType,
+        msg.time
+      );
+      break;
 
       case 'webrtc-offer':
         currentPeer = msg.from;
@@ -692,11 +691,15 @@ function appendMessage(sender, text, time, callId = null) {
     }
   }
 
+
+
+// замените вашу текущую appendFile на эту:
 async function appendFile(sender, fileId, filename, mimeType, time) {
-  // если уже отрисовывали — выходим
+  // 1) если уже показывали — выходим
   if (renderedFileIds.has(fileId)) return;
   renderedFileIds.add(fileId);
 
+  // 2) дальше — та же логика, которую мы обсуждали:
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
   wrapper.className = 'message-wrapper';
@@ -713,14 +716,14 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble media-bubble';
 
-  // Вставляем каркас
+  // вставляем каркас сообщения
   msgEl.append(info, bubble);
   wrapper.appendChild(msgEl);
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 
+  // картинка через fetch+blob
   if (mimeType.startsWith('image/')) {
-    // загружаем картинку через fetch+blob
     const img = document.createElement('img');
     img.alt = 'Загрузка…';
     bubble.appendChild(img);
@@ -732,23 +735,27 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
       if (!res.ok) throw new Error(res.statusText);
       const blob = await res.blob();
       img.src = URL.createObjectURL(blob);
-    } catch (err) {
-      console.warn('Не удалось загрузить картинку, убираем:', err);
-      wrapper.remove();
+    } catch {
+      wrapper.remove();  // на неудаче убираем элемент полностью
     }
+    return;
+  }
 
-  } else if (mimeType.startsWith('audio/')) {
+  // аудио
+  if (mimeType.startsWith('audio/')) {
     const audio = document.createElement('audio');
     audio.controls = true;
     audio.src = `${API_URL}/files/${fileId}`;
     bubble.appendChild(audio);
 
+  // видео
   } else if (mimeType.startsWith('video/')) {
     const video = document.createElement('video');
     video.controls = true;
     video.src = `${API_URL}/files/${fileId}`;
     bubble.appendChild(video);
 
+  // прочие файлы — ссылка на скачивание
   } else {
     const link = document.createElement('a');
     link.href = '#';
@@ -760,7 +767,6 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
     bubble.appendChild(link);
   }
 }
-
 
 
 
