@@ -383,16 +383,19 @@ answerBtn.onclick = async () => {
   });
   document.addEventListener('mouseup', () => { dragging = false; });
 
-  // Обработчики лайтбокса
-  document.getElementById('chat-box').addEventListener('click', e => {
-    if (e.target.tagName === 'IMG' && e.target.src.includes('/api/files/')) {
-      lightboxImg.src = e.target.src;
-      overlay.dataset.url = e.target.src;
-      const parts = e.target.src.split('/');
-      overlay.dataset.filename = decodeURIComponent(parts.pop());
-      overlay.classList.remove('hidden');
-    }
-  });
+// 2) Обработчик клика для Lightbox — открывает blob: или прямой URL и качает по data-src
+document.getElementById('chat-box').addEventListener('click', e => {
+  if (e.target.tagName === 'IMG' && e.target.dataset.src) {
+    // показываем текущее изображение (blob: или прямой)
+    lightboxImg.src = e.target.src;
+
+    // для скачивания используем оригинальный URL
+    overlay.dataset.url      = e.target.dataset.src;
+    overlay.dataset.filename = e.target.dataset.filename;
+    overlay.classList.remove('hidden');
+  }
+});
+
   lbCloseBtn.onclick = () => overlay.classList.add('hidden');
   lbDownloadBtn.onclick = () => {
     const url = overlay.dataset.url;
@@ -693,14 +696,13 @@ function appendMessage(sender, text, time, callId = null) {
 
 
 
-// замените вашу текущую appendFile на эту:
-// … в теле вашего скрипта замените appendFile на эту функцию:
+// 1) appendFile: защищённая загрузка через fetch+blob + fallback + лайтксбокс
 async function appendFile(sender, fileId, filename, mimeType, time) {
-  // 1) Фильтрация дублей
+  // фильтрация дублей
   if (renderedFileIds.has(fileId)) return;
   renderedFileIds.add(fileId);
 
-  // 2) Создаём разметку
+  // создаём разметку
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
   wrapper.className = 'message-wrapper';
@@ -717,37 +719,36 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble media-bubble';
 
-  // вставляем каркас сообщения в DOM
+  // вставляем каркас
   msgEl.append(info, bubble);
   wrapper.appendChild(msgEl);
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 
-  // 3) Обработка разных типов
+  // разные типы
   if (mimeType.startsWith('image/')) {
-    // — IMG: сначала пустой, потом blob или fallback
+    // IMG: сначала пустой, потом blob или fallback
     const img = document.createElement('img');
     img.alt = 'Загрузка…';
-    // для Lightbox
+    // для Lightbox и fallback
+    img.dataset.src      = `${API_URL}/files/${fileId}`;
     img.dataset.fileId   = fileId;
     img.dataset.filename = filename;
     bubble.appendChild(img);
 
     try {
-      const res = await fetch(`${API_URL}/files/${fileId}`, {
+      const res = await fetch(img.dataset.src, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!res.ok) throw new Error(res.statusText);
       const blob = await res.blob();
       img.src = URL.createObjectURL(blob);
-      // опционально через минуту очищаем URL:
+      // через минуту можно очистить:
       // setTimeout(() => URL.revokeObjectURL(img.src), 60_000);
-
     } catch (err) {
-      console.warn('Blob-загрузка не удалась, подставляем прямой src:', err);
-      img.src = `${API_URL}/files/${fileId}`;
+      console.warn('Blob-загрузка упала, fallback на прямой src:', err);
+      img.src = img.dataset.src;
     }
-
     return;
   }
 
@@ -774,6 +775,7 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
     bubble.appendChild(link);
   }
 }
+
 
 
 
