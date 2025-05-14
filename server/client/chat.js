@@ -536,7 +536,7 @@ history.forEach(m => {
 
 }  // <-- закрыли функцию joinRoom
   
-function appendMessage(sender, text, time, callId) {
+function appendMessage(sender, text, time, callId = null) {
   const chatBox = document.getElementById('chat-box');
 
   // 1) Сообщение, привязанное к звонку — отдельный div
