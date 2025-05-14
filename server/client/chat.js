@@ -162,21 +162,46 @@ async function endCall(message, status = 'finished') {
 
   // Прикрепление файла
   attachBtn.onclick = () => fileInput.click();
-  fileInput.onchange = async () => {
-    if (!currentRoom) return alert('Сначала выберите чат');
-    const file = fileInput.files[0];
-    if (!file) return;
-    const form = new FormData();
-    form.append('file', file);
-    form.append('roomId', currentRoom);
-    const res = await fetch(`${API_URL}/files`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` },
-      body: form
-    });
-    if (!res.ok) console.error('Ошибка загрузки файла:', await res.text());
+fileInput.onchange = async () => {
+  if (!currentRoom) return alert('Сначала выберите чат');
+  const file = fileInput.files[0];
+  if (!file) return;
+
+  // 1) Загружаем файл на сервер
+  const form = new FormData();
+  form.append('file', file);
+  form.append('roomId', currentRoom);
+  const res = await fetch(`${API_URL}/files`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` },
+    body: form
+  });
+  if (!res.ok) {
+    console.error('Ошибка загрузки файла:', await res.text());
     fileInput.value = '';
-  };
+    return;
+  }
+
+  // 2) Берём ответ сервера с метаданными
+  const { fileId, filename, mimeType, time } = await res.json();
+  fileInput.value = '';
+
+  // 3) Рассылаем по WebSocket всем в комнате
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({
+      type:     'file',
+      sender:   userNickname,
+      fileId,
+      filename,
+      mimeType,
+      time
+    }));
+  }
+
+  // 4) Локально отображаем у себя
+  appendFile(userNickname, fileId, filename, mimeType, time);
+};
+
 
   // Голосовое сообщение
   voiceBtn.onclick = async () => {
