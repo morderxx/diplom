@@ -694,12 +694,13 @@ function appendMessage(sender, text, time, callId = null) {
 
 
 // замените вашу текущую appendFile на эту:
+// … в теле вашего скрипта замените appendFile на эту функцию:
 async function appendFile(sender, fileId, filename, mimeType, time) {
-  // 1) если уже показывали — выходим
+  // 1) Фильтрация дублей
   if (renderedFileIds.has(fileId)) return;
   renderedFileIds.add(fileId);
 
-  // 2) дальше — та же логика, которую мы обсуждали:
+  // 2) Создаём разметку
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
   wrapper.className = 'message-wrapper';
@@ -716,16 +717,20 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble media-bubble';
 
-  // вставляем каркас сообщения
+  // вставляем каркас сообщения в DOM
   msgEl.append(info, bubble);
   wrapper.appendChild(msgEl);
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 
-  // картинка через fetch+blob
+  // 3) Обработка разных типов
   if (mimeType.startsWith('image/')) {
+    // — IMG: сначала пустой, потом blob или fallback
     const img = document.createElement('img');
     img.alt = 'Загрузка…';
+    // для Lightbox
+    img.dataset.fileId   = fileId;
+    img.dataset.filename = filename;
     bubble.appendChild(img);
 
     try {
@@ -735,27 +740,29 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
       if (!res.ok) throw new Error(res.statusText);
       const blob = await res.blob();
       img.src = URL.createObjectURL(blob);
-    } catch {
-      wrapper.remove();  // на неудаче убираем элемент полностью
+      // опционально через минуту очищаем URL:
+      // setTimeout(() => URL.revokeObjectURL(img.src), 60_000);
+
+    } catch (err) {
+      console.warn('Blob-загрузка не удалась, подставляем прямой src:', err);
+      img.src = `${API_URL}/files/${fileId}`;
     }
+
     return;
   }
 
-  // аудио
   if (mimeType.startsWith('audio/')) {
     const audio = document.createElement('audio');
     audio.controls = true;
     audio.src = `${API_URL}/files/${fileId}`;
     bubble.appendChild(audio);
 
-  // видео
   } else if (mimeType.startsWith('video/')) {
     const video = document.createElement('video');
     video.controls = true;
     video.src = `${API_URL}/files/${fileId}`;
     bubble.appendChild(video);
 
-  // прочие файлы — ссылка на скачивание
   } else {
     const link = document.createElement('a');
     link.href = '#';
