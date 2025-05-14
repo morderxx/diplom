@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const API_URL      = '/api';
   const token        = localStorage.getItem('token');
   const userNickname = localStorage.getItem('nickname');
+  const renderedFileIds = new Set();
 
   if (!token || !userNickname) {
     window.location.href = 'index.html';
@@ -498,6 +499,7 @@ answerBtn.onclick = async () => {
   
 async function joinRoom(roomId) {
   if (socket) socket.close();
+  renderedFileIds.clear();
   currentRoom = roomId;
   document.getElementById('chat-box').innerHTML = '';
   document.getElementById('chat-section').classList.add('active');
