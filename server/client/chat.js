@@ -414,9 +414,11 @@ async function joinRoom(roomId) {
       case 'webrtc-cancel':
         endCall('Собеседник отменил звонок', 'cancelled');
         break;
+
       case 'message':
         appendMessage(msg.sender, msg.text, msg.time);
         break;
+
       case 'file':
         appendFile(
           msg.sender,
@@ -426,30 +428,40 @@ async function joinRoom(roomId) {
           msg.time
         );
         break;
+
       case 'webrtc-offer':
         currentPeer = msg.from;
         handleOffer(msg.payload);
         showCallWindow(currentPeer, true);
         break;
+
       case 'webrtc-answer':
         handleAnswer(msg.payload);
         break;
+
       case 'webrtc-ice':
         handleIce(msg.payload);
         break;
-   case 'call': {
-  // Формируем текст системного блока
-  const time = new Date(msg.started_at)
-    .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const durStr = msg.duration
-    ? new Date(msg.duration * 1000).toISOString().substr(11, 8)
-    : '--:--:--';
-  const text = `📞 ${msg.initiator} → ${msg.recipient} • ${msg.status} • ${durStr} • ${time}`;
 
-  appendCenterCall(text);
-  break;
-    }
-  };
+      case 'call': {
+        // Формируем текст системного блока
+        const time = new Date(msg.started_at)
+          .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const durStr = msg.duration
+          ? new Date(msg.duration * 1000).toISOString().substr(11, 8)
+          : '--:--:--';
+        const text = `📞 ${msg.initiator} → ${msg.recipient} • ${msg.status} • ${durStr} • ${time}`;
+
+        appendCenterCall(text);
+        break;
+      }
+
+      default:
+        console.warn('Unknown message type:', msg.type);
+    }  // ← закрываем switch
+
+  };   // ← закрываем стрелочную функцию onmessage
+
 
   // ─── Загрузка всей истории из одного эндпоинта ───────────────────────────
   const res = await fetch(`${API_URL}/rooms/${roomId}/messages`, {
