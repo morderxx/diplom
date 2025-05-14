@@ -686,9 +686,11 @@ function appendMessage(sender, text, time, callId = null) {
     }
   }
 
-// … внутри вашего chat.js, замените старую функцию на эту:
-// ВАЖНО: функция теперь async, но вы всё так же её вызываете без await
 async function appendFile(sender, fileId, filename, mimeType, time) {
+  // если уже отрисовывали — выходим
+  if (renderedFileIds.has(fileId)) return;
+  renderedFileIds.add(fileId);
+
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
   wrapper.className = 'message-wrapper';
@@ -705,14 +707,14 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble media-bubble';
 
-  // Вставляем каркас в DOM
+  // Вставляем каркас
   msgEl.append(info, bubble);
   wrapper.appendChild(msgEl);
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 
-  // --- ОБРАБОТКА КАРТИНОК ---
   if (mimeType.startsWith('image/')) {
+    // загружаем картинку через fetch+blob
     const img = document.createElement('img');
     img.alt = 'Загрузка…';
     bubble.appendChild(img);
@@ -724,19 +726,12 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
       if (!res.ok) throw new Error(res.statusText);
       const blob = await res.blob();
       img.src = URL.createObjectURL(blob);
-      // через минуту можно рэвокнуть, чтобы не накапливать:
-      // setTimeout(() => URL.revokeObjectURL(img.src), 60_000);
     } catch (err) {
-      console.warn('Не удалось загрузить картинку, убираем сообщение', err);
-      // удаляем весь wrapper — сообщения не будет видно
+      console.warn('Не удалось загрузить картинку, убираем:', err);
       wrapper.remove();
     }
 
-    return;
-  }
-
-  // --- ОБЫЧНЫЕ ФАЙЛЫ / АУДИО / ВИДЕО (как у вас было) ---
-  if (mimeType.startsWith('audio/')) {
+  } else if (mimeType.startsWith('audio/')) {
     const audio = document.createElement('audio');
     audio.controls = true;
     audio.src = `${API_URL}/files/${fileId}`;
@@ -759,6 +754,7 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
     bubble.appendChild(link);
   }
 }
+
 
 
 
