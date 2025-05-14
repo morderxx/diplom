@@ -489,15 +489,13 @@ async function joinRoom(roomId) {
 console.log('RAW HISTORY:', JSON.stringify(history, null, 2));
 
 history.forEach(m => {
-  // 3) Текстовое сообщение, привязанное к звонку (call_id)
-  // 1) Текстовые сообщения, привязанные к звонку
-  if (m.call_id != null) {
-    // Приведём текст к тому же формату или просто выведем m.text
+  // 1) Текстовое сообщение, привязанное к звонку (из таблицы messages)
+  if (m.type === 'message' && m.call_id != null) {
     appendCenterCall(m.text);
     return;
   }
 
-  // 2) «Чистые» события звонка
+  // 2) «Чистое» событие звонка (из таблицы calls)
   if (m.type === 'call') {
     const time = new Date(m.happened_at)
       .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -508,8 +506,9 @@ history.forEach(m => {
     appendCenterCall(text);
     return;
   }
-  // 2) Файловое сообщение (картинка/аудио/видео)
-  if (m.file_id !== null) {
+
+  // 3) Файловое сообщение (из таблицы messages + files)
+  if (m.type === 'message' && m.file_id !== null) {
     appendFile(
       m.sender_nickname,
       m.file_id,
@@ -521,17 +520,18 @@ history.forEach(m => {
   }
 
   // 4) Обычное текстовое сообщение
-  if (m.text !== null) {
+  if (m.type === 'message' && m.text !== null) {
     appendMessage(
       m.sender_nickname,
       m.text,
       m.time
-      // callId не передаём — по умолчанию null
     );
     return;
   }
+
   console.warn('Неизвестный элемент истории:', m);
 });
+
 
 
 }  // <-- закрыли функцию joinRoom
