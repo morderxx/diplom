@@ -505,39 +505,28 @@ history.forEach(m => {
 
 
   
-function appendMessage(sender, text, time, callId = null) {
+function appendMessage(sender, text, time, call_id = null) {
   const chatBox = document.getElementById('chat-box');
-
-  // 1) Сообщение, привязанное к звонку — отдельный div
-  if (callId !== null) {
-    const el = document.createElement('div');
-    el.className = 'call-event';    // <-- только этот класс
-    el.textContent = text;
-    chatBox.appendChild(el);
-    chatBox.scrollTop = chatBox.scrollHeight;
-    return;
-  }
-
-  // 2) Обычное сообщение — как было раньше
   const wrapper = document.createElement('div');
   wrapper.className = 'message-wrapper';
+
   const msgEl = document.createElement('div');
-  msgEl.className = sender === userNickname ? 'my-message' : 'other-message';
+  msgEl.className = 'message';
 
-  const info = document.createElement('div');
-  info.className = 'message-info';
-  info.textContent = `${sender} • ${new Date(time).toLocaleTimeString([], {
-    hour: '2-digit', minute: '2-digit'
-  })}`;
+  if (call_id !== null) {
+    msgEl.classList.add('centered-message');
+  }
 
-  const bubble = document.createElement('div');
-  bubble.className = 'message-bubble';
-  const textEl = document.createElement('div');
-  textEl.className = 'message-text';
-  textEl.textContent = text;
-  bubble.appendChild(textEl);
+  const meta = document.createElement('div');
+  meta.className = 'message-meta';
+  meta.textContent = `${sender} • ${new Date(time).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}`;
 
-  msgEl.append(info, bubble);
+  const body = document.createElement('div');
+  body.className = 'message-text';
+  body.textContent = text;
+
+  msgEl.appendChild(meta);
+  msgEl.appendChild(body);
   wrapper.appendChild(msgEl);
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
