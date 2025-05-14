@@ -22,12 +22,20 @@ app.use(cors());
 app.use(express.json());
 
 // 2) API
-app.use('/api',       authRoutes);
+app.use('/api', authRoutes);
 app.use('/api/users', usersRoutes);
+
+// История сообщений в конкретной комнате
+app.use('/api/rooms/:roomId/messages', messagesRoutes);
+
+// Управление звонками в конкретной комнате
+app.use('/api/rooms/:roomId/calls', callsRouter);
+
+// Все остальные операции с комнатами
 app.use('/api/rooms', roomsRoutes);
-app.use('/api/rooms', messagesRoutes);
+
 app.use('/api/files', filesRoutes);
-app.use('/api/rooms', callsRouter);
+
 
 
 
