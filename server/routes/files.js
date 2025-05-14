@@ -27,18 +27,24 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
   }
 
   try {
-    // 1) Сохраняем файл
+    // 1) Сохраняем файл и получаем meta.time как NOW()
     const { rows } = await pool.query(
       `INSERT INTO files(room_id, uploader_id, filename, mime_type, content)
          VALUES ($1,$2,$3,$4,$5)
-       RETURNING id, filename, mime_type AS "mimeType", NOW() AS "time"`,
+       RETURNING id,
+                 filename,
+                 mime_type   AS "mimeType",
+                 NOW()       AS "time"`,
       [roomId, req.userId, file.originalname, file.mimetype, file.buffer]
     );
     const meta = rows[0];
 
-    // 2) Сохраняем сообщение
-    const u = await pool.query(`SELECT nickname FROM users WHERE id = $1`, [req.userId]);
-    const sender = u.rows[0]?.nickname || 'Unknown';
+    // 2) Сохраняем запись в messages
+    const u = await pool.query(
+      `SELECT nickname FROM users WHERE id = $1`,
+      [req.userId]
+    );
+    const sender = u.rows[0] && u.rows[0].nickname || 'Unknown';
 
     await pool.query(
       `INSERT INTO messages(room_id, sender_nickname, file_id, time)
@@ -49,7 +55,7 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
     // 3) Отправляем клиенту
     res.json(meta);
 
-    // 4) Рассылаем по WebSocket
+    // 4) Рассылаем всем WS-клиентам в той же комнате
     const { wss, clients } = getWss();
     const msg = {
       type:     'file',
@@ -74,6 +80,7 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
   }
 });
 
+// отдача файлов по /api/files/:id
 router.get('/:id', async (req, res) => {
   const fileId = parseInt(req.params.id, 10);
   try {
@@ -87,8 +94,8 @@ router.get('/:id', async (req, res) => {
       return res.status(404).send('File not found');
     }
     const { filename, mimeType, content } = rows[0];
-    res.setHeader('Content-Type', mimeType);
 
+    res.setHeader('Content-Type', mimeType);
     const encoded = encodeURIComponent(filename);
     const disposition = mimeType.startsWith('image/') ||
                         mimeType.startsWith('audio/') ||
@@ -99,8 +106,8 @@ router.get('/:id', async (req, res) => {
       'Content-Disposition',
       `${disposition}; filename*=UTF-8''${encoded}`
     );
-
     res.send(content);
+
   } catch (err) {
     console.error('File download error:', err);
     res.status(500).send('Error retrieving file');
