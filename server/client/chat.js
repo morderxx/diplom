@@ -477,9 +477,9 @@ async function joinRoom(roomId) {
 
 
   // ─── Загрузка всей истории из одного эндпоинта ───────────────────────────
-  const res = await fetch(`${API_URL}/rooms/${roomId}/messages`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+const res = await fetch(`${API_URL}/messages/${roomId}`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
   if (!res.ok) {
     console.error(await res.text());
     return;
