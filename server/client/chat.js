@@ -98,7 +98,6 @@ function appendCenterCall(text) {
     callWindow.classList.add('hidden');
   }
 
-// Завершить звонок
 async function endCall(message, status = 'finished') {
   clearInterval(callTimerIntvl);
   if (pc) pc.close();
@@ -108,27 +107,23 @@ async function endCall(message, status = 'finished') {
     localStream = null;
   }
 
-  // Формируем текст уведомления в зависимости от статуса
+  // Формируем текст уведомления на основе статуса и длительности
+  const durationSec = Math.floor((Date.now() - callStartTime) / 1000);
+  const durStr = new Date(durationSec * 1000).toISOString().substr(11, 8);
+
   let callMessage = '';
-  if (status === 'cancelled' && callTimerEl.textContent === '00:00') {
+  if (durationSec === 0) {
     callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} был отменен.`;
-  } else if (status === 'cancelled') {
-    callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} был сброшен. Длительность ${callTimerEl.textContent}.`;
-  } else if (callTimerEl.textContent === '00:00') {
-    callMessage = `📞 Исходящий вызов от ${userNickname} к ${currentPeer} не был принят.`;
   } else {
-    callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} завершен. Длительность ${callTimerEl.textContent}.`;
+    callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} завершен. Длительность ${durStr}.`;
   }
 
-  // Локальное уведомление
+  // Локальное уведомление (объединенное)
   appendCenterCall(callMessage);
 
-  // Собираем данные звонка
+  // Отправляем на бэкенд
   const startedISO = new Date(callStartTime).toISOString();
   const endedISO = new Date().toISOString();
-  const durationSec = Math.floor((Date.now() - callStartTime) / 1000);
-
-  // Отправляем на бэкенд
   try {
     await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
       method: 'POST',
@@ -146,11 +141,15 @@ async function endCall(message, status = 'finished') {
       })
     });
   } catch (err) {
-    console.error('Не удалось сохранить звонок в БД:', err);
+    console.error('Ошибка сохранения звонка в БД:', err);
+    appendSystem('⚠️ Не удалось сохранить данные звонка на сервер.');
   }
 
   hideCallWindow();
 }
+
+
+
 
 
 
@@ -216,32 +215,47 @@ async function endCall(message, status = 'finished') {
   };
 
   // Настройка WebRTC
-  function createPeerConnection() {
-    pc = new RTCPeerConnection(stunConfig);
-    pc.onicecandidate = e => {
-      if (e.candidate && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: 'webrtc-ice', payload: e.candidate }));
-      }
-    };
-    pc.ontrack = e => {
-      remoteAudio.srcObject = e.streams[0];
-    };
-  }
+function createPeerConnection() {
+  pc = new RTCPeerConnection(stunConfig);
 
-  async function startCall() {
-    createPeerConnection();
-    showCallWindow(currentPeer, false);
+  pc.onicecandidate = e => {
+    if (e.candidate && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: 'webrtc-ice', payload: e.candidate }));
+    }
+  };
+
+  // При получении потока добавляем его в аудиоплеер
+  pc.ontrack = e => {
+    if (e.streams && e.streams[0]) {
+      remoteAudio.srcObject = e.streams[0];
+      console.log('Получен аудиопоток от собеседника.');
+    } else {
+      console.warn('Аудиопоток не получен.');
+    }
+  };
+}
+
+
+async function startCall() {
+  createPeerConnection();
+  showCallWindow(currentPeer, false);
+  try {
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-     socket.send(JSON.stringify({
-    type: 'webrtc-offer',
-    from: userNickname,
-    to: currentPeer,        // **передаём**, чтобы на другом конце знали, кто звонит
-    payload: offer
-  }));
+
+    socket.send(JSON.stringify({
+      type: 'webrtc-offer',
+      from: userNickname,
+      to: currentPeer,
+      payload: offer
+    }));
+  } catch (err) {
+    console.error('Ошибка получения аудио при звонке:', err);
   }
+}
+
 
   async function handleOffer(offer) {
     createPeerConnection();
@@ -267,14 +281,27 @@ async function endCall(message, status = 'finished') {
     if (socket && socket.readyState === WebSocket.OPEN) startCall();
   };
   
- answerBtn.onclick = async () => {
-  if (!pc) return;
-  const answer = await pc.createAnswer();
-  await pc.setLocalDescription(answer);
-  socket.send(JSON.stringify({ type: 'webrtc-answer',from: userNickname, payload: answer }));
-  callStatus.textContent = 'В разговоре';
-  answerBtn.style.display = 'none';
+answerBtn.onclick = async () => {
+  try {
+    if (!pc) return;
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    socket.send(JSON.stringify({
+      type: 'webrtc-answer',
+      from: userNickname,
+      payload: answer
+    }));
+
+    callStatus.textContent = 'В разговоре';
+    answerBtn.style.display = 'none';
+  } catch (err) {
+    console.error('Ошибка при ответе на звонок:', err);
+  }
 };
+
 
  cancelBtn.onclick = () => {
   if (socket && socket.readyState === WebSocket.OPEN) {
