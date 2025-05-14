@@ -108,6 +108,44 @@ async function endCall(message, status = 'finished') {
     localStream = null;
   }
 
+  // Собираем текст с учетом статуса
+  const callMessage = status === 'cancelled' && callTimerEl.textContent === '00:00' 
+    ? `📞 Звонок от ${userNickname} к ${currentPeer} был отменен.` 
+    : `📞 Звонок от ${userNickname} к ${currentPeer} был завершен. Длительность ${callTimerEl.textContent}.`;
+
+  // Локальное уведомление
+  appendCenterCall(callMessage);
+
+  // 2) Собираем данные звонка
+  const startedISO = new Date(callStartTime).toISOString();
+  const endedISO = new Date().toISOString();
+  const durationSec = Math.floor((Date.now() - callStartTime) / 1000);
+
+  // 3) Отправляем на бэкенд
+  try {
+    await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        initiator: userNickname,
+        recipient: currentPeer,
+        started_at: startedISO,
+        ended_at: endedISO,
+        status: status,
+        duration: durationSec
+      })
+    });
+  } catch (err) {
+    console.error('Не удалось сохранить звонок в БД:', err);
+  }
+
+  hideCallWindow();
+}
+
+
   // 1) Локальное уведомление
   appendSystem(message || `Звонок завершён. Длительность ${callTimerEl.textContent}`);
 
