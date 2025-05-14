@@ -75,8 +75,15 @@ function setupWebSocket(server) {
 
       // FILE MESSAGE (signaling done via files route)
       if (msg.type === 'file') {
-        const senderInfo = clients.get(ws);
+        // Подхватываем комнату из clients (JOIN) или, если join ещё не выполнился, из самого сообщения
+        let senderInfo = clients.get(ws);
+        if (!senderInfo && msg.roomId) {
+          senderInfo = { nickname: msg.sender, roomId: msg.roomId };
+          clients.set(ws, senderInfo);
+        }
         if (!senderInfo) return;
+
+        // Шлём всем в этой комнате
         wss.clients.forEach(c => {
           const info = clients.get(c);
           if (info && info.roomId === senderInfo.roomId && c.readyState === WebSocket.OPEN) {
