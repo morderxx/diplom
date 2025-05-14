@@ -687,6 +687,7 @@ function appendMessage(sender, text, time, callId = null) {
   }
 
 // … внутри вашего chat.js, замените старую функцию на эту:
+// ВАЖНО: функция теперь async, но вы всё так же её вызываете без await
 async function appendFile(sender, fileId, filename, mimeType, time) {
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
@@ -704,13 +705,13 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble media-bubble';
 
-  // сначала вставляем в DOM каркас, чтобы не "рыскало" содержимое
+  // Вставляем каркас в DOM
   msgEl.append(info, bubble);
   wrapper.appendChild(msgEl);
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 
-  // теперь наполняем bubble в зависимости от типа
+  // --- ОБРАБОТКА КАРТИНОК ---
   if (mimeType.startsWith('image/')) {
     const img = document.createElement('img');
     img.alt = 'Загрузка…';
@@ -723,14 +724,19 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
       if (!res.ok) throw new Error(res.statusText);
       const blob = await res.blob();
       img.src = URL.createObjectURL(blob);
-      // опционально через минуту очистить URL
+      // через минуту можно рэвокнуть, чтобы не накапливать:
       // setTimeout(() => URL.revokeObjectURL(img.src), 60_000);
     } catch (err) {
-      console.error('Ошибка загрузки картинки:', err);
-      img.alt = 'Ошибка загрузки';
+      console.warn('Не удалось загрузить картинку, убираем сообщение', err);
+      // удаляем весь wrapper — сообщения не будет видно
+      wrapper.remove();
     }
 
-  } else if (mimeType.startsWith('audio/')) {
+    return;
+  }
+
+  // --- ОБЫЧНЫЕ ФАЙЛЫ / АУДИО / ВИДЕО (как у вас было) ---
+  if (mimeType.startsWith('audio/')) {
     const audio = document.createElement('audio');
     audio.controls = true;
     audio.src = `${API_URL}/files/${fileId}`;
@@ -753,6 +759,7 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
     bubble.appendChild(link);
   }
 }
+
 
 
   function sendMessage() {
