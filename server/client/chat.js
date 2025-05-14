@@ -686,46 +686,74 @@ function appendMessage(sender, text, time, callId = null) {
     }
   }
 
-  function appendFile(sender, fileId, filename, mimeType, time) {
-    const chatBox = document.getElementById('chat-box');
-    const wrapper = document.createElement('div');
-    wrapper.className = 'message-wrapper';
-    const msgEl = document.createElement('div');
-    msgEl.className = sender === userNickname ? 'my-message' : 'other-message';
-    const info = document.createElement('div');
-    info.className = 'message-info';
-    info.textContent = `${sender} • ${new Date(time).toLocaleTimeString([], {
-      hour: '2-digit', minute: '2-digit'
-    })}`;
-    const bubble = document.createElement('div');
-    bubble.className = 'message-bubble media-bubble';
-    let contentEl;
-    if (mimeType.startsWith('image/')) {
-      contentEl = document.createElement('img');
-      contentEl.src = `${API_URL}/files/${fileId}`;
-    } else if (mimeType.startsWith('audio/')) {
-      contentEl = document.createElement('audio');
-      contentEl.controls = true;
-      contentEl.src = `${API_URL}/files/${fileId}`;
-    } else if (mimeType.startsWith('video/')) {
-      contentEl = document.createElement('video');
-      contentEl.controls = true;
-      contentEl.src = `${API_URL}/files/${fileId}`;
-    } else {
-      contentEl = document.createElement('a');
-      contentEl.href = '#';
-      contentEl.textContent = `📎 ${filename}`;
-      contentEl.onclick = e => {
-        e.preventDefault();
-        downloadFile(fileId, filename);
-      };
+// … внутри вашего chat.js, замените старую функцию на эту:
+async function appendFile(sender, fileId, filename, mimeType, time) {
+  const chatBox = document.getElementById('chat-box');
+  const wrapper = document.createElement('div');
+  wrapper.className = 'message-wrapper';
+
+  const msgEl = document.createElement('div');
+  msgEl.className = sender === userNickname ? 'my-message' : 'other-message';
+
+  const info = document.createElement('div');
+  info.className = 'message-info';
+  info.textContent = `${sender} • ${new Date(time).toLocaleTimeString([], {
+    hour: '2-digit', minute: '2-digit'
+  })}`;
+
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble media-bubble';
+
+  // сначала вставляем в DOM каркас, чтобы не "рыскало" содержимое
+  msgEl.append(info, bubble);
+  wrapper.appendChild(msgEl);
+  chatBox.appendChild(wrapper);
+  chatBox.scrollTop = chatBox.scrollHeight;
+
+  // теперь наполняем bubble в зависимости от типа
+  if (mimeType.startsWith('image/')) {
+    const img = document.createElement('img');
+    img.alt = 'Загрузка…';
+    bubble.appendChild(img);
+
+    try {
+      const res = await fetch(`${API_URL}/files/${fileId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error(res.statusText);
+      const blob = await res.blob();
+      img.src = URL.createObjectURL(blob);
+      // опционально через минуту очистить URL
+      // setTimeout(() => URL.revokeObjectURL(img.src), 60_000);
+    } catch (err) {
+      console.error('Ошибка загрузки картинки:', err);
+      img.alt = 'Ошибка загрузки';
     }
-    bubble.appendChild(contentEl);
-    msgEl.append(info, bubble);
-    wrapper.appendChild(msgEl);
-    chatBox.appendChild(wrapper);
-    chatBox.scrollTop = chatBox.scrollHeight;
+
+  } else if (mimeType.startsWith('audio/')) {
+    const audio = document.createElement('audio');
+    audio.controls = true;
+    audio.src = `${API_URL}/files/${fileId}`;
+    bubble.appendChild(audio);
+
+  } else if (mimeType.startsWith('video/')) {
+    const video = document.createElement('video');
+    video.controls = true;
+    video.src = `${API_URL}/files/${fileId}`;
+    bubble.appendChild(video);
+
+  } else {
+    const link = document.createElement('a');
+    link.href = '#';
+    link.textContent = `📎 ${filename}`;
+    link.onclick = e => {
+      e.preventDefault();
+      downloadFile(fileId, filename);
+    };
+    bubble.appendChild(link);
   }
+}
+
 
   function sendMessage() {
     const text = textarea.value.trim();
