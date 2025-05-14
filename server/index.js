@@ -10,7 +10,7 @@ const usersRoutes    = require('./routes/users');
 const roomsRoutes    = require('./routes/rooms');
 const messagesRoutes = require('./routes/messages');
 const filesRoutes    = require('./routes/files');
-const callsRouter = require('./routes/calls');
+const callsRouter    = require('./routes/calls');
 
 const setupWebSocket = require('./chat');
 
@@ -22,18 +22,26 @@ app.use(cors());
 app.use(express.json());
 
 // 2) API
-app.use('/api',       authRoutes);
+
+// 2.1 Аутентификация (login/register)
+app.use('/api', authRoutes);
+
+// 2.2 Пользователи (защищённый роут)
 app.use('/api/users', usersRoutes);
 
-// ── сначала сообщения (GET /api/rooms/:roomId/messages)
-app.use('/api/rooms', messagesRoutes);
+// 2.3 История сообщений в комнате
+// GET /api/rooms/:roomId/messages
+app.use('/api/rooms/:roomId/messages', messagesRoutes);
 
-// ── потом звонки   (POST /api/rooms/:roomId/calls)
-app.use('/api/rooms', callsRouter);
+// 2.4 Управление звонками в комнате
+// POST /api/rooms/:roomId/calls
+app.use('/api/rooms/:roomId/calls', callsRouter);
 
-// ── и только после них всё остальное по /api/rooms
+// 2.5 Остальные операции с комнатами
+// GET /api/rooms, POST /api/rooms, GET /api/rooms/:roomId и т.п.
 app.use('/api/rooms', roomsRoutes);
 
+// 2.6 Файлы
 app.use('/api/files', filesRoutes);
 
 // 3) Статика клиента
