@@ -488,19 +488,6 @@ async function joinRoom(roomId) {
 
 console.log('=== Проверка call_id в history ===');
 history.forEach(m => {
-
-  // 2) Файловое сообщение (картинка/аудио/видео)
-  if (m.file_id !== null) {
-    appendFile(
-      m.sender_nickname,
-      m.file_id,
-      m.filename,
-      m.mime_type,
-      m.time
-    );
-    return;
-  }
-
   // 3) Текстовое сообщение, привязанное к звонку (call_id)
 if (m.type === 'call') {
     const time = new Date(m.happened_at)
@@ -510,6 +497,17 @@ if (m.type === 'call') {
       : '--:--:--';
     const text = `📞 ${m.initiator} → ${m.recipient} • ${m.status} • ${durStr} • ${time}`;
     appendCenterCall(text);
+    return;
+  }
+  // 2) Файловое сообщение (картинка/аудио/видео)
+  if (m.file_id !== null) {
+    appendFile(
+      m.sender_nickname,
+      m.file_id,
+      m.filename,
+      m.mime_type,
+      m.time
+    );
     return;
   }
 
