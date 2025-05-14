@@ -437,16 +437,17 @@ async function joinRoom(roomId) {
       case 'webrtc-ice':
         handleIce(msg.payload);
         break;
-      case 'call':
-        appendCall({
-          initiator: msg.initiator,
-          recipient: msg.recipient,
-          status: msg.status,
-          happened_at: msg.started_at,
-          ended_at: msg.ended_at,
-          duration: msg.duration
-        });
-        break;
+   case 'call': {
+  // Формируем текст системного блока
+  const time = new Date(msg.started_at)
+    .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const durStr = msg.duration
+    ? new Date(msg.duration * 1000).toISOString().substr(11, 8)
+    : '--:--:--';
+  const text = `📞 ${msg.initiator} → ${msg.recipient} • ${msg.status} • ${durStr} • ${time}`;
+
+  appendCenterCall(text);
+  break;
     }
   };
 
@@ -498,12 +499,15 @@ history.forEach(m => {
 }  // <-- закрыли функцию joinRoom
 
 
-// в самом верху, рядом с appendSystem
-function appendSystemCall(text) {
+// где‑то вверху chat.js
+function appendCenterCall(text) {
   const chatBox = document.getElementById('chat-box');
+
+  // создаём контейнер-обёртку, чтобы flex-centering сработало
   const wrapper = document.createElement('div');
   wrapper.className = 'system-call-wrapper';
 
+  // сам блок с текстом
   const el = document.createElement('div');
   el.className = 'system-call';
   el.textContent = text;
@@ -512,6 +516,7 @@ function appendSystemCall(text) {
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
+
 
   
 function appendMessage(sender, text, time, callId = null) {
