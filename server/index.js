@@ -22,12 +22,26 @@ app.use(cors());
 app.use(express.json());
 
 // 2) API
-app.use('/api',          authRoutes);
-app.use('/api/users',    usersRoutes);
-app.use('/api/rooms',    messagesRoutes);
-app.use('/api/rooms',    roomsRoutes);
-app.use('/api/files',    filesRoutes);
-app.use('/api/rooms', callsRouter);
+app.use('/api',       authRoutes);
+app.use('/api/users', usersRoutes);
+
+// Сообщения внутри конкретной комнаты
+app.use(
+  '/api/rooms/:roomId/messages',
+  messagesRoutes
+);
+
+// Звонки внутри конкретной комнаты
+app.use(
+  '/api/rooms/:roomId/calls',
+  callsRouter
+);
+
+// Остальные операции с комнатами
+app.use('/api/rooms', roomsRoutes);
+
+app.use('/api/files', filesRoutes);
+
 // 3) Статика клиента
 app.use(express.static(path.join(__dirname, 'client')));
 
