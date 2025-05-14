@@ -25,7 +25,7 @@ app.use(express.json());
 app.use('/api',       authRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/rooms', roomsRoutes);
-app.use('/api/messages', messagesRoutes);
+app.use('/api/rooms', messagesRoutes);
 app.use('/api/files', filesRoutes);
 app.use('/api/rooms', callsRouter);
 
