@@ -7,10 +7,10 @@ require('dotenv').config();
 
 const authRoutes     = require('./auth');
 const usersRoutes    = require('./routes/users');
-const roomsRoutes    = require('./routes/rooms');
 const messagesRoutes = require('./routes/messages');
-const filesRoutes    = require('./routes/files');
 const callsRouter    = require('./routes/calls');
+const roomsRoutes    = require('./routes/rooms');
+const filesRoutes    = require('./routes/files');
 
 const setupWebSocket = require('./chat');
 
@@ -24,10 +24,14 @@ app.use(express.json());
 // 2) API
 app.use('/api',       authRoutes);
 app.use('/api/users', usersRoutes);
-app.use('/api/rooms', roomsRoutes);
+
+// Сначала узкие роуты сообщений и звонков
 app.use('/api/rooms', messagesRoutes);
-app.use('/api/files', filesRoutes);
 app.use('/api/rooms', callsRouter);
+
+// Потом все остальные роуты комнат
+app.use('/api/rooms', roomsRoutes);
+app.use('/api/files', filesRoutes);
 
 // 3) Статика клиента
 app.use(express.static(path.join(__dirname, 'client')));
