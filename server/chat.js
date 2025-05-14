@@ -5,9 +5,11 @@ require('dotenv').config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
+let wss, clients;
+
 function setupWebSocket(server) {
-  const wss = new WebSocket.Server({ server });
-  const clients = new Map(); // ws → { nickname, roomId }
+  wss = new WebSocket.Server({ server });
+  clients = new Map(); // ws → { nickname, roomId }
 
   wss.on('connection', ws => {
     ws.on('message', async raw => {
@@ -50,10 +52,12 @@ function setupWebSocket(server) {
           const sender = r.rows[0]?.nickname;
           if (!sender) return;
 
+          const time = new Date().toISOString();
+
           await pool.query(
             `INSERT INTO messages (room_id, sender_nickname, text, time)
                VALUES ($1,$2,$3,$4)`,
-            [msg.roomId, sender, msg.text, new Date().toISOString()]
+            [msg.roomId, sender, msg.text, time]
           );
 
           wss.clients.forEach(c => {
@@ -63,7 +67,7 @@ function setupWebSocket(server) {
                 type: 'message',
                 sender,
                 text: msg.text,
-                time: new Date().toISOString()
+                time
               }));
             }
           });
@@ -73,9 +77,8 @@ function setupWebSocket(server) {
         return;
       }
 
-      // FILE MESSAGE (signaling done via files route)
+      // FILE MESSAGE
       if (msg.type === 'file') {
-        // Подхватываем комнату из clients (JOIN) или, если join ещё не выполнился, из самого сообщения
         let senderInfo = clients.get(ws);
         if (!senderInfo && msg.roomId) {
           senderInfo = { nickname: msg.sender, roomId: msg.roomId };
@@ -83,7 +86,6 @@ function setupWebSocket(server) {
         }
         if (!senderInfo) return;
 
-        // Шлём всем в этой комнате
         wss.clients.forEach(c => {
           const info = clients.get(c);
           if (info && info.roomId === senderInfo.roomId && c.readyState === WebSocket.OPEN) {
@@ -101,7 +103,7 @@ function setupWebSocket(server) {
       }
 
       // WEBRTC SIGNALING
-      if (msg.type === 'webrtc-offer' || msg.type === 'webrtc-answer' || msg.type === 'webrtc-ice') {
+      if (['webrtc-offer', 'webrtc-answer', 'webrtc-ice'].includes(msg.type)) {
         const senderInfo = clients.get(ws);
         if (!senderInfo) return;
         wss.clients.forEach(c => {
@@ -117,11 +119,9 @@ function setupWebSocket(server) {
         return;
       }
 
-      // ✅ ДОБАВЛЕНО: ОБРАБОТКА webrtc-cancel
       if (msg.type === 'webrtc-cancel') {
         const senderInfo = clients.get(ws);
         if (!senderInfo) return;
-
         wss.clients.forEach(c => {
           const info = clients.get(c);
           if (c !== ws && info && info.roomId === senderInfo.roomId && c.readyState === WebSocket.OPEN) {
@@ -142,4 +142,8 @@ function setupWebSocket(server) {
   });
 }
 
-module.exports = setupWebSocket;
+function getWss() {
+  return { wss, clients };
+}
+
+module.exports = { setupWebSocket, getWss };
