@@ -485,11 +485,9 @@ async function joinRoom(roomId) {
     return;
   }
   const history = await res.json();
-
+console.log('HISTORY RAW SAMPLE:', history[0]);
 console.log('=== Проверка call_id в history ===');
 history.forEach(m => {
-  console.log('HISTORY ITEM:', m.text, 'call_id=', m.call_id, 'type=', m.type);
-
   // 3) Текстовое сообщение, привязанное к звонку (call_id)
   // 1) Текстовые сообщения, привязанные к звонку
   if (m.call_id != null) {
