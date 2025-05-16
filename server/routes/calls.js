@@ -23,33 +23,37 @@ async function authMiddleware(req, res, next) {
 
 // Helper: формирует текст системного уведомления для звонка
 function formatCallMessage({ initiator, recipient, status, duration, canceler }) {
-  const clean = login => login.replace(/^@+/, '');
+  // Убираем все символы '@' из логинов
+  const clean = login => login.replace(/@/g, '');
   const i = clean(initiator);
   const r = clean(recipient);
+
   const initiatorTag = `@${i}`;
   const recipientTag = `@${r}`;
   const mm = String(Math.floor(duration / 60)).padStart(2, '0');
   const ss = String(duration % 60).padStart(2, '0');
 
-  const formatUserTag = login => {
-    const cleaned = clean(login);
-    if (cleaned === i) return initiatorTag;
-    if (cleaned === r) return recipientTag;
-    return `@${cleaned}`;
-  };
+  const formatUserTag = login => `@${clean(login)}`;
 
   switch (status) {
     case 'cancelled':
       if (duration === 0) {
         return `📞 Звонок от ${initiatorTag} к ${recipientTag} был отменён.`;
       }
-      const cancelerTag = canceler ? ` Сбросил ${formatUserTag(canceler)}.` : '';
+      const cancelerTag = canceler
+        ? ` Сбросил ${formatUserTag(canceler)}.`
+        : '';
       return `📞 Звонок от ${initiatorTag} к ${recipientTag} был сброшен.${cancelerTag} Длительность ${mm}:${ss}.`;
+
+    case 'finished':
+      const finisherTag = canceler
+        ? ` Завершил ${formatUserTag(canceler)}.`
+        : '';
+      return `📞 Звонок от ${initiatorTag} к ${recipientTag} завершён.${finisherTag} Длительность ${mm}:${ss}.`;
+
     case 'missed':
       return `📞 Пропущенный звонок от ${initiatorTag} к ${recipientTag}.`;
-    case 'finished':
-      const finisherTag = canceler ? ` Завершил ${formatUserTag(canceler)}.` : '';
-      return `📞 Звонок от ${initiatorTag} к ${recipientTag} завершён.${finisherTag} Длительность ${mm}:${ss}.`;
+
     default:
       return `📞 Статус звонка: ${status}.`;
   }
@@ -61,15 +65,15 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
   const { initiator, recipient, started_at, ended_at, status, duration } = req.body;
 
   try {
-    // Определяем, кто завершил или сбросил звонок
+    // Определяем, кто завершил или сбросил звонок (если применимо)
     const canceler = ['cancelled', 'finished'].includes(status) && duration > 0
       ? req.userLogin
       : undefined;
 
-    // 1) Генерация текста системного уведомления
+    // Генерация текста системного уведомления
     const messageText = formatCallMessage({ initiator, recipient, status, duration, canceler });
 
-    // 2) Сохранение звонка с текстом уведомления
+    // Сохранение звонка с текстом уведомления
     const { rows: [call] } = await pool.query(
       `INSERT INTO calls
          (room_id, initiator, recipient, started_at, ended_at, status, duration, message_text)
@@ -78,10 +82,10 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
       [roomId, initiator, recipient, started_at, ended_at, status, duration, messageText]
     );
 
-    // 3) Ответ клиенту данными о только что созданном звонке
+    // Ответ клиенту данными о только что созданном звонке
     res.status(201).json(call);
 
-    // 4) Рассылка события через WebSocket
+    // Рассылка события через WebSocket
     const wss = getWss();
     if (wss) {
       const callEvent = {
