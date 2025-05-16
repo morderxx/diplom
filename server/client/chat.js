@@ -113,9 +113,14 @@ async function endCall(message, status = 'finished') {
   const durStr = new Date(durationSec * 1000).toISOString().substr(11, 8);
 
   let callMessage = '';
-  if (durationSec === 0) {
-    callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} был отменен.`;
+  if (status === 'cancelled' && durationSec > 0) {
+    // отменили после ожидания
+    callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} был отменён. Ожидание ответа ${durStr}.`;
+  } else if (durationSec === 0) {
+    // отменили сразу
+    callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} был отменён.`;
   } else {
+    // успешно побеседовали
     callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} завершен. Длительность ${durStr}.`;
   }
 
