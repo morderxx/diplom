@@ -156,13 +156,15 @@ button:hover {
 
 /* Шапка */
 .chat-message-area .chat-header {
-    padding: 16px 20px;
-    background-color: #f7faff;
-    border-bottom: 1px solid #ddd;
-    font-weight: 600;
-    font-size: 15px;
-    color: #333;
-    display: block;
+  display: flex;                /* включаем flex */
+  align-items: center;          /* выравнивание по вертикали */
+  justify-content: space-between; /* имя слева, кнопка справа */
+  padding: 16px 20px;           /* твои отступы */
+  background-color: #f7faff;    /* твой фон */
+  border-bottom: 1px solid #ddd;
+  font-weight: 600;
+  font-size: 15px;
+  color: #333;
 }
 /* ===== СТИЛИ ДЛЯ КНОПКИ ЗВОНКА В ШАПКЕ ===== */
 .chat-header__call-btn {
