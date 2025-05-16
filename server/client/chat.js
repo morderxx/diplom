@@ -100,8 +100,8 @@ function appendCenterCall(text) {
   }
 
   
+// 1) endCall: закрыли WebRTC, сохранили в /calls и рассылаем по WS и call, и message
 async function endCall(message, status = 'finished') {
-  // 1. Останавливаем таймер/WebRTC и скрываем окно
   clearInterval(callTimerIntvl);
   if (pc) { pc.close(); pc = null; }
   if (localStream) {
@@ -110,13 +110,20 @@ async function endCall(message, status = 'finished') {
   }
   hideCallWindow();
 
-  // 2. Собираем данные звонка
   const durationSec = Math.floor((Date.now() - callStartTime) / 1000);
   const durStr     = new Date(durationSec * 1000).toISOString().substr(11, 8);
   const startedISO = new Date(callStartTime).toISOString();
   const endedISO   = new Date().toISOString();
 
-  // 3. Сохраняем звонок в БД
+  // Формируем текст, который хотим и в system, и в chat:
+  const callMessage = durationSec === 0
+    ? `📞 Звонок от ${userNickname} к ${currentPeer} был отменен.`
+    : `📞 Звонок от ${userNickname} к ${currentPeer} завершен. Длительность ${durStr}.`;
+
+  // 1) Локально выводим системное
+  appendCenterCall(callMessage);
+
+  // 2) Сохраняем звонок в свою таблицу
   try {
     await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
       method: 'POST',
@@ -134,11 +141,11 @@ async function endCall(message, status = 'finished') {
       })
     });
   } catch (err) {
-    console.error('Ошибка сохранения звонка в calls:', err);
+    console.error('Ошибка сохранения звонка:', err);
     appendSystem('⚠️ Не удалось сохранить данные звонка.');
   }
 
-  // 4. Шлём по WebSocket только одно событие «call»
+  // 3) Шлём по WS событие call, чтобы другие клиенты тоже увидели system-call
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({
       type:       'call',
@@ -148,6 +155,15 @@ async function endCall(message, status = 'finished') {
       started_at: startedISO,
       ended_at:   endedISO,
       duration:   durationSec
+    }));
+
+    // 4) И сразу же шлём событие message, чтобы сервер создал запись в messages
+    //    и все клиенты (включая вас) получили тип 'message' и отрисовали appendMessage
+    socket.send(JSON.stringify({
+      type:   'message',
+      token,                    // обязательно вашим токеном
+      roomId: currentRoom,
+      text:   callMessage
     }));
   }
 }
@@ -556,28 +572,28 @@ async function joinRoom(roomId) {
         handleIce(msg.payload);
         break;
 
-  case 'call': {
-      // 1) формируем текст
+case 'call': {
+      // остальные клиенты просто выводят системное 
       const durStr = msg.duration
         ? new Date(msg.duration * 1000).toISOString().substr(11, 8)
         : '00:00:00';
-
       const text = msg.duration === 0
         ? `📞 Звонок от ${msg.initiator} к ${msg.recipient} был отменен.`
         : `📞 Звонок от ${msg.initiator} к ${msg.recipient} завершен. Длительность ${durStr}.`;
-
-      // 2) системное сообщение посередине
       appendCenterCall(text);
-
-      // 3) «обычное» сообщение в стиле чата
-      appendMessage(
-        msg.initiator, // <--- всегда инициатор
-        text,
-        msg.ended_at  // или msg.time, если у вас так называется
-      );
       break;
     }
 
+    case 'message': {
+      // здесь сервер вам пришлёт { sender, text, time }
+      // и вы выведите точно так же, как любые другие сообщения:
+      appendMessage(
+        msg.sender || msg.sender_nickname,
+        msg.text,
+        msg.time
+      );
+      break;
+    }
 
 
       default:
