@@ -101,7 +101,7 @@ function appendCenterCall(text) {
 
   
 async function endCall(message, status = 'finished') {
-  // 1) Останавливаем таймер/WebRTC и скрываем окно
+  // 1. Останавливаем таймер/WebRTC и скрываем окно
   clearInterval(callTimerIntvl);
   if (pc) { pc.close(); pc = null; }
   if (localStream) {
@@ -110,22 +110,13 @@ async function endCall(message, status = 'finished') {
   }
   hideCallWindow();
 
-  // 2) Собираем данные звонка
+  // 2. Собираем данные звонка
   const durationSec = Math.floor((Date.now() - callStartTime) / 1000);
   const durStr     = new Date(durationSec * 1000).toISOString().substr(11, 8);
   const startedISO = new Date(callStartTime).toISOString();
   const endedISO   = new Date().toISOString();
 
-  // 3) Формируем текст
-  const callMessage = durationSec === 0
-    ? `📞 Звонок от ${userNickname} к ${currentPeer} был отменен.`
-    : `📞 Звонок от ${userNickname} к ${currentPeer} завершен. Длительность ${durStr}.`;
-
-  // 4) Локально рендерим оба блока
-  appendCenterCall(callMessage);
-  appendMessage(userNickname, callMessage, endedISO);
-
-  // 5) Сохраняем звонок в таблице calls
+  // 3. Сохраняем звонок в БД
   try {
     await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
       method: 'POST',
@@ -147,9 +138,8 @@ async function endCall(message, status = 'finished') {
     appendSystem('⚠️ Не удалось сохранить данные звонка.');
   }
 
-  // 6) Шлём по WebSocket оба события: сначала системное, потом чат-сообщение
+  // 4. Шлём по WebSocket только одно событие «call»
   if (socket && socket.readyState === WebSocket.OPEN) {
-    // a) системное событие
     socket.send(JSON.stringify({
       type:       'call',
       initiator:  userNickname,
@@ -159,16 +149,9 @@ async function endCall(message, status = 'finished') {
       ended_at:   endedISO,
       duration:   durationSec
     }));
-    // b) «обычное» событие, чтобы все клиенты отрисовали appendMessage
-    socket.send(JSON.stringify({
-      type:   'message',
-      roomId: currentRoom,
-      sender: userNickname,
-      text:   callMessage,
-      time:   endedISO
-    }));
   }
 }
+
 
 
 
@@ -573,8 +556,8 @@ async function joinRoom(roomId) {
         handleIce(msg.payload);
         break;
 
-   case 'call': {
-      // Формируем одинаковый текст
+  case 'call': {
+      // 1) формируем текст
       const durStr = msg.duration
         ? new Date(msg.duration * 1000).toISOString().substr(11, 8)
         : '00:00:00';
@@ -583,14 +566,14 @@ async function joinRoom(roomId) {
         ? `📞 Звонок от ${msg.initiator} к ${msg.recipient} был отменен.`
         : `📞 Звонок от ${msg.initiator} к ${msg.recipient} завершен. Длительность ${durStr}.`;
 
-      // 1) системное уведомление по центру
+      // 2) системное сообщение посередине
       appendCenterCall(text);
 
-      // 2) «обычное» сообщение в чате
+      // 3) «обычное» сообщение в стиле чата
       appendMessage(
-        msg.initiator,   // или sender, как у вас называется
+        msg.initiator, // <--- всегда инициатор
         text,
-        msg.ended_at     // или msg.time
+        msg.ended_at  // или msg.time, если у вас так называется
       );
       break;
     }
