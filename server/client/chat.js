@@ -100,6 +100,7 @@ function appendCenterCall(text) {
   }
 
 async function endCall(message, status = 'finished') {
+  // 1) Снимаем захват ресурсов
   clearInterval(callTimerIntvl);
   if (pc) pc.close();
   pc = null;
@@ -108,37 +109,51 @@ async function endCall(message, status = 'finished') {
     localStream = null;
   }
 
-  // Формируем текст уведомления на основе статуса и длительности
+  // 2) Считаем длительность
   const durationSec = Math.floor((Date.now() - callStartTime) / 1000);
   const durStr = new Date(durationSec * 1000).toISOString().substr(11, 8);
 
-  let callMessage = '';
-  if (durationSec === 0) {
-    callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} был отменен.`;
+  // 3) Формируем текст для истории и для WS
+  let callTextForHistory;
+  if (status === 'cancelled' && durationSec > 0) {
+    callTextForHistory = `📞 Звонок от ${userNickname} к ${currentPeer} был отменён. Ожидание ответа ${durStr}.`;
+  } else if (status === 'cancelled') {
+    callTextForHistory = `📞 Звонок от ${userNickname} к ${currentPeer} был отменён.`;
   } else {
-    callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} завершен. Длительность ${durStr}.`;
+    callTextForHistory = `📞 Звонок от ${userNickname} к ${currentPeer} завершен. Длительность ${durStr}.`;
   }
 
-  // Локальное уведомление (объединенное)
- // appendCenterCall(callMessage);
+  // 4) Немедленно покажем в своём чате
+  appendCenterCall(callTextForHistory);
 
-  // Отправляем на бэкенд
-  const startedISO = new Date(callStartTime).toISOString();
-  const endedISO = new Date().toISOString();
+  // 5) Рассылаем по WebSocket, чтобы и другая сторона увидела
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({
+      type:      'call',
+      initiator: userNickname,
+      recipient: currentPeer,
+      status,
+      duration:  durationSec,
+      started_at: new Date(callStartTime).toISOString(),
+      ended_at:   new Date().toISOString()
+    }));
+  }
+
+  // 6) Сохраняем на бэкенде в таблицу
   try {
     await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type':  'application/json',
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        initiator: userNickname,
-        recipient: currentPeer,
-        started_at: startedISO,
-        ended_at: endedISO,
-        status: status,
-        duration: durationSec
+        initiator:  userNickname,
+        recipient:  currentPeer,
+        started_at: new Date(callStartTime).toISOString(),
+        ended_at:   new Date().toISOString(),
+        status,
+        duration:   durationSec
       })
     });
   } catch (err) {
@@ -146,8 +161,10 @@ async function endCall(message, status = 'finished') {
     appendSystem('⚠️ Не удалось сохранить данные звонка на сервер.');
   }
 
+  // 7) Закрываем окно звонка
   hideCallWindow();
 }
+
 
 
 
