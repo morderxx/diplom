@@ -99,7 +99,9 @@ function appendCenterCall(text) {
     callWindow.classList.add('hidden');
   }
 
+  
 async function endCall(message, status = 'finished') {
+  // 1) Останавливаем таймер и WebRTC
   clearInterval(callTimerIntvl);
   if (pc) pc.close();
   pc = null;
@@ -108,23 +110,23 @@ async function endCall(message, status = 'finished') {
     localStream = null;
   }
 
-  // Формируем текст уведомления на основе статуса и длительности
+  // 2) Формируем данные звонка
   const durationSec = Math.floor((Date.now() - callStartTime) / 1000);
   const durStr = new Date(durationSec * 1000).toISOString().substr(11, 8);
-
-  let callMessage = '';
-  if (durationSec === 0) {
-    callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} был отменен.`;
-  } else {
-    callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} завершен. Длительность ${durStr}.`;
-  }
-
-  // Локальное уведомление (объединенное)
- // appendCenterCall(callMessage);
-
-  // Отправляем на бэкенд
   const startedISO = new Date(callStartTime).toISOString();
-  const endedISO = new Date().toISOString();
+  const endedISO   = new Date().toISOString();
+
+  // 3) Текст уведомления
+  const callMessage = durationSec === 0
+    ? `📞 Звонок от ${userNickname} к ${currentPeer} был отменен.`
+    : `📞 Звонок от ${userNickname} к ${currentPeer} завершен. Длительность ${durStr}.`;
+
+  // 4) Локальное отображение
+  hideCallWindow();
+  appendCenterCall(callMessage);
+  appendMessage(userNickname, callMessage, endedISO);
+
+  // 5) Сохраняем звонок в БД
   try {
     await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
       method: 'POST',
@@ -133,12 +135,12 @@ async function endCall(message, status = 'finished') {
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        initiator: userNickname,
-        recipient: currentPeer,
+        initiator:  userNickname,
+        recipient:  currentPeer,
         started_at: startedISO,
-        ended_at: endedISO,
-        status: status,
-        duration: durationSec
+        ended_at:   endedISO,
+        status:     status,
+        duration:   durationSec
       })
     });
   } catch (err) {
@@ -146,78 +148,30 @@ async function endCall(message, status = 'finished') {
     appendSystem('⚠️ Не удалось сохранить данные звонка на сервер.');
   }
 
-  hideCallWindow();
-  await refreshHistory();
-}
-
-
-// Полное обновление истории чата «всё в одном»
-async function refreshHistory() {
-  try {
-    // 1) Запрашиваем всю историю (сообщения + звонки)
-    const res = await fetch(`${API_URL}/rooms/${currentRoom}/messages`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    if (!res.ok) {
-      console.error('Ошибка загрузки истории:', await res.text());
-      return;
-    }
-    const history = await res.json();
-
-    // 2) Сбрасываем текущее содержимое чата и дедупликатор файлов
-    const chatBox = document.getElementById('chat-box');
-    chatBox.innerHTML = '';
-    renderedFileIds.clear();
-
-    // 3) Проходим по каждому элементу истории и рендерим
-    history.forEach(m => {
-      // 3.1) Звонок
-      if (m.type === 'call') {
-        const durStr = m.duration
-          ? new Date(m.duration * 1000).toISOString().substr(11, 8)
-          : '00:00:00';
-        let callMessage;
-        if (m.status === 'cancelled' && m.duration === 0) {
-          callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} был отменен.`;
-        } else if (m.status === 'cancelled') {
-          callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} был сброшен. Длительность ${durStr}.`;
-        } else if (m.duration === 0) {
-          callMessage = `📞 Исходящий вызов от ${m.initiator} к ${m.recipient} не был принят.`;
-        } else {
-          callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} завершен. Длительность ${durStr}.`;
-        }
-        appendCenterCall(callMessage);
-        return;
-      }
-
-      // 3.2) Файловое сообщение
-      if (m.type === 'message' && m.file_id !== null) {
-        appendFile(
-          m.sender_nickname,
-          m.file_id,
-          m.filename,
-          m.mime_type,
-          m.time
-        );
-        return;
-      }
-
-      // 3.3) Обычное текстовое сообщение
-      if (m.type === 'message' && m.text !== null) {
-        appendMessage(
-          m.sender_nickname,
-          m.text,
-          m.time
-        );
-        return;
-      }
-
-      console.warn('Неизвестный элемент истории:', m);
-    });
-  } catch (err) {
-    console.error('Ошибка в refreshHistory:', err);
+  // 6) Шлём по WebSocket события
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    // a) системное событие
+    socket.send(JSON.stringify({
+      type:        'call',
+      initiator:   userNickname,
+      recipient:   currentPeer,
+      status:      status,
+      started_at:  startedISO,
+      ended_at:    endedISO,
+      duration:    durationSec
+    }));
+    // b) обычное сообщение
+    socket.send(JSON.stringify({
+      type:   'message',
+      roomId: currentRoom,
+      sender: userNickname,
+      text:   callMessage,
+      time:   endedISO
+    }));
   }
 }
+
+
 
 
 
