@@ -15,16 +15,30 @@
       <ul id="users-list" class="rooms-list"></ul>
     </aside>
 
-    <section id="chat-section" class="chat-container">
-      <div id="chat-box" class="chat-box"></div>
-      <div class="input-container">
-        <button id="attach-btn" class="icon-btn">📎</button>
-        <button id="call-btn"    class="icon-btn">☎️</button>
-        <textarea id="message" placeholder="Введите сообщение..." rows="1"></textarea>
-        <button id="send-btn"    class="icon-btn">➤</button>
-        <button id="voice-btn"   class="icon-btn">🎤</button>
+<section id="chat-section" class="chat-container">
+  <div class="chat-message-area">
+    <!-- шапка -->
+    <div class="chat-header">
+      <div class="chat-header__left">
+        Собеседник: <span id="chat-peer"></span>
       </div>
-    </section>
+      <button id="call-btn" class="icon-btn chat-header__call-btn">☎️</button>
+    </div>
+
+    <!-- окно сообщений -->
+    <div id="chat-box" class="chat-box"></div>
+  </div>
+
+  <!-- поле ввода без кнопки звонка -->
+  <div class="input-container">
+    <button id="attach-btn" class="icon-btn">📎</button>
+    <!-- <button id="call-btn" …>☎️</button> — убрали -->
+    <textarea id="message" placeholder="Введите сообщение..." rows="1"></textarea>
+    <button id="send-btn" class="icon-btn">➤</button>
+    <button id="voice-btn" class="icon-btn">🎤</button>
+  </div>
+</section>
+
   </div>
 
 
