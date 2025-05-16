@@ -353,17 +353,15 @@ answerBtn.onclick = async () => {
 
 
  cancelBtn.onclick = () => {
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    // шлём отмену и roomId, чтобы сервер переслал другому
-    socket.send(JSON.stringify({
-      type:   'webrtc-cancel',
-      from: userNickname,
-      roomId: currentRoom
-    }));
-  }
-  // своё окно закрываем
-  endCall('Вы отменили звонок', 'cancelled');
-};
+   if (socket && socket.readyState === WebSocket.OPEN) {
+     socket.send(JSON.stringify({
+       type: 'webrtc-cancel',
+       from: userNickname,
+       roomId: currentRoom
+     }));
+   }
+   endCall('cancelled');
+ };
 
  // minimizeBtn.onclick = () => callWindow.classList.toggle('minimized');
 
@@ -526,7 +524,7 @@ async function joinRoom(roomId) {
     const msg = JSON.parse(ev.data);
     switch (msg.type) {
       case 'webrtc-cancel':
-        endCall('Собеседник отменил звонок', 'cancelled');
+        endCall('cancelled');
         break;
 
       case 'file':
