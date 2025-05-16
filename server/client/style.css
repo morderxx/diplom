@@ -194,16 +194,6 @@ button:hover {
     gap: 10px;
 }
 
-/* Удалим лишнее, если есть */
-.chat-container .chat-header {
-    display: none !important;
-}
-
-.chat-container.active .chat-header {
-  display: block !important;
-}
-
-
 
 #chat-box {
     flex: 1;
