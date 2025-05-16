@@ -99,7 +99,7 @@ function appendCenterCall(text) {
     callWindow.classList.add('hidden');
   }
 
-async function endCall(message, status = 'finished') {
+async function endCall(status = 'finished') {
   // 1) Снимаем захват ресурсов
   clearInterval(callTimerIntvl);
   if (pc) pc.close();
@@ -111,25 +111,11 @@ async function endCall(message, status = 'finished') {
 
   // 2) Считаем длительность
   const durationSec = Math.floor((Date.now() - callStartTime) / 1000);
-  const durStr = new Date(durationSec * 1000).toISOString().substr(11, 8);
 
-  // 3) Формируем текст для своего баннера
-  let callTextForHistory;
-  if (status === 'cancelled' && durationSec > 0) {
-    callTextForHistory = `📞 Звонок от ${userNickname} к ${currentPeer} был отменён. Ожидание ответа ${durStr}.`;
-  } else if (status === 'cancelled') {
-    callTextForHistory = `📞 Звонок от ${userNickname} к ${currentPeer} был отменён.`;
-  } else {
-    callTextForHistory = `📞 Звонок от ${userNickname} к ${currentPeer} завершён. Длительность ${durStr}.`;
-  }
-
-  // 4) Немедленно покажем в своём чате центральный баннер
-  appendCenterCall(callTextForHistory);
-
-  // 5) Отправляем данные на сервер — сервер сам сохранит в calls/messages
-  //    и разошлёт по WebSocket оба события: сначала 'call', затем 'message'
+  // 3) Отправляем данные на сервер и ждём ответа с message_text
+  let call;
   try {
-    await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
+    const res = await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
       method: 'POST',
       headers: {
         'Content-Type':  'application/json',
@@ -144,12 +130,19 @@ async function endCall(message, status = 'finished') {
         duration:   durationSec
       })
     });
+    if (!res.ok) throw new Error(await res.text());
+    call = await res.json();
   } catch (err) {
     console.error('Ошибка сохранения звонка в БД:', err);
     appendSystem('⚠️ Не удалось сохранить данные звонка на сервер.');
   }
 
-  // 6) Закрываем окно звонка
+  // 4) Отрисовываем централизованный баннер тем же текстом, что и сервер
+  if (call && call.message_text) {
+    appendCenterCall(call.message_text);
+  }
+
+  // 5) Закрываем окно звонка
   hideCallWindow();
 }
 
