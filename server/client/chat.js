@@ -533,22 +533,23 @@ async function joinRoom(roomId) {
     (location.protocol === 'https:' ? 'wss://' : 'ws://') +
       location.host
   );
-  socket.onopen = () =>
-    socket.send(JSON.stringify({ type: 'join', token, roomId }));
-  socket.onmessage = ev => {
-    const msg = JSON.parse(ev.data);
-    switch (msg.type) {
-      case 'webrtc-cancel':
-        endCall('Собеседник отменил звонок', 'cancelled');
-        break;
+socket.onopen = () => {
+  socket.send(JSON.stringify({ type: 'join', token, roomId }));
+};
 
-      case 'message':
-        appendMessage(msg.sender, msg.text, msg.time);
-        break;
+socket.onmessage = async (ev) => {
+  const msg = JSON.parse(ev.data);
 
-   case 'file':
-      // просто вызываем appendFile —
-      // дубли отсеется там само́й
+  switch (msg.type) {
+    case 'webrtc-cancel':
+      endCall('Собеседник отменил звонок', 'cancelled');
+      break;
+
+    case 'message':
+      appendMessage(msg.sender, msg.text, msg.time);
+      break;
+
+    case 'file':
       appendFile(
         msg.sender,
         msg.fileId,
@@ -558,39 +559,40 @@ async function joinRoom(roomId) {
       );
       break;
 
-      case 'webrtc-offer':
-        currentPeer = msg.from;
-        handleOffer(msg.payload);
-        showCallWindow(currentPeer, true);
-        break;
+    case 'webrtc-offer':
+      currentPeer = msg.from;
+      await handleOffer(msg.payload);
+      showCallWindow(currentPeer, true);
+      break;
 
-      case 'webrtc-answer':
-        handleAnswer(msg.payload);
-        break;
+    case 'webrtc-answer':
+      await handleAnswer(msg.payload);
+      break;
 
-      case 'webrtc-ice':
-        handleIce(msg.payload);
-        break;
+    case 'webrtc-ice':
+      await handleIce(msg.payload);
+      break;
 
-case 'call': {
+    case 'call': {
       // 1) Формируем текст и рендерим системное уведомление
       const durStr = msg.duration
         ? new Date(msg.duration * 1000).toISOString().substr(11, 8)
         : '00:00:00';
+
       const text = msg.duration === 0
         ? `📞 Звонок от ${msg.initiator} к ${msg.recipient} был отменен.`
         : `📞 Звонок от ${msg.initiator} к ${msg.recipient} завершен. Длительность ${durStr}.`;
 
       appendCenterCall(text);
 
-      // 2) Делаем запрос к API для получения истории
+      // 2) Подтягиваем из БД последнее сообщение из messages
       try {
-        const res = await fetch(`${API_URL}/rooms/${currentRoom}/messages`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetch(
+          `${API_URL}/rooms/${currentRoom}/messages`,
+          { headers: { 'Authorization': `Bearer ${token}` } }
+        );
         if (!res.ok) throw new Error(await res.text());
         const history = await res.json();
-        // 3) Берём последнее сообщение
         const last = history[history.length - 1];
         if (last && last.text) {
           appendMessage(
@@ -605,12 +607,11 @@ case 'call': {
       break;
     }
 
-
-      default:
-        console.warn('Unknown message type:', msg.type);
-    }  // ← закрываем switch
-
-  };   // ← закрываем стрелочную функцию onmessage
+    default:
+      console.warn('Unknown message type:', msg.type);
+  }
+};
+  // ← закрываем стрелочную функцию onmessage
 
 
   // ─── Загрузка всей истории из одного эндпоинта ───────────────────────────
