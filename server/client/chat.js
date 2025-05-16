@@ -113,33 +113,21 @@ async function endCall(message, status = 'finished') {
   const durationSec = Math.floor((Date.now() - callStartTime) / 1000);
   const durStr = new Date(durationSec * 1000).toISOString().substr(11, 8);
 
-  // 3) Формируем текст для истории и для WS
+  // 3) Формируем текст для своего баннера
   let callTextForHistory;
   if (status === 'cancelled' && durationSec > 0) {
     callTextForHistory = `📞 Звонок от ${userNickname} к ${currentPeer} был отменён. Ожидание ответа ${durStr}.`;
   } else if (status === 'cancelled') {
     callTextForHistory = `📞 Звонок от ${userNickname} к ${currentPeer} был отменён.`;
   } else {
-    callTextForHistory = `📞 Звонок от ${userNickname} к ${currentPeer} завершен. Длительность ${durStr}.`;
+    callTextForHistory = `📞 Звонок от ${userNickname} к ${currentPeer} завершён. Длительность ${durStr}.`;
   }
 
-  // 4) Немедленно покажем в своём чате
+  // 4) Немедленно покажем в своём чате центральный баннер
   appendCenterCall(callTextForHistory);
 
-  // 5) Рассылаем по WebSocket, чтобы и другая сторона увидела
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    socket.send(JSON.stringify({
-      type:      'call',
-      initiator: userNickname,
-      recipient: currentPeer,
-      status,
-      duration:  durationSec,
-      started_at: new Date(callStartTime).toISOString(),
-      ended_at:   new Date().toISOString()
-    }));
-  }
-
-  // 6) Сохраняем на бэкенде в таблицу
+  // 5) Отправляем данные на сервер — сервер сам сохранит в calls/messages
+  //    и разошлёт по WebSocket оба события: сначала 'call', затем 'message'
   try {
     await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
       method: 'POST',
@@ -161,9 +149,10 @@ async function endCall(message, status = 'finished') {
     appendSystem('⚠️ Не удалось сохранить данные звонка на сервер.');
   }
 
-  // 7) Закрываем окно звонка
+  // 6) Закрываем окно звонка
   hideCallWindow();
 }
+
 
 
 
