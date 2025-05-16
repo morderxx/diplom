@@ -548,9 +548,15 @@ document.getElementById('chat-section').classList.add('active');
         endCall('Собеседник отменил звонок', 'cancelled');
         break;
 
-      case 'message':
+  case 'message': {
+      // если пришёл callId — рисуем как часть истории звонка
+      if (msg.callId != null) {
+        appendMessage(msg.sender, msg.text, msg.time, msg.callId);
+      } else {
         appendMessage(msg.sender, msg.text, msg.time);
-        break;
+      }
+      break;
+    }
 
    case 'file':
       // просто вызываем appendFile —
