@@ -29,33 +29,15 @@ function formatCallMessage({ initiator, recipient, status, duration, canceler })
   const ss = String(duration % 60).padStart(2, '0');
   switch (status) {
     case 'cancelled':
-      // если звонок отменён и продолжительности нет
       if (duration === 0) {
         return `📞 Звонок от ${initiatorTag} к ${recipientTag} был отменён.`;
       }
-      // звонок был сброшен после соединения
-      const cancelerTag = canceler ? ` @${canceler}` : '';
+      const cancelerTag = canceler ? ` Сбросил @${canceler}.` : '';
       return `📞 Звонок от ${initiatorTag} к ${recipientTag} был сброшен.${cancelerTag} Длительность ${mm}:${ss}.`;
     case 'missed':
       return `📞 Пропущенный звонок от ${initiatorTag} к ${recipientTag}.`;
     case 'finished':
       return `📞 Звонок от ${initiatorTag} к ${recipientTag} завершён. Длительность ${mm}:${ss}.`;
-    default:
-      return `📞 Статус звонка: ${status}.`;
-  }
-}) {
-  const initiatorTag = `@${initiator}`;
-  const recipientTag = `@${recipient}`;
-  switch (status) {
-    case 'cancelled':
-      return `📞 Звонок от ${initiatorTag} к ${recipientTag} был отменён.`;
-    case 'missed':
-      return `📞 Пропущенный звонок от ${initiatorTag} к ${recipientTag}.`;
-    case 'finished': {
-      const mm = String(Math.floor(duration / 60)).padStart(2, '0');
-      const ss = String(duration % 60).padStart(2, '0');
-      return `📞 Звонок от ${initiatorTag} к ${recipientTag} завершён. Продолжительность ${mm}:${ss}.`;
-    }
     default:
       return `📞 Статус звонка: ${status}.`;
   }
@@ -67,8 +49,11 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
   const { initiator, recipient, started_at, ended_at, status, duration } = req.body;
 
   try {
+    // Определяем, кто сбросил звонок (если применимо)
+    const canceler = (status === 'cancelled' && duration > 0) ? req.userLogin : undefined;
+
     // 1) Генерация текста системного уведомления
-    const messageText = formatCallMessage({ initiator, recipient, status, duration });
+    const messageText = formatCallMessage({ initiator, recipient, status, duration, canceler });
 
     // 2) Сохранение звонка с текстом уведомления
     const { rows: [call] } = await pool.query(
