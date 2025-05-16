@@ -147,10 +147,22 @@ async function endCall(message, status = 'finished') {
   }
 
   hideCallWindow();
+  await refreshHistory();
 }
 
 
+async function refreshHistory() {
+  const res = await fetch(`${API_URL}/rooms/${currentRoom}/messages`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) return console.error(await res.text());
 
+  const history = await res.json();
+  const chatBox = document.getElementById('chat-box');
+  chatBox.innerHTML = '';           // очищаем текущее
+  renderedFileIds.clear();          // если у вас есть дедупликатор файлов
+  history.forEach(renderFromHistory);
+}
 
 
 
