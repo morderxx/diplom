@@ -573,25 +573,35 @@ async function joinRoom(roomId) {
         break;
 
 case 'call': {
-      // остальные клиенты просто выводят системное 
+      // 1) Формируем текст и рендерим системное уведомление
       const durStr = msg.duration
         ? new Date(msg.duration * 1000).toISOString().substr(11, 8)
         : '00:00:00';
       const text = msg.duration === 0
         ? `📞 Звонок от ${msg.initiator} к ${msg.recipient} был отменен.`
         : `📞 Звонок от ${msg.initiator} к ${msg.recipient} завершен. Длительность ${durStr}.`;
-      appendCenterCall(text);
-      break;
-    }
 
-    case 'message': {
-      // здесь сервер вам пришлёт { sender, text, time }
-      // и вы выведите точно так же, как любые другие сообщения:
-      appendMessage(
-        msg.sender || msg.sender_nickname,
-        msg.text,
-        msg.time
-      );
+      appendCenterCall(text);
+
+      // 2) Делаем запрос к API для получения истории
+      try {
+        const res = await fetch(`${API_URL}/rooms/${currentRoom}/messages`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const history = await res.json();
+        // 3) Берём последнее сообщение
+        const last = history[history.length - 1];
+        if (last && last.text) {
+          appendMessage(
+            last.sender_nickname || last.sender,
+            last.text,
+            last.time
+          );
+        }
+      } catch (err) {
+        console.error('Не удалось подтянуть сообщение из messages:', err);
+      }
       break;
     }
 
