@@ -506,6 +506,14 @@ async function joinRoom(roomId) {
   // начинаем с чистого списка отрисованных файлов
   renderedFileIds.clear();
   currentRoom = roomId;
+  // показываем заголовок и подставляем ник текущего собеседника
+const header = document.getElementById('chat-header');
+const peerEl = document.getElementById('chat-peer');
+peerEl.textContent = currentPeer;       // currentPeer уже установлен в .onclick выбора чата
+header.classList.remove('hidden');
+// если вы хотите добавить класс .active к контейнеру, то ниже
+document.getElementById('chat-section').classList.add('active');
+
   document.getElementById('chat-box').innerHTML = '';
   document.getElementById('chat-section').classList.add('active');
 
