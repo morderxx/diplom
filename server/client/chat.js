@@ -100,33 +100,22 @@ function appendCenterCall(text) {
   }
 
   
+// 1) endCall — только WebRTC, fetch(/calls) и WS call
 async function endCall(message, status = 'finished') {
-  // 1) Останавливаем таймер/WebRTC и скрываем окно
   clearInterval(callTimerIntvl);
   if (pc) pc.close(), pc = null;
-  if (localStream) {
-    localStream.getTracks().forEach(t => t.stop());
-    localStream = null;
-  }
+  if (localStream) localStream.getTracks().forEach(t => t.stop()), localStream = null;
   hideCallWindow();
 
-  // 2) Собираем данные и формируем текст
   const durationSec = Math.floor((Date.now() - callStartTime) / 1000);
   const durStr     = new Date(durationSec * 1000).toISOString().substr(11, 8);
   const startedISO = new Date(callStartTime).toISOString();
   const endedISO   = new Date().toISOString();
 
-  const callMessage = durationSec === 0
-    ? `📞 Звонок от ${userNickname} к ${currentPeer} был отменен.`
-    : `📞 Звонок от ${userNickname} к ${currentPeer} завершен. Длительность ${durStr}.`;
-
-  // 3) Локальное системное уведомление
-  appendCenterCall(callMessage);
-
-  // 4) Сохраняем в таблицу calls
+  // 1.1) Сохраняем в таблицу calls
   try {
     await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
-      method: 'POST',
+      method:  'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
@@ -145,7 +134,7 @@ async function endCall(message, status = 'finished') {
     appendSystem('⚠️ Не удалось сохранить данные звонка.');
   }
 
-  // 5) Отправляем по WebSocket только событие call
+  // 1.2) Шлём по WS только call
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({
       type:       'call',
@@ -158,6 +147,7 @@ async function endCall(message, status = 'finished') {
     }));
   }
 }
+
 
 
 
@@ -560,29 +550,28 @@ async function joinRoom(roomId) {
         handleIce(msg.payload);
         break;
 
-       case 'call': {
-      // 1) Формируем время и длительность
-      const time    = new Date(msg.ended_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-      const durStr  = msg.duration
+   case 'call': {
+      // Формируем одинаковый текст
+      const durStr = msg.duration
         ? new Date(msg.duration * 1000).toISOString().substr(11, 8)
         : '00:00:00';
 
-      // 2) Составляем одинаковое текстовое сообщение
-      const callMessage = msg.duration === 0
+      const text = msg.duration === 0
         ? `📞 Звонок от ${msg.initiator} к ${msg.recipient} был отменен.`
         : `📞 Звонок от ${msg.initiator} к ${msg.recipient} завершен. Длительность ${durStr}.`;
 
-      // 3) Сначала системное уведомление по центру
-      appendCenterCall(callMessage);
+      // 1) системное уведомление по центру
+      appendCenterCall(text);
 
-      // 4) Затем «обычное» сообщение в ленту чата
+      // 2) «обычное» сообщение в чате
       appendMessage(
-        msg.initiator,
-        callMessage,
-        msg.ended_at   // или msg.time, если так у вас называется поле
+        msg.initiator,   // или sender, как у вас называется
+        text,
+        msg.ended_at     // или msg.time
       );
       break;
     }
+
 
 
       default:
