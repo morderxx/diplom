@@ -22,7 +22,28 @@ async function authMiddleware(req, res, next) {
 }
 
 // Helper: формирует текст системного уведомления для звонка
-function formatCallMessage({ initiator, recipient, status, duration }) {
+function formatCallMessage({ initiator, recipient, status, duration, canceler }) {
+  const initiatorTag = `@${initiator}`;
+  const recipientTag = `@${recipient}`;
+  const mm = String(Math.floor(duration / 60)).padStart(2, '0');
+  const ss = String(duration % 60).padStart(2, '0');
+  switch (status) {
+    case 'cancelled':
+      // если звонок отменён и продолжительности нет
+      if (duration === 0) {
+        return `📞 Звонок от ${initiatorTag} к ${recipientTag} был отменён.`;
+      }
+      // звонок был сброшен после соединения
+      const cancelerTag = canceler ? ` @${canceler}` : '';
+      return `📞 Звонок от ${initiatorTag} к ${recipientTag} был сброшен.${cancelerTag} Длительность ${mm}:${ss}.`;
+    case 'missed':
+      return `📞 Пропущенный звонок от ${initiatorTag} к ${recipientTag}.`;
+    case 'finished':
+      return `📞 Звонок от ${initiatorTag} к ${recipientTag} завершён. Длительность ${mm}:${ss}.`;
+    default:
+      return `📞 Статус звонка: ${status}.`;
+  }
+}) {
   const initiatorTag = `@${initiator}`;
   const recipientTag = `@${recipient}`;
   switch (status) {
