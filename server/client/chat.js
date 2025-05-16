@@ -101,16 +101,13 @@ function appendCenterCall(text) {
 
   
 async function endCall(message, status = 'finished') {
-  // 1) Отменяем таймер и WebRTC
+  // 1) Останавливаем таймер/WebRTC и скрываем окно
   clearInterval(callTimerIntvl);
-  if (pc) pc.close();
-  pc = null;
-  if (localStream) {
-    localStream.getTracks().forEach(t => t.stop());
-    localStream = null;
-  }
+  if (pc) pc.close(), pc = null;
+  if (localStream) localStream.getTracks().forEach(t => t.stop()), localStream = null;
+  hideCallWindow();
 
-  // 2) Собираем данные звонка
+  // 2) Собираем данные и текст уведомления
   const durationSec = Math.floor((Date.now() - callStartTime) / 1000);
   const durStr     = new Date(durationSec * 1000).toISOString().substr(11, 8);
   const startedISO = new Date(callStartTime).toISOString();
@@ -120,11 +117,10 @@ async function endCall(message, status = 'finished') {
     ? `📞 Звонок от ${userNickname} к ${currentPeer} был отменен.`
     : `📞 Звонок от ${userNickname} к ${currentPeer} завершен. Длительность ${durStr}.`;
 
-  // 3) Скрываем окно и сразу показываем системное уведомление
-  hideCallWindow();
+  // 3) Локальное системное уведомление
   appendCenterCall(callMessage);
 
-  // 4) Сохраняем звонок в таблицу calls
+  // 4) Сохраняем звонок в отдельную таблицу
   try {
     await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
       method: 'POST',
@@ -142,13 +138,12 @@ async function endCall(message, status = 'finished') {
       })
     });
   } catch (err) {
-    console.error('Ошибка сохранения звонка в БД:', err);
-    appendSystem('⚠️ Не удалось сохранить данные звонка на сервер.');
+    console.error('Ошибка сохранения звонка в calls:', err);
+    appendSystem('⚠️ Не удалось сохранить данные звонка.');
   }
 
-  // 5) Сохраняем запись в основной таблице messages,
-  //    чтобы там лежал ровно тот же текст.
-  let messageSaved = false;
+  // 5) Создаём «обычное» сообщение в messages и ждём полного объекта из БД
+  let savedMsg = null;
   try {
     const res = await fetch(`${API_URL}/rooms/${currentRoom}/messages`, {
       method: 'POST',
@@ -159,17 +154,28 @@ async function endCall(message, status = 'finished') {
       body: JSON.stringify({
         sender: userNickname,
         text:   callMessage,
-        time:   endedISO
+        time:   endedISO,
+        type:   'call'       // если ваш бэкенд требует отдельного типа
       })
     });
-    messageSaved = res.ok;
-    if (!res.ok) console.error('Ошибка создания сообщения звонка:', await res.text());
+    if (!res.ok) throw new Error(await res.text());
+    // Предполагаем, что сервер возвращает именно то, что хранит в БД:
+    // { sender_nickname, text, time, ... }
+    savedMsg = await res.json();
+
+    // 6) Локально рендерим его так же, как из истории
+    appendMessage(
+      savedMsg.sender_nickname || savedMsg.sender,
+      savedMsg.text,
+      savedMsg.time
+    );
   } catch (err) {
-    console.error('Ошибка создания сообщения звонка:', err);
+    console.error('Ошибка сохранения сообщения в messages:', err);
+    appendSystem('⚠️ Не удалось сохранить сообщение звонка.');
   }
 
-  // 6) Шлём события по WebSocket — сначала call, затем message,
-  //    чтобы сервер их переслал клиентам в том порядке, в котором они появились в БД.
+  // 7) Шлём по WebSocket только событие call — 
+  //    а сервер, получив POST в /messages, должен сам бродкастить message всем
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({
       type:       'call',
@@ -180,17 +186,9 @@ async function endCall(message, status = 'finished') {
       ended_at:   endedISO,
       duration:   durationSec
     }));
-    if (messageSaved) {
-      socket.send(JSON.stringify({
-        type:   'message',
-        roomId: currentRoom,
-        sender: userNickname,
-        text:   callMessage,
-        time:   endedISO
-      }));
-    }
   }
 }
+
 
 
 
