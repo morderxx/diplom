@@ -64,7 +64,7 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
     `, [roomId, initiator, text, started_at, call.id]);
     const message = msgRows[0];
 
-    // 4) Отправляем клиенту данные о только что созданном звонке
+    // 4) Ответ клиенту данными о только что созданном звонке
     res.status(201).json(call);
 
     // 5) Рассылаем по WebSocket оба события: call и message
