@@ -151,18 +151,74 @@ async function endCall(message, status = 'finished') {
 }
 
 
+// Полное обновление истории чата «всё в одном»
 async function refreshHistory() {
-  const res = await fetch(`${API_URL}/rooms/${currentRoom}/messages`, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
-  if (!res.ok) return console.error(await res.text());
+  try {
+    // 1) Запрашиваем всю историю (сообщения + звонки)
+    const res = await fetch(`${API_URL}/rooms/${currentRoom}/messages`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) {
+      console.error('Ошибка загрузки истории:', await res.text());
+      return;
+    }
+    const history = await res.json();
 
-  const history = await res.json();
-  const chatBox = document.getElementById('chat-box');
-  chatBox.innerHTML = '';           // очищаем текущее
-  renderedFileIds.clear();          // если у вас есть дедупликатор файлов
-  history.forEach(renderFromHistory);
+    // 2) Сбрасываем текущее содержимое чата и дедупликатор файлов
+    const chatBox = document.getElementById('chat-box');
+    chatBox.innerHTML = '';
+    renderedFileIds.clear();
+
+    // 3) Проходим по каждому элементу истории и рендерим
+    history.forEach(m => {
+      // 3.1) Звонок
+      if (m.type === 'call') {
+        const durStr = m.duration
+          ? new Date(m.duration * 1000).toISOString().substr(11, 8)
+          : '00:00:00';
+        let callMessage;
+        if (m.status === 'cancelled' && m.duration === 0) {
+          callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} был отменен.`;
+        } else if (m.status === 'cancelled') {
+          callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} был сброшен. Длительность ${durStr}.`;
+        } else if (m.duration === 0) {
+          callMessage = `📞 Исходящий вызов от ${m.initiator} к ${m.recipient} не был принят.`;
+        } else {
+          callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} завершен. Длительность ${durStr}.`;
+        }
+        appendCenterCall(callMessage);
+        return;
+      }
+
+      // 3.2) Файловое сообщение
+      if (m.type === 'message' && m.file_id !== null) {
+        appendFile(
+          m.sender_nickname,
+          m.file_id,
+          m.filename,
+          m.mime_type,
+          m.time
+        );
+        return;
+      }
+
+      // 3.3) Обычное текстовое сообщение
+      if (m.type === 'message' && m.text !== null) {
+        appendMessage(
+          m.sender_nickname,
+          m.text,
+          m.time
+        );
+        return;
+      }
+
+      console.warn('Неизвестный элемент истории:', m);
+    });
+  } catch (err) {
+    console.error('Ошибка в refreshHistory:', err);
+  }
 }
+
 
 
 
