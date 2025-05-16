@@ -141,6 +141,25 @@ button:hover {
     display: flex;
 }
 
+/* Заголовок внутри чата — под общий дизайн */
+.chat-container .chat-header {
+    display: none;               /* по-умолчанию скрыт */
+    padding: 8px 16px;
+    background: #fff;            /* белый, как #chat-box */
+    border-bottom: 1px solid #ddd;
+    font-weight: bold;
+    font-size: 14px;
+    border-top-left-radius: 8px; /* скругления близки к .chat-box */
+    border-top-right-radius: 8px;
+    margin-bottom: 8px;          /* небольшой отступ к самому окну */
+}
+
+/* Когда чат становится активным — показываем заголовок */
+.chat-container.active .chat-header {
+    display: block;
+}
+
+
 #chat-box {
     flex: 1;
     overflow-y: auto;
