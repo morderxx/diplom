@@ -99,8 +99,31 @@ function appendCenterCall(text) {
     callWindow.classList.add('hidden');
   }
 
+// В начало файла, рядом с endCall, добавим вспомогательную для «ringing‑отмены»:
+function cancelRingingCall() {
+  // Останавливаем таймер и прячем окно
+  clearInterval(callTimerIntvl);
+  hideCallWindow();
+
+  // Считаем, сколько секунд звонили
+  const ringSec = Math.floor((Date.now() - callStartTime) / 1000);
+  const durStr  = new Date(ringSec * 1000).toISOString().substr(11, 8);
+
+  // 1) Пользовательское сообщение
+  appendMessage(
+    userNickname,
+    `${userNickname} отменил(а) звонок`,
+    new Date().toISOString()
+  );
+
+  // 2) Системное центрированное
+  appendCenterCall(
+    `📞 Звонок от ${userNickname} к ${currentPeer} был отменён. Ожидание ответа ${durStr}.`
+  );
+}
+
+// Перепишем endCall только под «in‑call»
 async function endCall(message, status = 'finished') {
-  // Останавливаем таймер и WebRTC
   clearInterval(callTimerIntvl);
   if (pc) pc.close();
   pc = null;
@@ -109,36 +132,30 @@ async function endCall(message, status = 'finished') {
     localStream = null;
   }
 
-  // Рассчитываем длительность звонка
+  // Длительность разговора
   const durationSec = Math.floor((Date.now() - callStartTime) / 1000);
-  const durStr = new Date(durationSec * 1000).toISOString().substr(11, 8);
-  const timeISO = new Date().toISOString();
-  const timeStr = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+  const durStr      = new Date(durationSec * 1000).toISOString().substr(11, 8);
+  const timeISO     = new Date().toISOString();
+  const timeStr     = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
 
-  // 1) Выводим сообщение «от пользователя» (без длительности)
-  let userText;
-  if (status === 'cancelled') {
-    userText = `${userNickname} отменил(а) звонок`;
-  } else {
-    userText = `Звонок с ${currentPeer} завершён`;
-  }
-  appendMessage(userNickname, userText, timeISO);
+  // 1) Пользовательское сообщение (без длительности)
+  appendMessage(
+    userNickname,
+    `Звонок с ${currentPeer} завершён`,
+    timeISO
+  );
 
-  // 2) Выводим «системное» центрированное сообщение с деталями
-  let centerText;
-  if (status === 'cancelled') {
-    centerText = `📞 Звонок от ${userNickname} к ${currentPeer} был отменён • ${timeStr}`;
-  } else {
-    centerText = `📞 Звонок от ${userNickname} к ${currentPeer} завершён • ${durStr} • ${timeStr}`;
-  }
-  appendCenterCall(centerText);
+  // 2) Системное центрированное с длительностью
+  appendCenterCall(
+    `📞 Звонок от ${userNickname} к ${currentPeer} завершён • ${durStr} • ${timeStr}`
+  );
 
-  // 3) Отправляем данные звонка на бэкенд
+  // 3) Сохраняем на бэке
   try {
     await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type':  'application/json',
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
@@ -152,11 +169,8 @@ async function endCall(message, status = 'finished') {
     });
   } catch (err) {
     console.error('Ошибка сохранения звонка в БД:', err);
-    appendSystem('⚠️ Не удалось сохранить данные звонка.');
+    appendSystem('⚠️ Не удалось сохранить звонок на сервере.');
   }
-
-  // 4) Закрываем окно звонка
-  hideCallWindow();
 }
 
 
@@ -367,18 +381,17 @@ answerBtn.onclick = async () => {
 
 cancelBtn.onclick = () => {
   const isInCall = callStatus.textContent === 'В разговоре';
-  const statusParam = isInCall ? 'finished' : 'cancelled';
 
   if (socket && socket.readyState === WebSocket.OPEN) {
     if (!isInCall) {
-      // отмена до ответа
+      // прерываем ещё до ответа
       socket.send(JSON.stringify({
         type:   'webrtc-cancel',
         from:   userNickname,
         roomId: currentRoom
       }));
     } else {
-      // «висит» — завершаем разговор у собеседника
+      // в процессе разговора — сообщаем о hangup
       socket.send(JSON.stringify({
         type:   'webrtc-hangup',
         from:   userNickname,
@@ -387,7 +400,11 @@ cancelBtn.onclick = () => {
     }
   }
 
-  endCall('Вы отменили звонок', statusParam);
+  if (!isInCall) {
+    cancelRingingCall();
+  } else {
+    endCall('Вы завершили звонок', 'finished');
+  }
 };
 
  // minimizeBtn.onclick = () => callWindow.classList.toggle('minimized');
@@ -552,10 +569,11 @@ document.getElementById('chat-section').classList.add('active');
     const msg = JSON.parse(ev.data);
     switch (msg.type) {
       case 'webrtc-cancel':
-        endCall('Собеседник отменил звонок', 'cancelled');
+         // собеседник отмени́л ещё до ответа
+      cancelRingingCall();
         break;
  case 'webrtc-hangup':
-      // если собеседник завершил разговор, то тоже закрываем
+       // собеседник оборвал уже в разговоре
       endCall('Собеседник завершил звонок', 'finished');
       break;
       case 'message':
