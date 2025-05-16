@@ -75,59 +75,6 @@ function appendCenterCall(text) {
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
-
-  // в начале файла после appendCenterCall:
-async function saveCallAndMessage({ initiator, recipient, startedAt, endedAt, status, duration, userText }) {
-  const timeISO = new Date().toISOString();
-  let callId = null;
-
-  // 1) Сохраняем звонок
-  try {
-    const res = await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
-      method: 'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        initiator,
-        recipient,
-        started_at: startedAt,
-        ended_at:   endedAt,
-        status,
-        duration
-      })
-    });
-    if (!res.ok) throw new Error(await res.text());
-    const callRec = await res.json();
-    callId = callRec.id;
-  } catch (err) {
-    console.error('Ошибка сохранения звонка:', err);
-    appendSystem('⚠️ Не удалось сохранить звонок на сервере.');
-  }
-
-  // 2) Сохраняем сопутствующее сообщение
-  try {
-    const res = await fetch(`${API_URL}/rooms/${currentRoom}/messages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        text:    userText,
-        call_id: callId
-      })
-    });
-    if (!res.ok) throw new Error(await res.text());
-  } catch (err) {
-    console.error('Ошибка сохранения сообщения звонка:', err);
-    appendSystem('⚠️ Не удалось сохранить историю звонка.');
-  }
-
-  return callId;
-}
-
   // Показать окно звонка
   function showCallWindow(peer, incoming = false) {
     currentPeer = peer;  
@@ -152,36 +99,7 @@ async function saveCallAndMessage({ initiator, recipient, startedAt, endedAt, st
     callWindow.classList.add('hidden');
   }
 
-async function cancelRingingCall(initiator) {
-  clearInterval(callTimerIntvl);
-  hideCallWindow();
-
-  // 1) Пользовательское текстовое сообщение
-  const userText = `${initiator} отменил(а) звонок`;
-  appendMessage(initiator, userText, new Date().toISOString());
-
-  // 2) Системное по центру
-  const ringSec = Math.floor((Date.now() - callStartTime) / 1000);
-  const durStr  = new Date(ringSec * 1000).toISOString().substr(11, 8);
-  const centerText = `📞 Звонок от ${initiator} к ${currentPeer} был отменён. Ожидание ответа ${durStr}.`;
-  appendCenterCall(centerText);
-
-  // 3) Сохраняем в БД
-  await saveCallAndMessage({
-    initiator,
-    recipient: currentPeer,
-    startedAt: new Date(callStartTime).toISOString(),
-    endedAt:   new Date().toISOString(),
-    status:    'cancelled',
-    duration:  ringSec,
-    userText
-  });
-}
-
-
-
 async function endCall(message, status = 'finished') {
-  // 1) Останавливаем таймер и WebRTC
   clearInterval(callTimerIntvl);
   if (pc) pc.close();
   pc = null;
@@ -190,81 +108,46 @@ async function endCall(message, status = 'finished') {
     localStream = null;
   }
 
-  // 2) Вычисляем длительность и текущее время
+  // Формируем текст уведомления на основе статуса и длительности
   const durationSec = Math.floor((Date.now() - callStartTime) / 1000);
-  const durStr      = new Date(durationSec * 1000).toISOString().substr(11, 8);
-  const timeISO     = new Date().toISOString();
-  const timeStr     = new Date().toLocaleTimeString([], {
-    hour: '2-digit', minute: '2-digit'
-  });
+  const durStr = new Date(durationSec * 1000).toISOString().substr(11, 8);
 
-  // 3) Сохраняем звонок в БД (calls) и получаем его ID
-  let callRecord = null;
+  let callMessage = '';
+  if (durationSec === 0) {
+    callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} был отменен.`;
+  } else {
+    callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} завершен. Длительность ${durStr}.`;
+  }
+
+  // Локальное уведомление (объединенное)
+ // appendCenterCall(callMessage);
+
+  // Отправляем на бэкенд
+  const startedISO = new Date(callStartTime).toISOString();
+  const endedISO = new Date().toISOString();
   try {
-    const res = await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
+    await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
       method: 'POST',
       headers: {
-        'Content-Type':  'application/json',
+        'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        initiator:  userNickname,
-        recipient:  currentPeer,
-        started_at: new Date(callStartTime).toISOString(),
-        ended_at:   timeISO,
-        status,
-        duration:   durationSec
+        initiator: userNickname,
+        recipient: currentPeer,
+        started_at: startedISO,
+        ended_at: endedISO,
+        status: status,
+        duration: durationSec
       })
     });
-    if (!res.ok) throw new Error(await res.text());
-    callRecord = await res.json(); // { id, initiator, recipient, ... }
   } catch (err) {
-    console.error('Ошибка сохранения звонка:', err);
-    appendSystem('⚠️ Не удалось сохранить звонок на сервере.');
+    console.error('Ошибка сохранения звонка в БД:', err);
+    appendSystem('⚠️ Не удалось сохранить данные звонка на сервер.');
   }
 
-  // 4) Готовим текст «от пользователя»
-  const userText = status === 'cancelled'
-    ? `${userNickname} отменил(а) звонок`
-    : `Звонок с ${currentPeer} завершён`;
-
-  // 5) Сохраняем текстовое сообщение в БД (messages) с call_id
-  try {
-    const res2 = await fetch(`${API_URL}/rooms/${currentRoom}/messages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        text:    userText,
-        call_id: callRecord?.id ?? null
-      })
-    });
-    if (!res2.ok) throw new Error(await res2.text());
-  } catch (err) {
-    console.error('Ошибка сохранения сообщения звонка:', err);
-    appendSystem('⚠️ Не удалось сохранить историю звонка.');
-  }
-
-  // 6) Рисуем сообщение «от пользователя»
-  appendMessage(userNickname, userText, timeISO);
-
-  // 7) Рисуем системное сообщение по центру
-  const centerText = status === 'cancelled'
-    ? `📞 Звонок от ${userNickname} к ${currentPeer} был отменён • ожидание ${durStr}`
-    : `📞 Звонок от ${userNickname} к ${currentPeer} завершён • ${durStr} • ${timeStr}`;
-  appendCenterCall(centerText);
-
-  // 8) Прячем окно звонка
   hideCallWindow();
 }
-
-
-
-
-
-
 
 
 
@@ -464,39 +347,23 @@ answerBtn.onclick = async () => {
 
     callStatus.textContent = 'В разговоре';
     answerBtn.style.display = 'none';
-    cancelBtn.textContent = 'Завершить';
   } catch (err) {
     console.error('Ошибка при ответе на звонок:', err);
   }
 };
 
 
-cancelBtn.onclick = () => {
-  const isInCall    = callStatus.textContent === 'В разговоре';
-  const statusParam = isInCall ? 'finished' : 'cancelled';
-
+ cancelBtn.onclick = () => {
   if (socket && socket.readyState === WebSocket.OPEN) {
-    if (!isInCall) {
-      socket.send(JSON.stringify({
-        type:   'webrtc-cancel',
-        from:   userNickname,
-        roomId: currentRoom
-      }));
-    } else {
-      socket.send(JSON.stringify({
-        type:   'webrtc-hangup',
-        from:   userNickname,
-        roomId: currentRoom
-      }));
-    }
+    // шлём отмену и roomId, чтобы сервер переслал другому
+    socket.send(JSON.stringify({
+      type:   'webrtc-cancel',
+      from: userNickname,
+      roomId: currentRoom
+    }));
   }
-
-  // Локальная отрисовка:
-  if (!isInCall) {
-    cancelRingingCall(userNickname);
-  } else {
-    endCall('Вы завершили звонок', 'finished');
-  }
+  // своё окно закрываем
+  endCall('Вы отменили звонок', 'cancelled');
 };
 
  // minimizeBtn.onclick = () => callWindow.classList.toggle('minimized');
@@ -639,14 +506,6 @@ async function joinRoom(roomId) {
   // начинаем с чистого списка отрисованных файлов
   renderedFileIds.clear();
   currentRoom = roomId;
-  // показываем заголовок и подставляем ник текущего собеседника
-const header = document.getElementById('chat-header');
-const peerEl = document.getElementById('chat-peer');
-peerEl.textContent = currentPeer;       // currentPeer уже установлен в .onclick выбора чата
-header.classList.remove('hidden');
-// если вы хотите добавить класс .active к контейнеру, то ниже
-document.getElementById('chat-section').classList.add('active');
-
   document.getElementById('chat-box').innerHTML = '';
   document.getElementById('chat-section').classList.add('active');
 
@@ -661,13 +520,9 @@ document.getElementById('chat-section').classList.add('active');
     const msg = JSON.parse(ev.data);
     switch (msg.type) {
       case 'webrtc-cancel':
-         // собеседник отмени́л ещё до ответа
-       cancelRingingCall(msg.from);
+        endCall('Собеседник отменил звонок', 'cancelled');
         break;
- case 'webrtc-hangup':
-       // собеседник оборвал уже в разговоре
-      endCall('Собеседник завершил звонок', 'finished');
-      break;
+
       case 'message':
         appendMessage(msg.sender, msg.text, msg.time);
         break;
@@ -732,14 +587,18 @@ console.log('RAW HISTORY:', JSON.stringify(history, null, 2));
 
 history.forEach(m => {
 
-  if (m.type === 'call') {
-    const durStr = new Date((m.duration || 0) * 1000).toISOString().substr(11, 8);
+ if (m.type === 'call') {
+    const durStr = m.duration
+      ? new Date(m.duration * 1000).toISOString().substr(11, 8)
+      : '00:00:00';
 
-    let callMessage = '';
-    if (m.status === 'cancelled' && m.duration > 0) {
-      callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} был отменён. Ожидание ответа ${durStr}.`;
+    let callMessage;
+    if (m.status === 'cancelled' && m.duration === 0) {
+      callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} был отменен.`;
     } else if (m.status === 'cancelled') {
-      callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} был отменён.`;
+      callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} был сброшен. Длительность ${durStr}.`;
+    } else if (m.duration === 0) {
+      callMessage = `📞 Исходящий вызов от ${m.initiator} к ${m.recipient} не был принят.`;
     } else {
       callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} завершен. Длительность ${durStr}.`;
     }
