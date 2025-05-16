@@ -104,10 +104,13 @@ async function endCall(message, status = 'finished') {
   // 1) Останавливаем таймер/WebRTC и скрываем окно
   clearInterval(callTimerIntvl);
   if (pc) pc.close(), pc = null;
-  if (localStream) localStream.getTracks().forEach(t => t.stop()), localStream = null;
+  if (localStream) {
+    localStream.getTracks().forEach(t => t.stop());
+    localStream = null;
+  }
   hideCallWindow();
 
-  // 2) Собираем данные и текст уведомления
+  // 2) Собираем данные и формируем текст
   const durationSec = Math.floor((Date.now() - callStartTime) / 1000);
   const durStr     = new Date(durationSec * 1000).toISOString().substr(11, 8);
   const startedISO = new Date(callStartTime).toISOString();
@@ -120,7 +123,7 @@ async function endCall(message, status = 'finished') {
   // 3) Локальное системное уведомление
   appendCenterCall(callMessage);
 
-  // 4) Сохраняем звонок в отдельную таблицу
+  // 4) Сохраняем в таблицу calls
   try {
     await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
       method: 'POST',
@@ -142,40 +145,7 @@ async function endCall(message, status = 'finished') {
     appendSystem('⚠️ Не удалось сохранить данные звонка.');
   }
 
-  // 5) Создаём «обычное» сообщение в messages и ждём полного объекта из БД
-  let savedMsg = null;
-  try {
-    const res = await fetch(`${API_URL}/rooms/${currentRoom}/messages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        sender: userNickname,
-        text:   callMessage,
-        time:   endedISO,
-        type:   'call'       // если ваш бэкенд требует отдельного типа
-      })
-    });
-    if (!res.ok) throw new Error(await res.text());
-    // Предполагаем, что сервер возвращает именно то, что хранит в БД:
-    // { sender_nickname, text, time, ... }
-    savedMsg = await res.json();
-
-    // 6) Локально рендерим его так же, как из истории
-    appendMessage(
-      savedMsg.sender_nickname || savedMsg.sender,
-      savedMsg.text,
-      savedMsg.time
-    );
-  } catch (err) {
-    console.error('Ошибка сохранения сообщения в messages:', err);
-    appendSystem('⚠️ Не удалось сохранить сообщение звонка.');
-  }
-
-  // 7) Шлём по WebSocket только событие call — 
-  //    а сервер, получив POST в /messages, должен сам бродкастить message всем
+  // 5) Отправляем по WebSocket только событие call
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({
       type:       'call',
@@ -188,7 +158,6 @@ async function endCall(message, status = 'finished') {
     }));
   }
 }
-
 
 
 
@@ -591,18 +560,30 @@ async function joinRoom(roomId) {
         handleIce(msg.payload);
         break;
 
-      case 'call': {
-        // Формируем текст системного блока
-        const time = new Date(msg.started_at)
-          .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const durStr = msg.duration
-          ? new Date(msg.duration * 1000).toISOString().substr(11, 8)
-          : '--:--:--';
-        const text = `📞 ${msg.initiator} → ${msg.recipient} • ${msg.status} • ${durStr} • ${time}`;
+       case 'call': {
+      // 1) Формируем время и длительность
+      const time    = new Date(msg.ended_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+      const durStr  = msg.duration
+        ? new Date(msg.duration * 1000).toISOString().substr(11, 8)
+        : '00:00:00';
 
-        appendCenterCall(text);
-        break;
-      }
+      // 2) Составляем одинаковое текстовое сообщение
+      const callMessage = msg.duration === 0
+        ? `📞 Звонок от ${msg.initiator} к ${msg.recipient} был отменен.`
+        : `📞 Звонок от ${msg.initiator} к ${msg.recipient} завершен. Длительность ${durStr}.`;
+
+      // 3) Сначала системное уведомление по центру
+      appendCenterCall(callMessage);
+
+      // 4) Затем «обычное» сообщение в ленту чата
+      appendMessage(
+        msg.initiator,
+        callMessage,
+        msg.ended_at   // или msg.time, если так у вас называется поле
+      );
+      break;
+    }
+
 
       default:
         console.warn('Unknown message type:', msg.type);
