@@ -124,7 +124,7 @@ function cancelRingingCall(initiator) {
 
 
 async function endCall(message, status = 'finished') {
-  // 1) Очищаем всё
+  // 1) Останавливаем таймер и закрываем WebRTC
   clearInterval(callTimerIntvl);
   if (pc) pc.close();
   pc = null;
@@ -139,7 +139,7 @@ async function endCall(message, status = 'finished') {
   const timeISO     = new Date().toISOString();
   const timeStr     = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
 
-  // 3) Сохраняем звонок в таблицу calls, получаем его ID
+  // 3) Сохраняем звонок в таблицу "calls"
   let callRecord = null;
   try {
     const res = await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
@@ -149,29 +149,29 @@ async function endCall(message, status = 'finished') {
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        initiator:  userNickname,
-        recipient:  currentPeer,
-        started_at: new Date(callStartTime).toISOString(),
-        ended_at:   timeISO,
+        initiator:   userNickname,
+        recipient:   currentPeer,
+        started_at:  new Date(callStartTime).toISOString(),
+        ended_at:    timeISO,
         status,
-        duration:   durationSec
+        duration:    durationSec
       })
     });
     if (!res.ok) throw new Error(await res.text());
-    callRecord = await res.json(); // { id, initiator, ... }
+    callRecord = await res.json(); // { id, initiator, recipient, ... }
   } catch (err) {
     console.error('Ошибка сохранения звонка:', err);
     appendSystem('⚠️ Не удалось сохранить звонок на сервере.');
   }
 
-  // 4) Формируем текст «от пользователя»
+  // 4) Готовим текст «от пользователя»
   const userText = status === 'cancelled'
     ? `${userNickname} отменил(а) звонок`
     : `Звонок с ${currentPeer} завершён`;
 
-  // 5) Сохраняем это как обычное сообщение с call_id
+  // 5) Сохраняем это как обычное сообщение через роутер /api/messages
   try {
-    await fetch(`${API_URL}/rooms/${currentRoom}/messages`, {
+    await fetch(`${API_URL}/messages/${currentRoom}/messages`, {
       method: 'POST',
       headers: {
         'Content-Type':  'application/json',
@@ -187,10 +187,10 @@ async function endCall(message, status = 'finished') {
     appendSystem('⚠️ Не удалось сохранить историю звонка.');
   }
 
-  // 6) Рисуем в чат сразу «от пользователя»
+  // 6) Сразу рисуем в чат сообщение от пользователя
   appendMessage(userNickname, userText, timeISO);
 
-  // 7) Рисуем системное сообщение по центру
+  // 7) Системное сообщение по центру
   const centerText = status === 'cancelled'
     ? `📞 Звонок от ${userNickname} к ${currentPeer} был отменён • ожидание ${durStr}`
     : `📞 Звонок от ${userNickname} к ${currentPeer} завершён • ${durStr} • ${timeStr}`;
@@ -199,6 +199,7 @@ async function endCall(message, status = 'finished') {
   // 8) Закрываем окно звонка
   hideCallWindow();
 }
+
 
 
 
