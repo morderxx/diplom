@@ -110,23 +110,21 @@ async function endCall(message, status = 'finished') {
     localStream = null;
   }
 
-  // 2) Формируем данные звонка
+  // 2) Составляем текст и даты
   const durationSec = Math.floor((Date.now() - callStartTime) / 1000);
-  const durStr = new Date(durationSec * 1000).toISOString().substr(11, 8);
+  const durStr     = new Date(durationSec * 1000).toISOString().substr(11, 8);
   const startedISO = new Date(callStartTime).toISOString();
   const endedISO   = new Date().toISOString();
 
-  // 3) Текст уведомления
   const callMessage = durationSec === 0
     ? `📞 Звонок от ${userNickname} к ${currentPeer} был отменен.`
     : `📞 Звонок от ${userNickname} к ${currentPeer} завершен. Длительность ${durStr}.`;
 
-  // 4) Локальное отображение
+  // 3) Локальное системное уведомление
   hideCallWindow();
   appendCenterCall(callMessage);
-  appendMessage(userNickname, callMessage, endedISO);
 
-  // 5) Сохраняем звонок в БД
+  // 4) Сохраняем звонок в отдельной таблице
   try {
     await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
       method: 'POST',
@@ -148,29 +146,28 @@ async function endCall(message, status = 'finished') {
     appendSystem('⚠️ Не удалось сохранить данные звонка на сервер.');
   }
 
-  // 6) Шлём по WebSocket события
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    // a) системное событие
-    socket.send(JSON.stringify({
-      type:        'call',
-      initiator:   userNickname,
-      recipient:   currentPeer,
-      status:      status,
-      started_at:  startedISO,
-      ended_at:    endedISO,
-      duration:    durationSec
-    }));
-    // b) обычное сообщение
-    socket.send(JSON.stringify({
-      type:   'message',
-      roomId: currentRoom,
-      sender: userNickname,
-      text:   callMessage,
-      time:   endedISO
-    }));
+  // 5) Создаём запись в основной таблице messages
+  //    Сервер на этот POST должен вставить запись и сам разослать её через WS
+  try {
+    await fetch(`${API_URL}/rooms/${currentRoom}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        // поля, которые ожидает ваш бек:
+        sender: userNickname,
+        text:   callMessage,
+        time:   endedISO,
+        // ...может ещё что-то, например type: 'call'
+      })
+    });
+  } catch (err) {
+    console.error('Ошибка создания сообщения в БД:', err);
+    appendSystem('⚠️ Не удалось сохранить системное сообщение звонка.');
   }
 }
-
 
 
 
