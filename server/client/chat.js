@@ -97,6 +97,7 @@ function appendCenterCall(text) {
   function hideCallWindow() {
     clearInterval(callTimerIntvl);
     callWindow.classList.add('hidden');
+    joinRoom(roomId);
   }
 
 async function endCall(message, status = 'finished') {
