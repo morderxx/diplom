@@ -140,6 +140,70 @@ button:hover {
 .chat-container.active {
     display: flex;
 }
+/* Обёртка: шапка + сообщения в едином стиле */
+.chat-message-area {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+    border: 1px solid #ccc;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    margin-bottom: 8px; /* отступ до input-container */
+}
+
+/* Шапка */
+.chat-message-area .chat-header {
+    padding: 16px 20px;
+    background-color: #f7faff;
+    border-bottom: 1px solid #ddd;
+    font-weight: 600;
+    font-size: 15px;
+    color: #333;
+    display: block;
+}
+/* ===== СТИЛИ ДЛЯ КНОПКИ ЗВОНКА В ШАПКЕ ===== */
+.chat-header__call-btn {
+  width: 32px;
+  height: 32px;
+  background: #4CAF50;
+  color: #fff;
+  font-size: 16px;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+.chat-header__call-btn:hover {
+  background: #45a049;
+}
+
+/* Сообщения */
+.chat-message-area .chat-box {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Удалим лишнее, если есть */
+.chat-container .chat-header {
+    display: none !important;
+}
+/* Сначала — по-умолчанию скрываем заголовок */
+.chat-header {
+  display: none;
+}
+
+/* Когда активен чат — показываем шапку */
+.chat-container.active .chat-header {
+  display: block !important;
+}
 
 #chat-box {
     flex: 1;
@@ -182,24 +246,6 @@ button:hover {
     background: #45a049;
 }
 
-#call-btn {
-    width: 36px;
-    height: 36px;
-    border: none;
-    background: #4CAF50;
-    color: #fff;
-    font-size: 18px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s ease;
-}
-
-#call-btn:hover {
-    background: #45a049;
-}
 
 .input-container textarea#message {
     flex: 1;
