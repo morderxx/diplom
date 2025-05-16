@@ -574,15 +574,7 @@ document.getElementById('chat-section').classList.add('active');
         break;
 
       case 'call': {
-        // Формируем текст системного блока
-        const time = new Date(msg.started_at)
-          .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const durStr = msg.duration
-          ? new Date(msg.duration * 1000).toISOString().substr(11, 8)
-          : '--:--:--';
-        const text = `📞 ${msg.initiator} → ${msg.recipient} • ${msg.status} • ${durStr} • ${time}`;
-
-        appendCenterCall(text);
+       appendCenterCall(msg.message_text);
         break;
       }
 
@@ -608,22 +600,7 @@ console.log('RAW HISTORY:', JSON.stringify(history, null, 2));
 history.forEach(m => {
 
  if (m.type === 'call') {
-    const durStr = m.duration
-      ? new Date(m.duration * 1000).toISOString().substr(11, 8)
-      : '00:00:00';
-
-    let callMessage;
-    if (m.status === 'cancelled' && m.duration === 0) {
-      callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} был отменен.`;
-    } else if (m.status === 'cancelled') {
-      callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} был сброшен. Длительность ${durStr}.`;
-    } else if (m.duration === 0) {
-      callMessage = `📞 Исходящий вызов от ${m.initiator} к ${m.recipient} не был принят.`;
-    } else {
-      callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} завершен. Длительность ${durStr}.`;
-    }
-
-    appendCenterCall(callMessage);
+  appendCenterCall(msg.message_text);
     return;
   }
 
