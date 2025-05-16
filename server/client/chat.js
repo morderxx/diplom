@@ -100,6 +100,7 @@ function appendCenterCall(text) {
   }
 
 async function endCall(message, status = 'finished') {
+  // Останавливаем таймер и WebRTC
   clearInterval(callTimerIntvl);
   if (pc) pc.close();
   pc = null;
@@ -108,28 +109,29 @@ async function endCall(message, status = 'finished') {
     localStream = null;
   }
 
-  // Формируем текст уведомления на основе статуса и длительности
+  // Рассчитываем длительность звонка
   const durationSec = Math.floor((Date.now() - callStartTime) / 1000);
   const durStr = new Date(durationSec * 1000).toISOString().substr(11, 8);
 
+  // Генерируем текст для чата
   let callMessage = '';
   if (status === 'cancelled' && durationSec > 0) {
-    // отменили после ожидания
+    // Отмена после начала ожидания
     callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} был отменён. Ожидание ответа ${durStr}.`;
-  } else if (durationSec === 0) {
-    // отменили сразу
+  } else if (status === 'cancelled') {
+    // Мгновенная отмена
     callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} был отменён.`;
   } else {
-    // успешно побеседовали
+    // Успешный звонок
     callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} завершен. Длительность ${durStr}.`;
   }
 
-  // Локальное уведомление (объединенное)
- // appendCenterCall(callMessage);
+  // Выводим в чат сразу же
+  appendCenterCall(callMessage);
 
-  // Отправляем на бэкенд
+  // Готовим и отправляем данные на бэкенд
   const startedISO = new Date(callStartTime).toISOString();
-  const endedISO = new Date().toISOString();
+  const endedISO   = new Date().toISOString();
   try {
     await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
       method: 'POST',
@@ -138,12 +140,12 @@ async function endCall(message, status = 'finished') {
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        initiator: userNickname,
-        recipient: currentPeer,
+        initiator:  userNickname,
+        recipient:  currentPeer,
         started_at: startedISO,
-        ended_at: endedISO,
-        status: status,
-        duration: durationSec
+        ended_at:   endedISO,
+        status,
+        duration:   durationSec
       })
     });
   } catch (err) {
@@ -151,8 +153,10 @@ async function endCall(message, status = 'finished') {
     appendSystem('⚠️ Не удалось сохранить данные звонка на сервер.');
   }
 
+  // Скрываем окно звонка
   hideCallWindow();
 }
+
 
 
 
@@ -600,18 +604,14 @@ console.log('RAW HISTORY:', JSON.stringify(history, null, 2));
 
 history.forEach(m => {
 
- if (m.type === 'call') {
-    const durStr = m.duration
-      ? new Date(m.duration * 1000).toISOString().substr(11, 8)
-      : '00:00:00';
+  if (m.type === 'call') {
+    const durStr = new Date((m.duration || 0) * 1000).toISOString().substr(11, 8);
 
-    let callMessage;
-    if (m.status === 'cancelled' && m.duration === 0) {
-      callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} был отменен.`;
+    let callMessage = '';
+    if (m.status === 'cancelled' && m.duration > 0) {
+      callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} был отменён. Ожидание ответа ${durStr}.`;
     } else if (m.status === 'cancelled') {
-      callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} был сброшен. Длительность ${durStr}.`;
-    } else if (m.duration === 0) {
-      callMessage = `📞 Исходящий вызов от ${m.initiator} к ${m.recipient} не был принят.`;
+      callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} был отменён.`;
     } else {
       callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} завершен. Длительность ${durStr}.`;
     }
