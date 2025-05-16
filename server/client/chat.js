@@ -356,6 +356,7 @@ answerBtn.onclick = async () => {
 
     callStatus.textContent = 'В разговоре';
     answerBtn.style.display = 'none';
+    cancelBtn.textContent = 'Завершить';
   } catch (err) {
     console.error('Ошибка при ответе на звонок:', err);
   }
@@ -363,16 +364,19 @@ answerBtn.onclick = async () => {
 
 
  cancelBtn.onclick = () => {
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    // шлём отмену и roomId, чтобы сервер переслал другому
-    socket.send(JSON.stringify({
-      type:   'webrtc-cancel',
-      from: userNickname,
-      roomId: currentRoom
-    }));
-  }
-  // своё окно закрываем
-  endCall('Вы отменили звонок', 'cancelled');
+   // если звонок ещё не принят (статус "Ожидание ответа" или "Входящий звонок")
+   const isInCall = callStatus.textContent === 'В разговоре';
+   const statusParam = isInCall ? 'finished' : 'cancelled';
+   // при отмене ожидания — шлём сигнал cancel другому
+  if (!isInCall && socket && socket.readyState === WebSocket.OPEN) {
+     socket.send(JSON.stringify({
+       type:   'webrtc-cancel',
+       from: userNickname,
+       roomId: currentRoom
+     }));
+   }
+   // выводим и сохраняем с нужным статусом
+   endCall('Вы отменили звонок', statusParam);
 };
 
  // minimizeBtn.onclick = () => callWindow.classList.toggle('minimized');
