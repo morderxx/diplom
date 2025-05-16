@@ -154,15 +154,20 @@ button:hover {
 }
 
 /* Шапка */
+/* Шапка: flex-контейнер, имя слева, кнопка звонка справа */
 .chat-message-area .chat-header {
-    padding: 16px 20px;
-    background-color: #f7faff;
-    border-bottom: 1px solid #ddd;
-    font-weight: 600;
-    font-size: 15px;
-    color: #333;
-    display: block;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background-color: #f7faff;
+  border-bottom: 1px solid #ddd;
+  font-weight: 600;
+  font-size: 15px;
+  color: #333;
+  /* убираем здесь display:block или подобное */
 }
+
 /* ===== СТИЛИ ДЛЯ КНОПКИ ЗВОНКА В ШАПКЕ ===== */
 .chat-header__call-btn {
   width: 32px;
@@ -191,19 +196,12 @@ button:hover {
     gap: 10px;
 }
 
-/* Удалим лишнее, если есть */
-.chat-container .chat-header {
-    display: none !important;
-}
+
 /* Сначала — по-умолчанию скрываем заголовок */
 .chat-header {
   display: none;
 }
 
-/* Когда активен чат — показываем шапку */
-.chat-container.active .chat-header {
-  display: block !important;
-}
 
 #chat-box {
     flex: 1;
