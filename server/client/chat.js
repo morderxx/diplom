@@ -352,16 +352,16 @@ answerBtn.onclick = async () => {
 };
 
 
- cancelBtn.onclick = () => {
-   if (socket && socket.readyState === WebSocket.OPEN) {
-     socket.send(JSON.stringify({
-       type: 'webrtc-cancel',
-       from: userNickname,
-       roomId: currentRoom
-     }));
-   }
-   endCall('cancelled');
- };
+cancelBtn.onclick = () => {
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({
+      type: 'webrtc-cancel',
+      from: userNickname,
+      roomId: currentRoom
+    }));
+  }
+  // endCall() не вызываем — ждем обработки ws-сообщения
+};
 
  // minimizeBtn.onclick = () => callWindow.classList.toggle('minimized');
 
