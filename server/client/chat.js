@@ -100,27 +100,28 @@ function appendCenterCall(text) {
   }
 
 // В начало файла, рядом с endCall, добавим вспомогательную для «ringing‑отмены»:
-function cancelRingingCall() {
-  // Останавливаем таймер и прячем окно
+// Заменяем старую cancelRingingCall на эту — теперь принимает инициатора
+function cancelRingingCall(initiator) {
   clearInterval(callTimerIntvl);
   hideCallWindow();
 
-  // Считаем, сколько секунд звонили
+  // Сколько секунд звонили
   const ringSec = Math.floor((Date.now() - callStartTime) / 1000);
   const durStr  = new Date(ringSec * 1000).toISOString().substr(11, 8);
 
-  // 1) Пользовательское сообщение
+  // 1) Пользовательское сообщение от того, кто отменил
   appendMessage(
-    userNickname,
-    `${userNickname} отменил(а) звонок`,
+    initiator,
+    `${initiator} отменил(а) звонок`,
     new Date().toISOString()
   );
 
-  // 2) Системное центрированное
+  // 2) Системное по центру, всё от лица инициатора
   appendCenterCall(
-    `📞 Звонок от ${userNickname} к ${currentPeer} был отменён. Ожидание ответа ${durStr}.`
+    `📞 Звонок от ${initiator} к ${currentPeer} был отменён. Ожидание ответа ${durStr}.`
   );
 }
+
 
 async function endCall(message, status = 'finished') {
   clearInterval(callTimerIntvl);
@@ -406,18 +407,17 @@ answerBtn.onclick = async () => {
 
 
 cancelBtn.onclick = () => {
-  const isInCall = callStatus.textContent === 'В разговоре';
+  const isInCall    = callStatus.textContent === 'В разговоре';
+  const statusParam = isInCall ? 'finished' : 'cancelled';
 
   if (socket && socket.readyState === WebSocket.OPEN) {
     if (!isInCall) {
-      // прерываем ещё до ответа
       socket.send(JSON.stringify({
         type:   'webrtc-cancel',
         from:   userNickname,
         roomId: currentRoom
       }));
     } else {
-      // в процессе разговора — сообщаем о hangup
       socket.send(JSON.stringify({
         type:   'webrtc-hangup',
         from:   userNickname,
@@ -426,8 +426,9 @@ cancelBtn.onclick = () => {
     }
   }
 
+  // Локальная отрисовка:
   if (!isInCall) {
-    cancelRingingCall();
+    cancelRingingCall(userNickname);
   } else {
     endCall('Вы завершили звонок', 'finished');
   }
@@ -596,7 +597,7 @@ document.getElementById('chat-section').classList.add('active');
     switch (msg.type) {
       case 'webrtc-cancel':
          // собеседник отмени́л ещё до ответа
-      cancelRingingCall();
+       cancelRingingCall(msg.from);
         break;
  case 'webrtc-hangup':
        // собеседник оборвал уже в разговоре
