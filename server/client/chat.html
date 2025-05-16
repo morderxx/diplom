@@ -15,20 +15,27 @@
       <ul id="users-list" class="rooms-list"></ul>
     </aside>
 
-    <section id="chat-section" class="chat-container">
-  <!-- заголовок, куда будет подставляться ник собеседника -->
-  <div id="chat-header" class="chat-header hidden">
-    Собеседник: <span id="chat-peer"></span>
+ <section id="chat-section" class="chat-container">
+  <!-- Обёртка для шапки + сообщения -->
+  <div class="chat-message-area">
+    <!-- заголовок -->
+    <div id="chat-header" class="chat-header hidden">
+      Собеседник: <span id="chat-peer"></span>
+    </div>
+
+    <!-- сообщения -->
+    <div id="chat-box" class="chat-box"></div>
   </div>
-      <div id="chat-box" class="chat-box"></div>
-      <div class="input-container">
-        <button id="attach-btn" class="icon-btn">📎</button>
-        <button id="call-btn"    class="icon-btn">☎️</button>
-        <textarea id="message" placeholder="Введите сообщение..." rows="1"></textarea>
-        <button id="send-btn"    class="icon-btn">➤</button>
-        <button id="voice-btn"   class="icon-btn">🎤</button>
-      </div>
-    </section>
+
+  <!-- поле ввода и кнопки -->
+  <div class="input-container">
+    <button id="attach-btn" class="icon-btn">📎</button>
+    <button id="call-btn" class="icon-btn">☎️</button>
+    <textarea id="message" placeholder="Введите сообщение..." rows="1"></textarea>
+    <button id="send-btn" class="icon-btn">➤</button>
+    <button id="voice-btn" class="icon-btn">🎤</button>
+  </div>
+</section>
   </div>
 
 
