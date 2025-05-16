@@ -508,28 +508,27 @@ document.getElementById('chat-box').addEventListener('click', e => {
   }
   
 async function joinRoom(roomId) {
+  // 1. Закрываем старый сокет и очищаем контейнер
   if (socket) socket.close();
-  // начинаем с чистого списка отрисованных файлов
   renderedFileIds.clear();
   currentRoom = roomId;
-  // показываем заголовок и подставляем ник текущего собеседника
-const header = document.getElementById('chat-header');
-const peerEl = document.getElementById('chat-peer');
-peerEl.textContent = currentPeer;       // currentPeer уже установлен в .onclick выбора чата
-header.classList.remove('hidden');
-// если вы хотите добавить класс .active к контейнеру, то ниже
-document.getElementById('chat-section').classList.add('active');
-
   document.getElementById('chat-box').innerHTML = '';
+
+  // Показываем заголовок и peer
+  const header = document.getElementById('chat-header');
+  const peerEl = document.getElementById('chat-peer');
+  peerEl.textContent = currentPeer;
+  header.classList.remove('hidden');
   document.getElementById('chat-section').classList.add('active');
 
-  // Настраиваем WebSocket
+  // 2. Настраиваем WebSocket для live-событий
   socket = new WebSocket(
     (location.protocol === 'https:' ? 'wss://' : 'ws://') +
       location.host
   );
-  socket.onopen = () =>
+  socket.onopen = () => {
     socket.send(JSON.stringify({ type: 'join', token, roomId }));
+  };
   socket.onmessage = ev => {
     const msg = JSON.parse(ev.data);
     switch (msg.type) {
@@ -537,27 +536,21 @@ document.getElementById('chat-section').classList.add('active');
         endCall('Собеседник отменил звонок', 'cancelled');
         break;
 
-  case 'message': {
-      // если пришёл callId — рисуем как часть истории звонка
-      if (msg.callId != null) {
-        appendMessage(msg.sender, msg.text, msg.time, msg.callId);
-      } else {
-        appendMessage(msg.sender, msg.text, msg.time);
-      }
-      break;
-    }
+      case 'file':
+        appendFile(msg.sender, msg.fileId, msg.filename, msg.mimeType, msg.time);
+        break;
 
-   case 'file':
-      // просто вызываем appendFile —
-      // дубли отсеется там само́й
-      appendFile(
-        msg.sender,
-        msg.fileId,
-        msg.filename,
-        msg.mimeType,
-        msg.time
-      );
-      break;
+      case 'message':
+        if (msg.callId != null) {
+          appendMessage(msg.sender, msg.text, msg.time, msg.callId);
+        } else {
+          appendMessage(msg.sender, msg.text, msg.time);
+        }
+        break;
+
+      case 'call':
+        appendCenterCall(msg.message_text);
+        break;
 
       case 'webrtc-offer':
         currentPeer = msg.from;
@@ -573,65 +566,60 @@ document.getElementById('chat-section').classList.add('active');
         handleIce(msg.payload);
         break;
 
-      case 'call': {
-       appendCenterCall(msg.message_text);
-        break;
-      }
-
       default:
         console.warn('Unknown message type:', msg.type);
-    }  // ← закрываем switch
+    }
+  };
 
-  };   // ← закрываем стрелочную функцию onmessage
+  // 3. Параллельно запрашиваем историю сообщений и звонков
+  const [msgRes, callRes] = await Promise.all([
+    fetch(`${API_URL}/rooms/${roomId}/messages`, {
+      headers: { Authorization: `Bearer ${token}` }
+    }),
+    fetch(`${API_URL}/rooms/${roomId}/calls`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+  ]);
 
+  const messages = msgRes.ok ? await msgRes.json() : [];
+  const calls    = callRes.ok ? await callRes.json() : [];
 
-  // ─── Загрузка всей истории из одного эндпоинта ───────────────────────────
-  const res = await fetch(`${API_URL}/rooms/${roomId}/messages`, {
-    headers: { Authorization: `Bearer ${token}` }
+  // 4. Приводим к общему формату
+  const formattedMsgs = messages.map(m => ({
+    type:     'message',
+    time:     m.time,
+    sender:   m.sender_nickname,
+    text:     m.text,
+    fileId:   m.file_id,
+    filename: m.filename,
+    mimeType: m.mime_type,
+    callId:   m.call_id
+  }));
+
+  const formattedCalls = calls.map(c => ({
+    type:         'call',
+    time:         c.started_at,
+    message_text: c.message_text
+  }));
+
+  // 5. Объединяем и сортируем по времени
+  const history = [...formattedMsgs, ...formattedCalls]
+    .sort((a, b) => new Date(a.time) - new Date(b.time));
+
+  // 6. Отрисовываем всё в порядке времени
+  history.forEach(item => {
+    if (item.type === 'message') {
+      if (item.fileId != null) {
+        appendFile(item.sender, item.fileId, item.filename, item.mimeType, item.time);
+      } else {
+        appendMessage(item.sender, item.text, item.time, item.callId);
+      }
+    } else if (item.type === 'call') {
+      appendCenterCall(item.message_text);
+    }
   });
-  if (!res.ok) {
-    console.error(await res.text());
-    return;
-  }
-  const history = await res.json();
-// сразу после const history = await res.json();
-console.log('RAW HISTORY:', JSON.stringify(history, null, 2));
+}
 
-history.forEach(m => {
-
- if (m.type === 'call') {
-  appendCenterCall(msg.message_text);
-    return;
-  }
-
-  // 3) Файловое сообщение (из таблицы messages + files)
-  if (m.type === 'message' && m.file_id !== null) {
-    appendFile(
-      m.sender_nickname,
-      m.file_id,
-      m.filename,
-      m.mime_type,
-      m.time
-    );
-    return;
-  }
-
-  // 4) Обычное текстовое сообщение
-  if (m.type === 'message' && m.text !== null) {
-    appendMessage(
-      m.sender_nickname,
-      m.text,
-      m.time
-    );
-    return;
-  }
-
-  console.warn('Неизвестный элемент истории:', m);
-});
-
-
-
-}  // <-- закрыли функцию joinRoom
   
 function appendMessage(sender, text, time, callId = null) {
   const chatBox = document.getElementById('chat-box');
