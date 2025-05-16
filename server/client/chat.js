@@ -133,7 +133,7 @@ async function endCall(message, status = 'finished') {
     localStream = null;
   }
 
-  // 2) Считаем длительность и текущее время
+  // 2) Вычисляем длительность и текущее время
   const durationSec = Math.floor((Date.now() - callStartTime) / 1000);
   const durStr      = new Date(durationSec * 1000).toISOString().substr(11, 8);
   const timeISO     = new Date().toISOString();
@@ -141,73 +141,68 @@ async function endCall(message, status = 'finished') {
     hour: '2-digit', minute: '2-digit'
   });
 
-  // 3) Сохраняем звонок в таблицу calls
+  // 3) Сохраняем звонок в БД (таблица calls) и получаем его ID
   let callRecord = null;
   try {
-    const res = await fetch(
-      `${API_URL}/rooms/${currentRoom}/calls`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          initiator:  userNickname,
-          recipient:  currentPeer,
-          started_at: new Date(callStartTime).toISOString(),
-          ended_at:   timeISO,
-          status,
-          duration:   durationSec
-        })
-      }
-    );
+    const res = await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        initiator:  userNickname,
+        recipient:  currentPeer,
+        started_at: new Date(callStartTime).toISOString(),
+        ended_at:   timeISO,
+        status,
+        duration:   durationSec
+      })
+    });
     if (!res.ok) throw new Error(await res.text());
-    callRecord = await res.json(); // { id, ... }
+    callRecord = await res.json(); // ожидаем { id, initiator, recipient, ... }
   } catch (err) {
     console.error('Ошибка сохранения звонка:', err);
     appendSystem('⚠️ Не удалось сохранить звонок на сервере.');
   }
 
-  // 4) Формируем текстовое сообщение «от пользователя»
+  // 4) Готовим текст «от пользователя»
   const userText = status === 'cancelled'
     ? `${userNickname} отменил(а) звонок`
     : `Звонок с ${currentPeer} завершён`;
 
-  // 5) Сохраняем его в таблицу messages, передав call_id
+  // 5) Сохраняем текстовое сообщение в БД (таблица messages) с call_id
   try {
-    const res2 = await fetch(
-      `${API_URL}/rooms/${currentRoom}/messages`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          text:    userText,
-          call_id: callRecord?.id ?? null
-        })
-      }
-    );
+    const res2 = await fetch(`${API_URL}/rooms/${currentRoom}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        text:    userText,
+        call_id: callRecord?.id ?? null
+      })
+    });
     if (!res2.ok) throw new Error(await res2.text());
   } catch (err) {
     console.error('Ошибка сохранения сообщения звонка:', err);
     appendSystem('⚠️ Не удалось сохранить историю звонка.');
   }
 
-  // 6) Рендерим сообщение от пользователя
+  // 6) Отрисовываем сообщение «от пользователя» в ленте
   appendMessage(userNickname, userText, timeISO);
 
-  // 7) Рендерим системное сообщение по центру
+  // 7) Отрисовываем системное сообщение по центру
   const centerText = status === 'cancelled'
     ? `📞 Звонок от ${userNickname} к ${currentPeer} был отменён • ожидание ${durStr}`
     : `📞 Звонок от ${userNickname} к ${currentPeer} завершён • ${durStr} • ${timeStr}`;
   appendCenterCall(centerText);
 
-  // 8) Закрываем окно звонка
+  // 8) Прячем окно звонка
   hideCallWindow();
 }
+
 
 
 
