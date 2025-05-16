@@ -46,8 +46,8 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
         text = `Пропущенный звонок от ${initiator}`;
         break;
       case 'finished': {
-        const mm = String(Math.floor(duration / 60)).padStart(2,'0');
-        const ss = String(duration % 60).padStart(2,'0');
+        const mm = String(Math.floor(duration / 60)).padStart(2, '0');
+        const ss = String(duration % 60).padStart(2, '0');
         text = `Звонок с ${recipient} завершён. Длительность ${mm}:${ss}`;
         break;
       }
@@ -55,7 +55,7 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
         text = `Статус звонка: ${status}`;
     }
 
-    // 3) Вставляем сообщение в таблицу messages и сразу же возвращаем его
+    // 3) Вставляем сообщение в таблицу messages и возвращаем его
     const { rows: msgRows } = await pool.query(`
       INSERT INTO messages
         (room_id, sender_nickname, text, time, call_id)
@@ -64,12 +64,19 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
     `, [roomId, initiator, text, started_at, call.id]);
     const message = msgRows[0];
 
-    // 4) Ответ клиенту данными о только что созданном звонке
+    // 4) Отправляем клиенту данные о только что созданном звонке
     res.status(201).json(call);
 
-    // 5) Рассылаем по WebSocket оба события: call и message
+    // 5) Рассылаем по WebSocket сначала message, потом call
     const wss = getWss();
     if (wss) {
+      const msgEvent = {
+        type:   'message',
+        sender: message.sender,
+        text:   message.text,
+        time:   message.time,
+        callId: message.callId
+      };
       const callEvent = {
         type:       'call',
         initiator:  call.initiator,
@@ -79,17 +86,10 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
         status:     call.status,
         duration:   call.duration
       };
-      const msgEvent = {
-        type:   'message',
-        sender: message.sender,
-        text:   message.text,
-        time:   message.time,
-        callId: message.callId
-      };
       wss.clients.forEach(client => {
         if (client.readyState === client.OPEN) {
-          client.send(JSON.stringify(callEvent));
           client.send(JSON.stringify(msgEvent));
+          client.send(JSON.stringify(callEvent));
         }
       });
     }
