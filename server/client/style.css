@@ -184,6 +184,25 @@ button:hover {
   display: block !important;
 }
 
+/* ===== СТИЛИ ДЛЯ КНОПКИ ЗВОНКА В ШАПКЕ ===== */
+.chat-header__call-btn {
+  width: 32px;
+  height: 32px;
+  background: #4CAF50;
+  color: #fff;
+  font-size: 16px;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+.chat-header__call-btn:hover {
+  background: #45a049;
+}
+
+
 #chat-box {
     flex: 1;
     overflow-y: auto;
@@ -227,24 +246,7 @@ button:hover {
     background: #45a049;
 }
 
-#call-btn {
-    width: 36px;
-    height: 36px;
-    border: none;
-    background: #4CAF50;
-    color: #fff;
-    font-size: 18px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s ease;
-}
 
-#call-btn:hover {
-    background: #45a049;
-}
 
 .input-container textarea#message {
     flex: 1;
