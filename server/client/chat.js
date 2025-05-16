@@ -99,73 +99,54 @@ function appendCenterCall(text) {
     callWindow.classList.add('hidden');
   }
 
-  
-// 1) endCall: закрыли WebRTC, сохранили в /calls и рассылаем по WS и call, и message
 async function endCall(message, status = 'finished') {
   clearInterval(callTimerIntvl);
-  if (pc) { pc.close(); pc = null; }
+  if (pc) pc.close();
+  pc = null;
   if (localStream) {
     localStream.getTracks().forEach(t => t.stop());
     localStream = null;
   }
-  hideCallWindow();
 
+  // Формируем текст уведомления на основе статуса и длительности
   const durationSec = Math.floor((Date.now() - callStartTime) / 1000);
-  const durStr     = new Date(durationSec * 1000).toISOString().substr(11, 8);
+  const durStr = new Date(durationSec * 1000).toISOString().substr(11, 8);
+
+  let callMessage = '';
+  if (durationSec === 0) {
+    callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} был отменен.`;
+  } else {
+    callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} завершен. Длительность ${durStr}.`;
+  }
+
+  // Локальное уведомление (объединенное)
+ // appendCenterCall(callMessage);
+
+  // Отправляем на бэкенд
   const startedISO = new Date(callStartTime).toISOString();
-  const endedISO   = new Date().toISOString();
-
-  // Формируем текст, который хотим и в system, и в chat:
-  const callMessage = durationSec === 0
-    ? `📞 Звонок от ${userNickname} к ${currentPeer} был отменен.`
-    : `📞 Звонок от ${userNickname} к ${currentPeer} завершен. Длительность ${durStr}.`;
-
-  // 1) Локально выводим системное
-  appendCenterCall(callMessage);
-
-  // 2) Сохраняем звонок в свою таблицу
+  const endedISO = new Date().toISOString();
   try {
     await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
       method: 'POST',
       headers: {
-        'Content-Type':  'application/json',
+        'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        initiator:  userNickname,
-        recipient:  currentPeer,
+        initiator: userNickname,
+        recipient: currentPeer,
         started_at: startedISO,
-        ended_at:   endedISO,
-        status:     status,
-        duration:   durationSec
+        ended_at: endedISO,
+        status: status,
+        duration: durationSec
       })
     });
   } catch (err) {
-    console.error('Ошибка сохранения звонка:', err);
-    appendSystem('⚠️ Не удалось сохранить данные звонка.');
+    console.error('Ошибка сохранения звонка в БД:', err);
+    appendSystem('⚠️ Не удалось сохранить данные звонка на сервер.');
   }
 
-  // 3) Шлём по WS событие call, чтобы другие клиенты тоже увидели system-call
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    socket.send(JSON.stringify({
-      type:       'call',
-      initiator:  userNickname,
-      recipient:  currentPeer,
-      status:     status,
-      started_at: startedISO,
-      ended_at:   endedISO,
-      duration:   durationSec
-    }));
-
-    // 4) И сразу же шлём событие message, чтобы сервер создал запись в messages
-    //    и все клиенты (включая вас) получили тип 'message' и отрисовали appendMessage
-    socket.send(JSON.stringify({
-      type:   'message',
-      token,                    // обязательно вашим токеном
-      roomId: currentRoom,
-      text:   callMessage
-    }));
-  }
+  hideCallWindow();
 }
 
 
@@ -533,23 +514,22 @@ async function joinRoom(roomId) {
     (location.protocol === 'https:' ? 'wss://' : 'ws://') +
       location.host
   );
-socket.onopen = () => {
-  socket.send(JSON.stringify({ type: 'join', token, roomId }));
-};
+  socket.onopen = () =>
+    socket.send(JSON.stringify({ type: 'join', token, roomId }));
+  socket.onmessage = ev => {
+    const msg = JSON.parse(ev.data);
+    switch (msg.type) {
+      case 'webrtc-cancel':
+        endCall('Собеседник отменил звонок', 'cancelled');
+        break;
 
-socket.onmessage = async (ev) => {
-  const msg = JSON.parse(ev.data);
+      case 'message':
+        appendMessage(msg.sender, msg.text, msg.time);
+        break;
 
-  switch (msg.type) {
-    case 'webrtc-cancel':
-      endCall('Собеседник отменил звонок', 'cancelled');
-      break;
-
-    case 'message':
-      appendMessage(msg.sender, msg.text, msg.time);
-      break;
-
-    case 'file':
+   case 'file':
+      // просто вызываем appendFile —
+      // дубли отсеется там само́й
       appendFile(
         msg.sender,
         msg.fileId,
@@ -559,59 +539,38 @@ socket.onmessage = async (ev) => {
       );
       break;
 
-    case 'webrtc-offer':
-      currentPeer = msg.from;
-      await handleOffer(msg.payload);
-      showCallWindow(currentPeer, true);
-      break;
+      case 'webrtc-offer':
+        currentPeer = msg.from;
+        handleOffer(msg.payload);
+        showCallWindow(currentPeer, true);
+        break;
 
-    case 'webrtc-answer':
-      await handleAnswer(msg.payload);
-      break;
+      case 'webrtc-answer':
+        handleAnswer(msg.payload);
+        break;
 
-    case 'webrtc-ice':
-      await handleIce(msg.payload);
-      break;
+      case 'webrtc-ice':
+        handleIce(msg.payload);
+        break;
 
-    case 'call': {
-      // 1) Формируем текст и рендерим системное уведомление
-      const durStr = msg.duration
-        ? new Date(msg.duration * 1000).toISOString().substr(11, 8)
-        : '00:00:00';
+      case 'call': {
+        // Формируем текст системного блока
+        const time = new Date(msg.started_at)
+          .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const durStr = msg.duration
+          ? new Date(msg.duration * 1000).toISOString().substr(11, 8)
+          : '--:--:--';
+        const text = `📞 ${msg.initiator} → ${msg.recipient} • ${msg.status} • ${durStr} • ${time}`;
 
-      const text = msg.duration === 0
-        ? `📞 Звонок от ${msg.initiator} к ${msg.recipient} был отменен.`
-        : `📞 Звонок от ${msg.initiator} к ${msg.recipient} завершен. Длительность ${durStr}.`;
-
-      appendCenterCall(text);
-
-      // 2) Подтягиваем из БД последнее сообщение из messages
-      try {
-        const res = await fetch(
-          `${API_URL}/rooms/${currentRoom}/messages`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
-        );
-        if (!res.ok) throw new Error(await res.text());
-        const history = await res.json();
-        const last = history[history.length - 1];
-        if (last && last.text) {
-          appendMessage(
-            last.sender_nickname || last.sender,
-            last.text,
-            last.time
-          );
-        }
-      } catch (err) {
-        console.error('Не удалось подтянуть сообщение из messages:', err);
+        appendCenterCall(text);
+        break;
       }
-      break;
-    }
 
-    default:
-      console.warn('Unknown message type:', msg.type);
-  }
-};
-  // ← закрываем стрелочную функцию onmessage
+      default:
+        console.warn('Unknown message type:', msg.type);
+    }  // ← закрываем switch
+
+  };   // ← закрываем стрелочную функцию onmessage
 
 
   // ─── Загрузка всей истории из одного эндпоинта ───────────────────────────
