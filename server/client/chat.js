@@ -101,7 +101,7 @@ function appendCenterCall(text) {
 
   
 async function endCall(message, status = 'finished') {
-  // 1) Останавливаем таймер и WebRTC
+  // 1) Отменяем таймер и WebRTC
   clearInterval(callTimerIntvl);
   if (pc) pc.close();
   pc = null;
@@ -110,7 +110,7 @@ async function endCall(message, status = 'finished') {
     localStream = null;
   }
 
-  // 2) Составляем текст и даты
+  // 2) Собираем данные звонка
   const durationSec = Math.floor((Date.now() - callStartTime) / 1000);
   const durStr     = new Date(durationSec * 1000).toISOString().substr(11, 8);
   const startedISO = new Date(callStartTime).toISOString();
@@ -120,11 +120,11 @@ async function endCall(message, status = 'finished') {
     ? `📞 Звонок от ${userNickname} к ${currentPeer} был отменен.`
     : `📞 Звонок от ${userNickname} к ${currentPeer} завершен. Длительность ${durStr}.`;
 
-  // 3) Локальное системное уведомление
+  // 3) Скрываем окно и сразу показываем системное уведомление
   hideCallWindow();
   appendCenterCall(callMessage);
 
-  // 4) Сохраняем звонок в отдельной таблице
+  // 4) Сохраняем звонок в таблицу calls
   try {
     await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
       method: 'POST',
@@ -146,30 +146,51 @@ async function endCall(message, status = 'finished') {
     appendSystem('⚠️ Не удалось сохранить данные звонка на сервер.');
   }
 
-  // 5) Создаём запись в основной таблице messages
-  //    Сервер на этот POST должен вставить запись и сам разослать её через WS
+  // 5) Сохраняем запись в основной таблице messages,
+  //    чтобы там лежал ровно тот же текст.
+  let messageSaved = false;
   try {
-    await fetch(`${API_URL}/rooms/${currentRoom}/messages`, {
+    const res = await fetch(`${API_URL}/rooms/${currentRoom}/messages`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        // поля, которые ожидает ваш бек:
         sender: userNickname,
         text:   callMessage,
-        time:   endedISO,
-        // ...может ещё что-то, например type: 'call'
+        time:   endedISO
       })
     });
+    messageSaved = res.ok;
+    if (!res.ok) console.error('Ошибка создания сообщения звонка:', await res.text());
   } catch (err) {
-    console.error('Ошибка создания сообщения в БД:', err);
-    appendSystem('⚠️ Не удалось сохранить системное сообщение звонка.');
+    console.error('Ошибка создания сообщения звонка:', err);
+  }
+
+  // 6) Шлём события по WebSocket — сначала call, затем message,
+  //    чтобы сервер их переслал клиентам в том порядке, в котором они появились в БД.
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({
+      type:       'call',
+      initiator:  userNickname,
+      recipient:  currentPeer,
+      status:     status,
+      started_at: startedISO,
+      ended_at:   endedISO,
+      duration:   durationSec
+    }));
+    if (messageSaved) {
+      socket.send(JSON.stringify({
+        type:   'message',
+        roomId: currentRoom,
+        sender: userNickname,
+        text:   callMessage,
+        time:   endedISO
+      }));
+    }
   }
 }
-
-
 
 
 
