@@ -128,13 +128,16 @@ function showCallWindow(peer, incoming = false) {
     callTimerEl.textContent = `${m}:${s}`;
   }, 1000);
 
-  // 3) **Всегда** ставим таймаут пропущенного
-  answerTimeout = setTimeout(() => {
-    // Перед закрытием выравниваем счётчик на ровно 30 сек
-    callTimerEl.textContent = '00:30';
-    endCall('missed', peer, /* sendToServer */ true);
-    incomingCall = false;
-  }, 30_000);
+  // 3) Если это исходящий звонок — ставим таймаут пропущенного
+  if (!incoming) {
+    answerTimeout = setTimeout(() => {
+      // Перед закрытием выравниваем счётчик на ровно 30 сек
+      callTimerEl.textContent = '00:30';
+      // Отправляем в БД и рисуем пропущенный только инициатору
+      endCall('missed', peer, /* sendToServer */ true);
+      incomingCall = false;
+    }, 30_000);
+  }
 }
 
 
