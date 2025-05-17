@@ -268,7 +268,12 @@ function createPeerConnection() {
 
   pc.onicecandidate = e => {
     if (e.candidate && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ type: 'webrtc-ice',   roomId: currentRoom, payload: e.candidate }));
+      socket.send(JSON.stringify({
+  type:    'webrtc-ice',
+  roomId:  currentRoom,
+  payload: e.candidate
+}));
+
     }
   };
 
@@ -371,7 +376,6 @@ answerBtn.onclick = async () => {
       type:   'webrtc-cancel',
       roomId: currentRoom,
       from: userNickname,
-      roomId: currentRoom
     }));
   }
   // своё окно закрываем
