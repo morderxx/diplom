@@ -89,14 +89,12 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
         duration:   call.duration
       };
 
-      // Всегда шлём событие о звонке
       wss.clients.forEach(client => {
         if (client.readyState === client.OPEN && typeof client.send === 'function') {
           client.send(JSON.stringify(callEvent));
         }
       });
 
-      // А событие message — только если звонок не пропущен
       if (chatMsg) {
         const messageEvent = {
           type:    'message',
@@ -112,6 +110,19 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
           }
         });
       }
+
+      // webrtc-hangup событие
+      const hangupEvent = {
+        type:   'webrtc-hangup',
+        roomId,
+        from:   call.initiator,
+        to:     call.recipient
+      };
+      wss.clients.forEach(client => {
+        if (client.readyState === client.OPEN && typeof client.send === 'function') {
+          client.send(JSON.stringify(hangupEvent));
+        }
+      });
     }
 
   } catch (err) {
@@ -122,7 +133,6 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
   }
 });
 
-// GET /api/rooms/:roomId/calls
 router.get('/:roomId/calls', authMiddleware, async (req, res) => {
   const roomId = Number(req.params.roomId);
   try {
