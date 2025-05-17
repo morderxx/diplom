@@ -626,26 +626,29 @@ document.getElementById('chat-section').classList.add('active');
   if (msg.roomId !== currentRoom) return;
 
   switch (msg.type) {
-case 'webrtc-hangup':
-  if (msg.from === userNickname) break; // своё эхо
+    case 'webrtc-hangup':
+      if (msg.from === userNickname) break; // не обрабатываем эхо
 
-  // 1) Закрываем WebRTC и окно
-  if (pc) { pc.close(); pc = null; }
-  if (localStream) {
-    localStream.getTracks().forEach(t => t.stop());
-    localStream = null;
-  }
-  clearInterval(callTimerIntvl);
-  clearTimeout(answerTimeout);
-  hideCallWindow();
+      // 1) Всегда останавливаем WebRTC-потоки и таймер
+      if (pc) { pc.close(); pc = null; }
+      if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+      }
+      clearInterval(callTimerIntvl);
+      clearTimeout(answerTimeout);
 
-  // 2) Рисуем только если действительно разговаривали
-  if (answeredCall) {
-    endCall('finished', msg.from, /* sendToServer */ false);
-  }
-  // 3) Сбросим флаг для следующего звонка
-  answeredCall = false;
-  break;
+      // 2) Рисуем подходящее системное сообщение:
+      //    — если разговор уже был начат → finished
+      //    — если не был принят → missed
+      if (answeredCall) {
+        endCall('finished', msg.from, /* sendToServer=*/ false);
+      } else {
+        endCall('missed', msg.from, /* sendToServer=*/ false);
+      }
+
+      answeredCall = false;
+      break;
 
 
 
