@@ -627,25 +627,18 @@ document.getElementById('chat-section').classList.add('active');
 
   switch (msg.type) {
 case 'webrtc-hangup':
-  if (msg.from === userNickname) break; // своё эхо
+    // Игнорим собственное эхо
+    if (msg.from === userNickname) break;
 
-  // 1) Закрываем WebRTC и окно
-  if (pc) { pc.close(); pc = null; }
-  if (localStream) {
-    localStream.getTracks().forEach(t => t.stop());
-    localStream = null;
-  }
-  clearInterval(callTimerIntvl);
-  clearTimeout(answerTimeout);
-  hideCallWindow();
-
-  // 2) Рисуем только если действительно разговаривали
-  if (answeredCall) {
-    endCall('finished', msg.from, /* sendToServer */ false);
-  }
-  // 3) Сбросим флаг для следующего звонка
-  answeredCall = false;
-  break;
+    // Унифицировано: рисуем окончание звонка и закрываем окно в endCall
+    endCall(
+      'finished',     // статус «завершён»
+      msg.from,       // инициатор – тот, кто сбросил трубку
+      /* sendToServer */ false
+    );
+    // Сбрасываем флаг, чтобы не прокатилась двойная рендеринга
+    answeredCall = false;
+    break;
 
       
     case 'webrtc-cancel':
