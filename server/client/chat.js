@@ -161,16 +161,19 @@ async function endCall(status = 'finished', initiator = userNickname, sendToServ
     time: endedISO
   });
 
-   const shortText = (status === 'missed')
-    ? `Пропущенный звонок от ${initiator}.`
-     : (durationSec === 0
-         ? `${initiator} отменил(а) звонок`
-         : `${initiator} отменил(а) звонок.`);
+
 
   // 5) Локальная отрисовка
   const shortText = durationSec === 0
     ? `${initiator} отменил(а) звонок`
     : `${initiator} отменил(а) звонок.`;
+    // 5) Локальная отрисовка
+  appendCenterCall(fullText);
+
+  // Только если это не пропущенный звонок, показываем «пузырёк»
+  if (status !== 'missed') {
+    appendMessage(initiator, shortText, endedISO, null);
+  }
 
   // 6) Отправляем на бэкенд (если нужно)
   if (sendToServer) {
