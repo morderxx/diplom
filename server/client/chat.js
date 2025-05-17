@@ -620,12 +620,22 @@ document.getElementById('chat-section').classList.add('active');
   if (msg.roomId !== currentRoom) return;
 
   switch (msg.type) {
-      case 'webrtc-hangup':
-  if (msg.from !== userNickname) {
-    hideCallWindow();
-    endCall('finished', msg.from, /* sendToServer */ false);
-  }
-  break;
+    case 'webrtc-hangup':
+      if (msg.from === userNickname) break;
+
+      // 1) Снимаем таймеры и скроем окно…
+      clearInterval(callTimerIntvl);
+      clearTimeout(answerTimeout);
+
+      // 2) …но в зависимости от текущего состояния либо рисуем finished, либо просто прячем
+      if (callStatus.textContent === 'В разговоре') {
+        // это обычный hangup после ответа
+        endCall('finished', msg.from, /* sendToServer */ false);
+      } else {
+        // это «пропущенный» звонок — окно просто закрываем
+        hideCallWindow();
+      }
+      break;
       
     case 'webrtc-cancel':
       // рисуем только если это сделал НЕ мы сами
