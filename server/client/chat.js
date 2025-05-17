@@ -99,6 +99,8 @@ function appendCenterCall(text) {
 }
   // Показать окно звонка
   function showCallWindow(peer, incoming = false) {
+    clearInterval(callTimerIntvl);
+    clearTimeout(answerTimeout);
     currentPeer = peer;  
     incomingCall = incoming;
     callTitle.textContent = `Звонок с ${peer}`;
