@@ -127,7 +127,7 @@ async function endCall(message, status = 'finished') {
   if (durationSec === 0) {
     shortText = `${userNickname} отменил(а) звонок`;
   } else {
-    shortText = `${userNickname} завершил(а) звонок. Длительность ${durStr}`;
+    shortText = `${userNickname} отменил(а) звонок.`;
   }
 
   // 4) Локальная отрисовка
