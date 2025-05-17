@@ -1,5 +1,3 @@
-// routes/calls.js
-
 const express    = require('express');
 const pool       = require('../db');
 const jwt        = require('jsonwebtoken');
@@ -27,7 +25,6 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
   const { initiator, recipient, started_at, ended_at, status, duration } = req.body;
 
   try {
-    // 1) Сохраняем звонок
     const { rows: callRows } = await pool.query(`
       INSERT INTO calls
         (room_id, initiator, recipient, started_at, ended_at, status, duration)
@@ -36,7 +33,6 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
     `, [roomId, initiator, recipient, started_at, ended_at, status, duration]);
     const call = callRows[0];
 
-    // 2) Генерируем текст по статусу
     let text;
     switch (status) {
       case 'cancelled':
@@ -55,12 +51,10 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
         text = `Статус звонка: ${status}`;
     }
 
-    // 3) Выбираем время для системного сообщения
     const msgTime = (status === 'finished' || status === 'missed')
       ? ended_at
       : started_at;
 
-    // 4) Сохраняем системное сообщение
     const { rows: msgRows } = await pool.query(`
       INSERT INTO messages (room_id, sender_nickname, text, time, call_id)
       VALUES ($1,$2,$3,$4,$5)
@@ -68,12 +62,10 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
     `, [roomId, initiator, text, msgTime, call.id]);
     const chatMsg = msgRows[0];
 
-    // 5) Отправляем клиенту информацию о звонке
     res.status(201).json(call);
 
-    // 6) Бродкастим по WebSocket ивенты call + message
-    const wss = getWss();
-    if (wss) {
+    const { wss, clients } = getWss();
+    if (wss && clients) {
       const callEvent = {
         type:       'call',
         roomId,
@@ -93,13 +85,15 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
         call_id: chatMsg.call_id
       };
 
-      wss.clients.forEach(client => {
+      wss.clients.forEach(wsClient => {
+        const info = clients.get(wsClient);
         if (
-          client.readyState === client.OPEN &&
-          typeof client.send === 'function'
+          info &&
+          info.roomId === roomId &&
+          wsClient.readyState === wsClient.OPEN
         ) {
-          client.send(JSON.stringify(callEvent));
-          client.send(JSON.stringify(messageEvent));
+          wsClient.send(JSON.stringify(callEvent));
+          wsClient.send(JSON.stringify(messageEvent));
         }
       });
     }
@@ -112,7 +106,6 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
   }
 });
 
-// GET /api/rooms/:roomId/calls
 router.get('/:roomId/calls', authMiddleware, async (req, res) => {
   const roomId = Number(req.params.roomId);
   try {
