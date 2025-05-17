@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let localStream    = null;
   let callStartTime  = null;
   let callTimerIntvl = null;
+  let incomingCall = false;
 
   const stunConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
@@ -78,6 +79,7 @@ function appendCenterCall(text) {
   // Показать окно звонка
   function showCallWindow(peer, incoming = false) {
     currentPeer = peer;  
+    incomingCall = incoming;
     callTitle.textContent = `Звонок с ${peer}`;
     callStatus.textContent = incoming ? 'Входящий звонок' : 'Ожидание ответа';
     callTimerEl.textContent = '00:00';
@@ -381,9 +383,8 @@ answerBtn.onclick = async () => {
       from:   userNickname,
     }));
   }
-  // закрываем своё окно и рендерим локально
-  // передаём только статус, инициатор по умолчанию — userNickname
-  endCall('cancelled');
+    const initiator = incomingCall ? currentPeer : userNickname;
+    endCall('cancelled', initiator);
 };
 
  // minimizeBtn.onclick = () => callWindow.classList.toggle('minimized');
