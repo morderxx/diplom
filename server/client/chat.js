@@ -196,7 +196,7 @@ async function endCall(status = 'finished', initiator = userNickname, sendToServ
   // 5) Локальная отрисовка
   const shortText = durationSec === 0
     ? `${initiator} сбросил(а) звонок.`
-    : `${initiator} отменил(а) звонок.`;
+    : `${initiator} сбросил(а) звонок.`;
     // 5) Локальная отрисовка
   appendCenterCall(fullText);
 
