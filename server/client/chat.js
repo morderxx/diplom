@@ -602,6 +602,7 @@ document.getElementById('chat-section').classList.add('active');
   switch (msg.type) {
       case 'webrtc-hangup':
   if (msg.from !== userNickname) {
+    hideCallWindow();
     endCall('finished', msg.from, /* sendToServer */ false);
   }
   break;
