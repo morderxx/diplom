@@ -529,19 +529,26 @@ document.getElementById('chat-section').classList.add('active');
   );
   socket.onopen = () =>
     socket.send(JSON.stringify({ type: 'join', token, roomId }));
- socket.onmessage = ev => {
+socket.onmessage = ev => {
   const msg = JSON.parse(ev.data);
 
-  // 0) Отфильтровываем события, не относящиеся к текущей комнате
+  // Игнорируем чужие комнаты
   if (msg.roomId !== currentRoom) return;
 
   switch (msg.type) {
+    // если собеседник нажал «отклонить» до снятия трубки
     case 'webrtc-cancel':
+      // это закроет окно и инициирует POST /calls
       endCall('Собеседник отменил звонок', 'cancelled');
       break;
 
+    // когда сервер шлёт центрированное сообщение о звонке:
+    case 'call':
+      appendCenterCall(msg.centerText);
+      break;
+
+    // после этого (или при загрузке истории) придёт bubbleText в message
     case 'message':
-      // Если у вас есть call_id и вы хотите его передавать в appendMessage:
       appendMessage(
         msg.sender,
         msg.text,
@@ -574,20 +581,11 @@ document.getElementById('chat-section').classList.add('active');
       handleIce(msg.payload);
       break;
 
-case 'call':
-  // сервер присылает уже готовый full‑текст в поле centerText
-  appendCenterCall(msg.centerText);
-  // краткое сообщение‑«пузырёк» прилетит сразу после него как отдельный
-  // WS‑message с type='message'
-  break;
-
-
-
-
     default:
       console.warn('Unknown message type:', msg.type);
   }
 };
+
 
 
   // ─── Загрузка всей истории из одного эндпоинта ───────────────────────────
