@@ -106,20 +106,19 @@ function appendCenterCall(text) {
 }
   // Показать окно звонка
 function showCallWindow(peer, incoming = false) {
-  // 1) Сбрасываем старые таймеры
   clearInterval(callTimerIntvl);
   clearTimeout(answerTimeout);
 
-  currentPeer = peer;
-  incomingCall = incoming;
-  callTitle.textContent = `Звонок с ${peer}`;
+  currentPeer   = peer;
+  incomingCall  = incoming;
+  callTitle.textContent  = `Звонок с ${peer}`;
   callStatus.textContent = incoming ? 'Входящий звонок' : 'Ожидание ответа';
   callTimerEl.textContent = '00:00';
   answerBtn.style.display = incoming ? 'inline-block' : 'none';
   cancelBtn.textContent = incoming ? 'Отклонить' : 'Отмена';
   callWindow.classList.remove('hidden');
 
-  // 2) Секундомер
+  // общий секундомер
   callStartTime = Date.now();
   callTimerIntvl = setInterval(() => {
     const sec = Math.floor((Date.now() - callStartTime) / 1000);
@@ -128,13 +127,13 @@ function showCallWindow(peer, incoming = false) {
     callTimerEl.textContent = `${m}:${s}`;
   }, 1000);
 
-  // 3) **Только** для исходящего звонка ставим авто‑сброс
-  if (!incoming) {
-    answerTimeout = setTimeout(() => {
-      // 3.1) Таймер на 00:30
-      callTimerEl.textContent = '00:30';
+  // теперь таймаут ставим всегда, но внутри разделяем логику
+  answerTimeout = setTimeout(() => {
+    // зафиксировать 00:30
+    callTimerEl.textContent = '00:30';
 
-      // 3.2) Уведомляем принимающего о сбросе
+    if (!incoming) {
+      // 1) Исходящий: шлём webrtc-hangup + endCall('missed')
       if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({
           type:   'webrtc-hangup',
@@ -143,13 +142,16 @@ function showCallWindow(peer, incoming = false) {
           to:     peer
         }));
       }
-
-      // 3.3) Локальное завершение звонка как missed + сохранение
       endCall('missed', peer, /* sendToServer */ true);
-      incomingCall = false;
-    }, 30_000);
-  }
+
+    } else {
+      // 2) Входящий: просто скрываем окно
+      hideCallWindow();
+    }
+    incomingCall = false;
+  }, 30_000);
 }
+
 
 
 
