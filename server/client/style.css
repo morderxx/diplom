@@ -1,0 +1,514 @@
+/* =================== */
+/*  СТИЛИ ДЛЯ ФОРМ    */
+/* =================== */
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f0f2f5;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.form-container {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    width: 350px;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+input, textarea {
+    width: 100%;
+    margin-bottom: 15px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.button-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+button {
+    width: 100%;
+    padding: 10px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    font-size: 14px;
+}
+
+button:hover {
+    background: #45a049;
+}
+
+#registerButton {
+    background-color: #007bff;
+    margin-top: 15px;
+}
+
+#registerButton:hover {
+    background-color: #0056b3;
+}
+
+#message {
+    margin-top: 10px;
+    font-size: 14px;
+    color: red;
+    text-align: center;
+}
+
+/* =================== */
+/*   СТИЛИ ДЛЯ ЧАТА    */
+/* =================== */
+
+.chat-wrapper {
+  display: flex;
+  width: 90%;
+  max-width: 1200px;
+  height: 90vh;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Сайдбар с чатами и пользователями */
+.rooms-sidebar {
+  width: 260px;
+  background: #fafafa;
+  border-right: 1px solid #ddd;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  overflow-y: auto;
+}
+
+.rooms-sidebar .current-user {
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.rooms-sidebar h2 {
+  margin: 0;
+  font-size: 16px;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 5px;
+}
+
+.rooms-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.rooms-list li {
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.rooms-list li:hover {
+  background: #e0e0e0;
+}
+
+/* Основная зона чата */
+.chat-container {
+  flex: 1;
+  display: none;
+  flex-direction: column;
+  padding: 20px;
+  background: #f0f2f5;
+}
+
+.chat-container.active {
+  display: flex;
+}
+
+/* Область сообщений */
+.chat-message-area {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #ccc;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+/* Шапка чата */
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: #f7faff;
+  border-bottom: 1px solid #ddd;
+  font-weight: 600;
+  font-size: 15px;
+  color: #333;
+}
+
+.chat-header__call-btn {
+  width: 32px;
+  height: 32px;
+  background: #4CAF50;
+  color: #fff;
+  font-size: 16px;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.chat-header__call-btn:hover {
+  background: #45a049;
+}
+
+/* Бокс с сообщениями */
+.chat-box {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #fff;
+}
+
+/* Инпут снизу */
+.input-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  background: #fff;
+  margin-top: 8px;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+/* Кнопки */
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  font-size: 18px;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+#attach-btn {
+  background: #4CAF50;
+}
+
+#attach-btn:hover {
+  background: #45a049;
+}
+
+#send-btn,
+#voice-btn {
+  background: #007bff;
+}
+
+#send-btn:hover,
+#voice-btn:hover {
+  background: #0056b3;
+}
+
+/* Текстовое поле */
+textarea#message {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 20px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  line-height: 1.4em;
+  max-height: calc(1.4em * 3 + 24px);
+  overflow-y: auto;
+  resize: none;
+  box-sizing: border-box;
+}
+
+/* Сообщения */
+.message-wrapper {
+  display: flex;
+  width: 100%;
+}
+
+.my-message,
+.other-message {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.my-message {
+  align-items: flex-end;
+}
+
+.other-message {
+  align-items: flex-start;
+}
+
+.message-bubble {
+  background-color: #dcf8c6;
+  padding: 8px 12px;
+  border-radius: 12px;
+  max-width: 70%;
+  word-break: break-word;
+}
+
+.other-message .message-bubble {
+  background-color: #fff;
+  border: 1px solid #ddd;
+}
+
+.message-info {
+  font-size: 10px;
+  color: #555;
+  margin-bottom: 2px;
+}
+
+.message-text {
+  font-size: 14px;
+  color: #000;
+}
+
+/* Системные сообщения */
+.system-call-wrapper {
+  display: flex;
+  justify-content: center;
+  margin: 10px 0;
+}
+
+.system-call {
+  background-color: #E0F7FF;
+  color: #003366;
+  padding: 8px 12px;
+  border: 1px solid #99CCFF;
+  border-radius: 8px;
+  max-width: 60%;
+  text-align: center;
+  font-style: italic;
+}
+
+/* =============================== */
+/*  Специальные стили для media   */
+/* =============================== */
+
+/* Для медиа в чате: аккуратный размер, без пузыря */
+.media-bubble {
+    background: transparent !important;
+    padding: 0 !important;
+    max-width: none !important;
+}
+
+.media-bubble img,
+.media-bubble video {
+    display: block;
+    width: auto !important;
+    max-width: 250px !important;
+    max-height: 250px !important;
+    margin: 4px 0;
+    border-radius: 8px;
+}
+
+/* ======= Lightbox Overlay ======= */
+#lightbox-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(6px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+#lightbox-overlay.hidden {
+    display: none;
+}
+
+/* Контейнер для изображения + кнопок */
+#lightbox-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+}
+
+/* Сама картинка */
+#lightbox-content img {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 8px;
+    margin: 0 auto;
+}
+
+/* Общий стиль кнопок в лайтбоксе */
+#lightbox-close,
+#lightbox-download {
+    position: absolute;
+    top: 8px;
+    width: 36px;
+    height: 36px;
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    transition: background 0.2s;
+    z-index: 1001;
+}
+
+/* Размещение кнопок: скачать — левее, закрыть — правее */
+#lightbox-download { right: 52px; }
+#lightbox-close    { right: 8px; }
+
+#lightbox-close:hover,
+#lightbox-download:hover {
+    background: rgba(0,0,0,0.8);
+}
+
+/* Отключаем скролл основной страницы при открытом лайтбоксе */
+body.lightbox-open {
+    overflow: hidden;
+}
+
+/* =============== Окно звонка =============== */
+.call-window {
+  position: fixed;
+  top: 120px;
+  left: 120px;
+  width: 300px;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  z-index: 1000;
+  font-family: Arial, sans-serif;
+  border: 1px solid #ccc;
+  transition: transform 0.2s;
+}
+.call-window.hidden {
+  display: none;
+}
+.call-header {
+  background: #4CAF50;
+  color: #fff;
+  padding: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: move;
+}
+.call-header button {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  margin-left: 8px;
+}
+.call-body {
+  padding: 16px;
+  text-align: center;
+}
+#call-status {
+  margin-bottom: 12px;
+  font-weight: bold;
+}
+#call-timer {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+.call-controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+.action-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 20px;
+  background: #4CAF50;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+.action-btn:hover {
+  background: #45a049;
+}
+.action-btn.cancel {
+  background: #f44336;
+}
+.action-btn.cancel:hover {
+  background: #d32f2f;
+}
+/* ============================================ */
+/* Внутри контейнера .message-wrapper */
+.call-message {
+    background-color: #e0f7fa;       /* светло-голубой фон */
+    border-radius: 8px;              /* скруглённые углы */
+    margin: 4px 0;                   /* вертикальные отступы */
+    padding: 8px;                    /* внутренние отступы */
+    max-width: 70%;                  /* чтобы не растягивались на всю ширину */
+  }
+  
+  /* Контейнер с текстом звонка */
+  .call-info {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.9em;
+  }
+  
+  /* Отступы между строками внутри .call-info */
+  .call-info div {
+    margin: 2px 0;
+  }
+  
+  /* При желании можно отличать свои звонки от чужих, например: */
+  .my-message .call-message {
+    background-color: #b2ebf2;       /* чуть более тёмный, если это ты звонил */
+  }
+  .other-message .call-message {
+    background-color: #e0f7fa;
+  }
+  
