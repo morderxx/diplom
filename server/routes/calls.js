@@ -60,7 +60,7 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
         break;
       case 'finished':
         centerText = `📞 Звонок от ${initiator} к ${recipient} завершён. Длительность ${durMMSS}.`;
-        bubbleText = `${initiator} завершил(а) звонок. Длительность ${durMMSS}`;
+        bubbleText = `${initiator} завершил(а) звонок.`;
         break;
       default:
         centerText = `📞 Статус звонка: ${status}`;
