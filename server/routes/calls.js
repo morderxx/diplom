@@ -1,18 +1,20 @@
-// Импорт необходимых модулей
-const express = require('express');
-const pool = require('../db');
-const jwt = require('jsonwebtoken');
+// routes/calls.js
+
+const express    = require('express');
+const pool       = require('../db');
+const jwt        = require('jsonwebtoken');
 const { getWss } = require('../chat');
-const router = express.Router();
+const router     = express.Router();
+
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
-// Middleware: Извлечение login из токена
+// Middleware: проверка и извлечение login из JWT
 async function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth) return res.status(401).send('No token provided');
 
   try {
-    const token = auth.split(' ')[1];
+    const token   = auth.split(' ')[1];
     const payload = jwt.verify(token, JWT_SECRET);
     req.userLogin = payload.login;
     next();
@@ -22,22 +24,22 @@ async function authMiddleware(req, res, next) {
   }
 }
 
-// POST /api/rooms/:roomId/calls — Создать новый звонок
+// POST /api/rooms/:roomId/calls — создать новый звонок
 router.post('/:roomId/calls', authMiddleware, async (req, res) => {
   const roomId = Number(req.params.roomId);
   const { initiator, recipient, started_at, ended_at, status, duration } = req.body;
 
   try {
-    // 1. Сохраняем звонок в базу данных
-    const { rows } = await pool.query(`
-      INSERT INTO calls (room_id, initiator, recipient, started_at, ended_at, status, duration)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    // 1) Сохраняем звонок
+    const { rows: callRows } = await pool.query(`
+      INSERT INTO calls
+        (room_id, initiator, recipient, started_at, ended_at, status, duration)
+      VALUES ($1,$2,$3,$4,$5,$6,$7)
       RETURNING id, initiator, recipient, started_at, ended_at, status, duration;
     `, [roomId, initiator, recipient, started_at, ended_at, status, duration]);
+    const call = callRows[0];
 
-    const call = rows[0];
-
-    // 2. Генерация текста системного сообщения
+    // 2) Генерируем текст системного сообщения
     let text;
     switch (status) {
       case 'cancelled':
@@ -56,34 +58,38 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
         text = `Статус звонка: ${status}`;
     }
 
-    // 3. Сохраняем системное сообщение в messages и сразу возвращаем его
-    const insertMsgResult = await pool.query(`
+    // 3) Вставляем запись в messages и сразу получаем её данные
+    const { rows: msgRows } = await pool.query(`
       INSERT INTO messages (room_id, sender_nickname, text, time, call_id)
-      VALUES ($1, $2, $3, $4, $5)
+      VALUES ($1,$2,$3,$4,$5)
       RETURNING id, room_id, sender_nickname AS sender, text, time, call_id;
     `, [roomId, initiator, text, started_at, call.id]);
+    const chatMsg = msgRows[0];
 
-    const chatMsg = insertMsgResult.rows[0];
-
-    // 4. Отвечаем клиенту
+    // 4) Отвечаем клиенту данными звонка
     res.status(201).json(call);
 
-    // 5. Рассылаем через WebSocket событие звонка и сообщение
+    // 5) Бродкастим два WS-события: call и message
     const wss = getWss();
     if (wss) {
       const callEvent = {
-        type: 'call',
-        initiator: call.initiator,
-        recipient: call.recipient,
+        type:       'call',
+        roomId,                      // для фильтрации в клиенте
+        initiator:  call.initiator,
+        recipient:  call.recipient,
         started_at: call.started_at,
-        ended_at: call.ended_at,
-        status: call.status,
-        duration: call.duration
+        ended_at:   call.ended_at,
+        status:     call.status,
+        duration:   call.duration
       };
 
       const messageEvent = {
-        type: 'message',
-        ...chatMsg
+        type:   'message',
+        roomId: chatMsg.room_id,     // тоже для фильтрации
+        sender: chatMsg.sender,
+        text:   chatMsg.text,
+        time:   chatMsg.time,
+        call_id: chatMsg.call_id
       };
 
       wss.clients.forEach(client => {
@@ -99,10 +105,9 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
   }
 });
 
-// GET /api/rooms/:roomId/calls — Получить историю звонков
+// GET /api/rooms/:roomId/calls — получить историю звонков
 router.get('/:roomId/calls', authMiddleware, async (req, res) => {
   const roomId = Number(req.params.roomId);
-
   try {
     const { rows } = await pool.query(`
       SELECT id, initiator, recipient, started_at, ended_at, status, duration
@@ -110,7 +115,6 @@ router.get('/:roomId/calls', authMiddleware, async (req, res) => {
       WHERE room_id = $1
       ORDER BY started_at;
     `, [roomId]);
-
     res.json(rows);
   } catch (err) {
     console.error('Error fetching calls:', err);
