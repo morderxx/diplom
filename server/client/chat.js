@@ -585,34 +585,45 @@ document.getElementById('chat-section').classList.add('active');
       handleIce(msg.payload);
       break;
 
-    case 'call': {
-  // Формируем строки длительности и времени
-  const durStr = msg.duration
-    ? new Date(msg.duration * 1000).toISOString().substr(11, 8)
+case 'call': {
+  const dur = msg.duration || 0;
+
+  // 1) полный текст в центре — без изменений
+  const durStr = dur
+    ? new Date(dur * 1000).toISOString().substr(11, 8)
     : '--:--:--';
-  const callTime = new Date(msg.started_at)
-    .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  let fullText;
+  if (msg.status === 'cancelled' && dur === 0) {
+    fullText = `📞 Звонок от ${msg.initiator} к ${msg.recipient} был отменен.`;
+  } else if (msg.status === 'cancelled') {
+    fullText = `📞 Звонок от ${msg.initiator} к ${msg.recipient} был сброшен. Длительность ${durStr}.`;
+  } else if (msg.status === 'missed') {
+    fullText = `📞 Пропущенный звонок от ${msg.initiator}.`;
+  } else {
+    fullText = `📞 Звонок от ${msg.initiator} к ${msg.recipient} завершён. Длительность ${durStr}.`;
+  }
+  appendCenterCall(fullText);
 
-  // Составляем текст
-  const text = msg.status === 'cancelled'
-    ? `📞 ${msg.initiator} отменил(а) звонок`
-    : msg.status === 'missed'
-      ? `📞 Пропущенный звонок от ${msg.initiator}`
-      : `📞 Звонок с ${msg.recipient} завершён. Длительность ${durStr}`;
+  // 2) короткий текст для «пузырька» — только отмена/сброс
+  let shortText = null;
+  if (msg.status === 'cancelled' && dur === 0) {
+    shortText = `${msg.initiator} отменил(а) звонок`;
+  }
+  else if (msg.status === 'cancelled') {
+    shortText = `${msg.initiator} сбросил(а) звонок`;
+  }
 
-  // 1) Системное сообщение по центру
-  appendCenterCall(text);
-
-  // 2) Обычное сообщение в стиле чата — используем msg.ended_at или msg.time,
-  //    а если сервер присылает call_id, можно его передать четвертым аргументом
-  appendMessage(
-    msg.initiator,
-    text,
-    msg.ended_at || msg.time || new Date().toISOString(),
-    msg.call_id ?? null
-  );
+  if (shortText) {
+    appendMessage(
+      msg.initiator,
+      shortText,
+      msg.ended_at || msg.time || new Date().toISOString(),
+      msg.call_id ?? null
+    );
+  }
   break;
 }
+
 
 
     default:
