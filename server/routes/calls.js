@@ -26,7 +26,6 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
   const roomId = Number(req.params.roomId);
   const { initiator, recipient, started_at, ended_at, status, duration } = req.body;
 
-  let call;
   try {
     // 1) Сохраняем звонок
     const { rows: callRows } = await pool.query(`
@@ -35,9 +34,9 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
       VALUES ($1,$2,$3,$4,$5,$6,$7)
       RETURNING id, initiator, recipient, started_at, ended_at, status, duration;
     `, [roomId, initiator, recipient, started_at, ended_at, status, duration]);
-    call = callRows[0];
+    const call = callRows[0];
 
-    // 2) Генерируем текст
+    // 2) Генерируем текст по статусу
     let text;
     switch (status) {
       case 'cancelled':
@@ -56,7 +55,12 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
         text = `Статус звонка: ${status}`;
     }
 
-    // 3) Сохраняем системное сообщение и возвращаем его
+    // 3) Выбираем время для системного сообщения
+    const msgTime = (status === 'finished' || status === 'missed')
+      ? ended_at
+      : started_at;
+
+    // 4) Сохраняем системное сообщение
     const { rows: msgRows } = await pool.query(`
       INSERT INTO messages (room_id, sender_nickname, text, time, call_id)
       VALUES ($1,$2,$3,$4,$5)
@@ -64,10 +68,10 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
     `, [roomId, initiator, text, msgTime, call.id]);
     const chatMsg = msgRows[0];
 
-    // 4) Отвечаем клиенту
+    // 5) Отправляем клиенту информацию о звонке
     res.status(201).json(call);
 
-    // 5) Бродкастим события — в отдельном блоке, чтобы не ломать ответ
+    // 6) Бродкастим по WebSocket ивенты call + message
     const wss = getWss();
     if (wss) {
       const callEvent = {
@@ -89,7 +93,6 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
         call_id: chatMsg.call_id
       };
 
-      // Фильтруем только тех клиентов, у которых есть send() и которые онлайн
       wss.clients.forEach(client => {
         if (
           client.readyState === client.OPEN &&
@@ -103,7 +106,6 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
 
   } catch (err) {
     console.error('Error in POST /rooms/:roomId/calls:', err);
-    // Если ответ ещё не отправлен, даём 500
     if (!res.headersSent) {
       res.status(500).send('Error saving call');
     }
