@@ -20,6 +20,25 @@ document.addEventListener('DOMContentLoaded', () => {
   let callStartTime  = null;
   let callTimerIntvl = null;
   let incomingCall = false;
+// Хелпер для формирования текста «системного» сообщения по звонку
+function formatCallText({ initiator, recipient, status, duration, time }) {
+  const displayTime = new Date(time).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+  const durStr = duration
+    ? new Date(duration * 1000).toISOString().substr(11,8)
+    : '00:00:00';
+
+  if (duration === 0 && status === 'cancelled') {
+    return `⌛ Ожидание ответа • ${displayTime}`;
+  }
+  if (duration === 0 && status === 'missed') {
+    return `📞 Пропущенный звонок от ${initiator}.`;
+  }
+  if (duration > 0 && status === 'finished') {
+    return `📞 Звонок от ${initiator} к ${recipient} завершен. Длительность ${durStr}.`;
+  }
+  // cancelled после разговора
+  return `📞 Звонок от ${initiator} к ${recipient} был отменен. Длительность ${durStr}.`;
+}
 
   const stunConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
@@ -119,10 +138,14 @@ async function endCall(status = 'finished', initiator = userNickname, sendToServ
   // 3) Определяем, кто был получателем
   const recipient = (initiator === userNickname) ? currentPeer : userNickname;
 
-  // 4) Формируем тексты
-  const fullText = durationSec === 0
-    ? `📞 Звонок от ${initiator} к ${recipient} был отменен.`
-    : `📞 Звонок от ${initiator} к ${recipient} завершен. Длительность ${durStr}.`;
+  // 4) Формируем тексты через общий хелпер
+  const fullText = formatCallText({
+    initiator,
+    recipient,
+    status,
+    duration: durationSec,
+    time: endedISO
+  });
 
   const shortText = durationSec === 0
     ? `${initiator} отменил(а) звонок`
@@ -333,6 +356,7 @@ socket.send(JSON.stringify({
   async function handleOffer(offer) {
     createPeerConnection();
     showCallWindow(currentPeer, true);
+    incomingCall = false;
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
     await pc.setRemoteDescription(offer);
@@ -342,6 +366,7 @@ socket.send(JSON.stringify({
     if (!pc) return;
     await pc.setRemoteDescription(answer);
     callStatus.textContent = 'В разговоре';
+    incomingCall = false;
     answerBtn.style.display = 'none';
   }
 
@@ -370,6 +395,7 @@ answerBtn.onclick = async () => {
     }));
 
     callStatus.textContent = 'В разговоре';
+    incomingCall = false;  // сбросим флаг
     answerBtn.style.display = 'none';
   } catch (err) {
     console.error('Ошибка при ответе на звонок:', err);
@@ -503,34 +529,6 @@ document.getElementById('chat-box').addEventListener('click', e => {
     joinRoom(roomId);
   }
   
-
-  function appendCall({ initiator, recipient, status, happened_at, ended_at, duration }) {
-    const chatBox = document.getElementById('chat-box');
-    const wrapper = document.createElement('div');
-    wrapper.className = 'message-wrapper';
-    // выровняем «как у других», но отличим цветом
-    const msgEl = document.createElement('div');
-    msgEl.className = 'call-message'; 
-  
-    // основной контент звонка
-    const info = document.createElement('div');
-    info.className = 'call-info';
-    // форматируем длительность и время
-    const time  = new Date(happened_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-    const durStr = duration
-      ? new Date(duration * 1000).toISOString().substr(11,8)
-      : '--:--:--';
-  
-    info.innerHTML = `
-      <div>📞 <strong>${initiator}</strong> → <strong>${recipient}</strong></div>
-      <div>${status} • ${durStr} • ${time}</div>
-    `;
-  
-    msgEl.appendChild(info);
-    wrapper.appendChild(msgEl);
-    chatBox.appendChild(wrapper);
-    chatBox.scrollTop = chatBox.scrollHeight;
-  }
   
 async function joinRoom(roomId) {
   if (socket) socket.close();
@@ -605,28 +603,22 @@ document.getElementById('chat-section').classList.add('active');
       break;
 
 case 'call': {
+  // Не дублируем свои собственные звонки
   if (msg.initiator === userNickname) break;
-  const dur = msg.duration || 0;
 
-  // 1) полный текст в центре — без изменений
-  const durStr = dur
-    ? new Date(dur * 1000).toISOString().substr(11, 8)
-    : '--:--:--';
-  let fullText;
-  if (msg.status === 'cancelled' && dur === 0) {
-    fullText = `📞 Звонок от ${msg.initiator} к ${msg.recipient} был отменен.`;
-  } else if (msg.status === 'cancelled') {
-    fullText = `📞 Звонок от ${msg.initiator} к ${msg.recipient} был сброшен. Длительность ${durStr}.`;
-  } else if (msg.status === 'missed') {
-    fullText = `📞 Пропущенный звонок от ${msg.initiator}.`;
-  } else {
-    fullText = `📞 Звонок от ${msg.initiator} к ${msg.recipient} завершён. Длительность ${durStr}.`;
-  }
-  appendCenterCall(fullText);
+  // Формируем и отрисовываем через хелпер
+  const fullTextCall = formatCallText({
+    initiator: msg.initiator,
+    recipient: msg.recipient,
+    status:    msg.status,
+    duration:  msg.duration || 0,
+    time:      msg.ended_at || msg.happened_at
+  });
+  appendCenterCall(fullTextCall);
 
   // 2) короткий текст для «пузырька» — только отмена/сброс
   let shortText = null;
-  if (msg.status === 'cancelled' && dur === 0) {
+  if (msg.status === 'cancelled' && (msg.duration || 0) === 0) {
     shortText = `${msg.initiator} отменил(а) звонок`;
   }
   else if (msg.status === 'cancelled') {
@@ -664,22 +656,15 @@ case 'call': {
 history.forEach(m => {
 
  if (m.type === 'call') {
-    const durStr = m.duration
-      ? new Date(m.duration * 1000).toISOString().substr(11, 8)
-      : '00:00:00';
-
-    let callMessage;
-    if (m.status === 'cancelled' && m.duration === 0) {
-      callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} был отменен.`;
-    } else if (m.status === 'cancelled') {
-      callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} был сброшен. Длительность ${durStr}.`;
-    } else if (m.duration === 0) {
-      callMessage = `📞 Исходящий вызов от ${m.initiator} к ${m.recipient} не был принят.`;
-    } else {
-      callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} завершен. Длительность ${durStr}.`;
-    }
-
-    appendCenterCall(callMessage);
+      // единая логика форматирования
+  const fullTextHist = formatCallText({
+    initiator: m.initiator,
+    recipient: m.recipient,
+    status:    m.status,
+    duration:  m.duration || 0,
+    time:      m.ended_at || m.started_at
+  });
+  appendCenterCall(fullTextHist);
     return;
   }
 
