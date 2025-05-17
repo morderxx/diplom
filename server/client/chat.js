@@ -142,7 +142,8 @@ function showCallWindow(peer, incoming = false) {
           to:     peer
         }));
       }
-      endCall('missed', peer, /* sendToServer */ true);
+   // userNickname звонил → он инициатор missed
+   endCall('missed', userNickname, /* sendToServer */ true);
 
     } else {
        endCall('missed', peer, /* sendToServer */ false);
