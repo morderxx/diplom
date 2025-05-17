@@ -660,25 +660,21 @@ document.getElementById('chat-section').classList.add('active');
 
   switch (msg.type) {
 case 'webrtc-hangup':
-  if (msg.from === userNickname) break; // своё эхо
+  if (msg.from === userNickname) break; // игнорируем своё эхо
 
-  // 1) Закрываем WebRTC и окно
-  if (pc) { pc.close(); pc = null; }
-  if (localStream) {
-    localStream.getTracks().forEach(t => t.stop());
-    localStream = null;
-  }
-  clearInterval(callTimerIntvl);
   clearTimeout(answerTimeout);
-  hideCallWindow();
 
-  // 2) Рисуем только если действительно разговаривали
+  // 1) Если звонок был принят — завершаем как обычный завершённый
   if (answeredCall) {
     endCall('finished', msg.from, /* sendToServer */ false);
+  } else {
+    // 2) Если не был принят — это отмена / отклонение до соединения
+    endCall('canceled', msg.from, /* sendToServer */ false);
   }
-  // 3) Сбросим флаг для следующего звонка
+
   answeredCall = false;
   break;
+
 
       
     case 'webrtc-cancel':
