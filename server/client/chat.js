@@ -629,7 +629,7 @@ document.getElementById('chat-section').classList.add('active');
 case 'webrtc-hangup':
   if (msg.from === userNickname) break; // своё эхо
 
-  // 1) Закрываем WebRTC и окно
+  // Всегда останавливаем WebRTC и таймер и прячем окно
   if (pc) { pc.close(); pc = null; }
   if (localStream) {
     localStream.getTracks().forEach(t => t.stop());
@@ -637,15 +637,14 @@ case 'webrtc-hangup':
   }
   clearInterval(callTimerIntvl);
   clearTimeout(answerTimeout);
-  hideCallWindow();
 
-  // 2) Рисуем только если действительно разговаривали
-  if (answeredCall) {
-    endCall('finished', msg.from, /* sendToServer */ false);
-  }
-  // 3) Сбросим флаг для следующего звонка
+ // Завершаем звонок у себя (без повторной отправки на сервер)
+ endCall('finished', msg.from, /* sendToServer */ false);
+
+  // Сбрасываем флаг, чтобы следующий звонок норм отработал
   answeredCall = false;
   break;
+
 
       
     case 'webrtc-cancel':
