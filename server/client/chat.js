@@ -100,39 +100,44 @@ function appendCenterCall(text) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
   // Показать окно звонка
-function showCallWindow(peer, incoming = false) {
-  // 1) Сбрасываем старые таймеры
+// 1) Обновлённый showCallWindow: принимает опциональный startTime в миллисекундах
+function showCallWindow(peer, incoming = false, startTime = null) {
+  // Сбрасываем старые таймеры
   clearInterval(callTimerIntvl);
   clearTimeout(answerTimeout);
 
   currentPeer = peer;
   incomingCall = incoming;
+
+  // Синхронизируем момент старта
+  callStartTime = startTime !== null ? startTime : Date.now();
+
   callTitle.textContent = `Звонок с ${peer}`;
   callStatus.textContent = incoming ? 'Входящий звонок' : 'Ожидание ответа';
-  callTimerEl.textContent = '00:00';
   answerBtn.style.display = incoming ? 'inline-block' : 'none';
   cancelBtn.textContent = incoming ? 'Отклонить' : 'Отмена';
   callWindow.classList.remove('hidden');
 
-  // 2) Устанавливаем стартовое время и запускаем интервал
-  callStartTime = Date.now();
-  callTimerIntvl = setInterval(() => {
-    const sec = Math.floor((Date.now() - callStartTime) / 1000);
-    const m = String(Math.floor(sec / 60)).padStart(2, '0');
-    const s = String(sec % 60).padStart(2, '0');
-    callTimerEl.textContent = `${m}:${s}`;
-  }, 1000);
+  // Обновляем сразу один раз
+  updateTimerDisplay();
 
-  // 3) **Всегда** ставим таймаут пропущенного
+  // Запускаем интервал для обновления каждую секунду
+  callTimerIntvl = setInterval(updateTimerDisplay, 1000);
+
+  // Таймаут missed через ровно 30 секунд от callStartTime
   answerTimeout = setTimeout(() => {
-    // Перед закрытием выравниваем счётчик на ровно 30 сек
     callTimerEl.textContent = '00:30';
     endCall('missed', peer, /* sendToServer */ true);
     incomingCall = false;
   }, 30_000);
 }
 
-
+function updateTimerDisplay() {
+  const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
+  const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+  const s = String(elapsed % 60).padStart(2, '0');
+  callTimerEl.textContent = `${m}:${s}`;
+}
   // Скрыть окно звонка
   function hideCallWindow() {
     clearInterval(callTimerIntvl);
@@ -359,34 +364,52 @@ function createPeerConnection() {
 
 async function startCall() {
   createPeerConnection();
-  showCallWindow(currentPeer, false);
+
+  // Засекаем момент старта
+  const startISO = new Date().toISOString();
+  const startMs  = Date.parse(startISO);
+
+  // Показываем окно со стартом init
+  showCallWindow(currentPeer, false, startMs);
+
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
-socket.send(JSON.stringify({
-  type:   'webrtc-offer',
-  roomId: currentRoom,
-  from:   userNickname,
-  to:     currentPeer,
-  payload: offer
-}));
+    // Шлём оффер вместе со временем старта
+      socket.send(JSON.stringify({
+      type:       'webrtc-offer',
+      roomId:     currentRoom,
+      from:       userNickname,
+      to:         currentPeer,
+      payload:    offer,
+      started_at: startISO
+    }));
   } catch (err) {
     console.error('Ошибка получения аудио при звонке:', err);
   }
 }
 
+async function handleOffer(message) {
+  const { payload: offer, started_at } = message;
 
-  async function handleOffer(offer) {
-    createPeerConnection();
-    showCallWindow(currentPeer, true);
-    incomingCall = false;
+  createPeerConnection();
+
+  // Синхронизируем время старта вызова
+  const startMs = Date.parse(started_at);
+  showCallWindow(currentPeer, true, startMs);
+
+  incomingCall = false;
+  try {
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
     await pc.setRemoteDescription(offer);
+  } catch (err) {
+    console.error('Ошибка при обработке offer:', err);
   }
+}
 
   async function handleAnswer(answer) {
     if (!pc) return;
@@ -636,8 +659,7 @@ document.getElementById('chat-section').classList.add('active');
 
     case 'webrtc-offer':
       currentPeer = msg.from;
-      handleOffer(msg.payload);
-      showCallWindow(currentPeer, true);
+      handleOffer(msg);
       break;
 
     case 'webrtc-answer':
