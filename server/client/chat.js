@@ -387,16 +387,16 @@ cancelBtn.onclick = () => {
   // 2) закрываем окно звонка
   hideCallWindow();
 
-  // 3a) если это входящий — показываем локально «пропущенный»
-  if (incomingCall) {
-    const nowISO = new Date().toISOString();
-    appendCenterCall(`📞 Пропущенный звонок от ${currentPeer}.`);
-    appendMessage(currentPeer, 'Пропущенный звонок', nowISO, null);
-    return;
-  }
+  // 3) вычисляем инициатора: 
+  //    если это входящий (incomingCall === true), то инициатор — currentPeer,
+  //    иначе — вы сами
+  const initiator = incomingCall ? currentPeer : userNickname;
 
-  // 3b) если это исходящий — вызываем endCall, как раньше
-  endCall('cancelled', userNickname);
+  // 4) рендерим отмену через endCall (status = 'cancelled')
+  endCall('cancelled', initiator);
+
+  // 5) сбрасываем флаг входящего, чтобы следующее showCallWindow снова выставил его корректно
+  incomingCall = false;
 };
  // minimizeBtn.onclick = () => callWindow.classList.toggle('minimized');
 
