@@ -107,26 +107,28 @@ function setupWebSocket(server) {
       }
 
       // WEBRTC SIGNALING
-      if (['webrtc-offer', 'webrtc-answer', 'webrtc-ice'].includes(msg.type)) {
-        const senderInfo = clients.get(ws);
-        if (!senderInfo) return;
-        wss.clients.forEach(c => {
-          const info = clients.get(c);
-          if (
-            c !== ws &&
-            info &&
-            info.roomId === senderInfo.roomId &&
-            c.readyState === WebSocket.OPEN
-          ) {
-            c.send(JSON.stringify({
-              type:    msg.type,
-              from:    senderInfo.nickname,
-              payload: msg.payload
-            }));
-          }
-        });
-        return;
-      }
+    if (['webrtc-offer', 'webrtc-answer', 'webrtc-ice'].includes(msg.type)) {
+  const senderInfo = clients.get(ws);
+  if (!senderInfo) return;
+  wss.clients.forEach(c => {
+    const info = clients.get(c);
+    if (
+      c !== ws &&
+      info &&
+      info.roomId === senderInfo.roomId &&
+      c.readyState === WebSocket.OPEN
+    ) {
+      c.send(JSON.stringify({
+        type:    msg.type,
+        roomId:  senderInfo.roomId,
+        from:    senderInfo.nickname,
+        payload: msg.payload
+      }));
+    }
+  });
+  return;
+}
+
 
       if (msg.type === 'webrtc-cancel') {
         const senderInfo = clients.get(ws);
