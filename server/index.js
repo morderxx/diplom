@@ -21,6 +21,22 @@ const server = http.createServer(app);
 app.use(cors());
 // важно: JSON-парсер должен быть ДО роутов, обрабатывающих POST /calls и POST /messages
 app.use(express.json());
+// --- логируем каждый входящий запрос и его тело (если есть)
+app.use((req, res, next) => {
+  console.log(`→ ${req.method} ${req.originalUrl}`);
+  if (Object.keys(req.body).length) {
+    console.log('   Body:', JSON.stringify(req.body));
+  }
+  next();
+});
+// --- ловим ошибки разбора JSON
+app.use((err, req, res, next) => {
+  if (err.type === 'entity.parse.failed') {
+    console.error('❌ JSON parse error:', err);
+    return res.status(400).send('Invalid JSON');
+  }
+  next(err);
+});
 
 // 2) API
 
