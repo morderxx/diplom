@@ -99,13 +99,10 @@ function appendCenterCall(text) {
     callWindow.classList.add('hidden');
   }
 
-async function endCall(message, status = 'finished') {
+async function endCall(status = 'finished', initiator = userNickname) {
   // 1) Останавливаем таймер и WebRTC
   clearInterval(callTimerIntvl);
-  if (pc) {
-    pc.close();
-    pc = null;
-  }
+  if (pc) { pc.close(); pc = null; }
   if (localStream) {
     localStream.getTracks().forEach(t => t.stop());
     localStream = null;
@@ -117,30 +114,23 @@ async function endCall(message, status = 'finished') {
   const startedISO  = new Date(callStartTime).toISOString();
   const endedISO    = new Date().toISOString();
 
-  // 3) Формируем два текста: fullText для центра и shortText для чата
+  // 3) Определяем, кто был получателем
+  const recipient = (initiator === userNickname) ? currentPeer : userNickname;
+
+  // 4) Формируем тексты
   const fullText = durationSec === 0
-    ? `📞 Звонок от ${userNickname} к ${currentPeer} был отменен.`
-    : `📞 Звонок от ${userNickname} к ${currentPeer} завершен. Длительность ${durStr}.`;
+    ? `📞 Звонок от ${initiator} к ${recipient} был отменен.`
+    : `📞 Звонок от ${initiator} к ${recipient} завершен. Длительность ${durStr}.`;
 
-  // короткий текст — ровно тот же, что и при загрузке истории
-  let shortText;
-  if (durationSec === 0) {
-    shortText = `${userNickname} отменил(а) звонок`;
-  } else {
-    shortText = `${userNickname} отменил(а) звонок.`;
-  }
+  const shortText = durationSec === 0
+    ? `${initiator} отменил(а) звонок`
+    : `${initiator} отменил(а) звонок.`;
 
-  // 4) Локальная отрисовка
+  // 5) Локальная отрисовка
   appendCenterCall(fullText);
-  appendMessage(
-    userNickname,
-    shortText,
-    endedISO,
-    // если нужно, можете сюда передать call_id, но оно не влияет на текст
-    null
-  );
+  appendMessage(initiator, shortText, endedISO, null);
 
-  // 5) Отправляем на бэкенд
+  // 6) Отправляем на бэкенд
   try {
     const res = await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
       method: 'POST',
@@ -149,25 +139,24 @@ async function endCall(message, status = 'finished') {
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        initiator:  userNickname,
-        recipient:  currentPeer,
+        initiator,
+        recipient,
         started_at: startedISO,
         ended_at:   endedISO,
-        status:     status,
+        status,
         duration:   durationSec
       })
     });
     if (!res.ok) {
-      const text = await res.text();
-      console.error('Ошибка сохранения звонка:', text);
-      appendSystem(`⚠️ Сервер вернул ошибку при сохранении звонка: ${res.status}`);
+      console.error('Ошибка сохранения звонка:', await res.text());
+      appendSystem(`⚠️ Сервер вернул ошибку: ${res.status}`);
     }
   } catch (err) {
     console.error('Сетевая ошибка при сохранении звонка:', err);
     appendSystem('⚠️ Сетевая ошибка при сохранении звонка.');
   }
 
-  // 6) Закрываем окно звонка
+  // 7) Закрываем окно звонка
   hideCallWindow();
 }
 
@@ -562,7 +551,7 @@ document.getElementById('chat-section').classList.add('active');
 
   switch (msg.type) {
     case 'webrtc-cancel':
-      endCall('Собеседник отменил звонок', 'cancelled');
+      endCall('cancelled', msg.from);
       break;
 
     case 'message':
