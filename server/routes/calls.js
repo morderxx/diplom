@@ -8,11 +8,9 @@ const router     = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
-// Middleware: проверка и извлечение login из JWT
 async function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth) return res.status(401).send('No token provided');
-
   try {
     const token   = auth.split(' ')[1];
     const payload = jwt.verify(token, JWT_SECRET);
@@ -24,11 +22,11 @@ async function authMiddleware(req, res, next) {
   }
 }
 
-// POST /api/rooms/:roomId/calls — создать новый звонок
 router.post('/:roomId/calls', authMiddleware, async (req, res) => {
   const roomId = Number(req.params.roomId);
   const { initiator, recipient, started_at, ended_at, status, duration } = req.body;
 
+  let call;
   try {
     // 1) Сохраняем звонок
     const { rows: callRows } = await pool.query(`
@@ -37,9 +35,9 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
       VALUES ($1,$2,$3,$4,$5,$6,$7)
       RETURNING id, initiator, recipient, started_at, ended_at, status, duration;
     `, [roomId, initiator, recipient, started_at, ended_at, status, duration]);
-    const call = callRows[0];
+    call = callRows[0];
 
-    // 2) Генерируем текст системного сообщения
+    // 2) Генерируем текст
     let text;
     switch (status) {
       case 'cancelled':
@@ -58,7 +56,7 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
         text = `Статус звонка: ${status}`;
     }
 
-    // 3) Вставляем запись в messages и сразу получаем её данные
+    // 3) Сохраняем системное сообщение и возвращаем его
     const { rows: msgRows } = await pool.query(`
       INSERT INTO messages (room_id, sender_nickname, text, time, call_id)
       VALUES ($1,$2,$3,$4,$5)
@@ -66,15 +64,15 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
     `, [roomId, initiator, text, started_at, call.id]);
     const chatMsg = msgRows[0];
 
-    // 4) Отвечаем клиенту данными звонка
+    // 4) Отвечаем клиенту
     res.status(201).json(call);
 
-    // 5) Бродкастим два WS-события: call и message
+    // 5) Бродкастим события — в отдельном блоке, чтобы не ломать ответ
     const wss = getWss();
     if (wss) {
       const callEvent = {
         type:       'call',
-        roomId,                      // для фильтрации в клиенте
+        roomId,
         initiator:  call.initiator,
         recipient:  call.recipient,
         started_at: call.started_at,
@@ -82,30 +80,37 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
         status:     call.status,
         duration:   call.duration
       };
-
       const messageEvent = {
-        type:   'message',
-        roomId: chatMsg.room_id,     // тоже для фильтрации
-        sender: chatMsg.sender,
-        text:   chatMsg.text,
-        time:   chatMsg.time,
+        type:    'message',
+        roomId:  chatMsg.room_id,
+        sender:  chatMsg.sender,
+        text:    chatMsg.text,
+        time:    chatMsg.time,
         call_id: chatMsg.call_id
       };
 
+      // Фильтруем только тех клиентов, у которых есть send() и которые онлайн
       wss.clients.forEach(client => {
-        if (client.readyState === client.OPEN) {
+        if (
+          client.readyState === client.OPEN &&
+          typeof client.send === 'function'
+        ) {
           client.send(JSON.stringify(callEvent));
           client.send(JSON.stringify(messageEvent));
         }
       });
     }
+
   } catch (err) {
-    console.error('Error saving call:', err);
-    res.status(500).send('Error saving call');
+    console.error('Error in POST /rooms/:roomId/calls:', err);
+    // Если ответ ещё не отправлен, даём 500
+    if (!res.headersSent) {
+      res.status(500).send('Error saving call');
+    }
   }
 });
 
-// GET /api/rooms/:roomId/calls — получить историю звонков
+// GET /api/rooms/:roomId/calls
 router.get('/:roomId/calls', authMiddleware, async (req, res) => {
   const roomId = Number(req.params.roomId);
   try {
