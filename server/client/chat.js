@@ -113,51 +113,55 @@ function appendCenterCall(text) {
 
   // Показать окно звонка
 function showCallWindow(peer, incoming = false) {
+  if (!peer) {
+    console.error('❌ peer не передан в showCallWindow!');
+    return;
+  }
+
   clearInterval(callTimerIntvl);
   clearTimeout(answerTimeout);
 
-  currentPeer   = peer;
-  incomingCall  = incoming;
-  answeredCall  = false; // сбрасываем флаг при новом вызове
+  currentPeer  = peer;
+  incomingCall = incoming;
 
-  callTitle.textContent  = `Звонок с ${peer}`;
+  callTitle.textContent = `Звонок с ${peer}`;
   callStatus.textContent = incoming ? 'Входящий звонок' : 'Ожидание ответа';
   callTimerEl.textContent = '00:00';
   answerBtn.style.display = incoming ? 'inline-block' : 'none';
-  cancelBtn.textContent = incoming ? 'Отклонить' : 'Отмена';
+  cancelBtn.textContent   = incoming ? 'Отклонить' : 'Отмена';
   callWindow.classList.remove('hidden');
 
-  // Секундомер
-  callStartTime  = Date.now();
-  callTimerIntvl = setInterval(updateTimerDisplay, 1000);
+  callStartTime = Date.now();
+  callTimerIntvl = setInterval(() => {
+    const sec = Math.floor((Date.now() - callStartTime) / 1000);
+    const m = String(Math.floor(sec / 60)).padStart(2, '0');
+    const s = String(sec % 60).padStart(2, '0');
+    callTimerEl.textContent = `${m}:${s}`;
+  }, 1000);
 
-  // Таймаут на 30 секунд
   answerTimeout = setTimeout(() => {
-    // если звонок уже принят — ничего не делаем
-    if (answeredCall) return;
-
-    // зафиксировать 00:30
     callTimerEl.textContent = '00:30';
 
     if (!incoming) {
-      // Исходящий: шлём webrtc-hangup и закрываем
+      // Исходящий
       if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({
-          type:   'webrtc-hangup',
+          type: 'webrtc-hangup',
           roomId: currentRoom,
-          from:   userNickname,
-          to:     peer
+          from: userNickname,
+          to: peer
         }));
       }
-
       endCall('missed', userNickname, /* sendToServer */ true);
     } else {
+      // Входящий, но не ответили
       endCall('missed', peer, /* sendToServer */ false);
     }
 
     incomingCall = false;
   }, 30_000);
 }
+
 
 
 
@@ -663,17 +667,29 @@ case 'webrtc-hangup':
   if (msg.from === userNickname) break; // игнорируем своё эхо
 
   clearTimeout(answerTimeout);
+  clearInterval(callTimerIntvl);
 
-  // 1) Если звонок был принят — завершаем как обычный завершённый
+  // Защитно чистим WebRTC
+  if (pc) { pc.close(); pc = null; }
+  if (localStream) {
+    localStream.getTracks().forEach(t => t.stop());
+    localStream = null;
+  }
+
+  // ✅ Теперь правильно: если ты ответил, то завершение разговора
   if (answeredCall) {
     endCall('finished', msg.from, /* sendToServer */ false);
   } else {
-    // 2) Если не был принят — это отмена / отклонение до соединения
+    // 🟡 Иначе — собеседник отменил до соединения (например, сбросил входящий)
     endCall('canceled', msg.from, /* sendToServer */ false);
   }
 
+  // Сброс переменных
+  currentPeer = null;
+  incomingCall = false;
   answeredCall = false;
   break;
+
 
 
       
@@ -705,11 +721,14 @@ case 'webrtc-hangup':
       );
       break;
 
-    case 'webrtc-offer':
-      currentPeer = msg.from;
-      handleOffer(msg.payload);
-      showCallWindow(currentPeer, true);
-      break;
+  case 'webrtc-offer':
+  if (msg.to !== userNickname) break;
+
+  currentPeer = msg.from;
+  showCallWindow(msg.from, /* incoming = */ true);  // сначала показать окно
+  handleOffer(msg.payload);                         // потом начать обработку сигнала
+  break;
+
 
     case 'webrtc-answer':
       handleAnswer(msg.payload);
