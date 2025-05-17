@@ -524,20 +524,28 @@ document.getElementById('chat-section').classList.add('active');
   );
   socket.onopen = () =>
     socket.send(JSON.stringify({ type: 'join', token, roomId }));
-  socket.onmessage = ev => {
-    const msg = JSON.parse(ev.data);
-    switch (msg.type) {
-      case 'webrtc-cancel':
-        endCall('Собеседник отменил звонок', 'cancelled');
-        break;
+ socket.onmessage = ev => {
+  const msg = JSON.parse(ev.data);
 
-      case 'message':
-        appendMessage(msg.sender, msg.text, msg.time);
-        break;
+  // 0) Отфильтровываем события, не относящиеся к текущей комнате
+  if (msg.roomId !== currentRoom) return;
 
-   case 'file':
-      // просто вызываем appendFile —
-      // дубли отсеется там само́й
+  switch (msg.type) {
+    case 'webrtc-cancel':
+      endCall('Собеседник отменил звонок', 'cancelled');
+      break;
+
+    case 'message':
+      // Если у вас есть call_id и вы хотите его передавать в appendMessage:
+      appendMessage(
+        msg.sender,
+        msg.text,
+        msg.time,
+        msg.call_id ?? null
+      );
+      break;
+
+    case 'file':
       appendFile(
         msg.sender,
         msg.fileId,
@@ -547,38 +555,42 @@ document.getElementById('chat-section').classList.add('active');
       );
       break;
 
-      case 'webrtc-offer':
-        currentPeer = msg.from;
-        handleOffer(msg.payload);
-        showCallWindow(currentPeer, true);
-        break;
+    case 'webrtc-offer':
+      currentPeer = msg.from;
+      handleOffer(msg.payload);
+      showCallWindow(currentPeer, true);
+      break;
 
-      case 'webrtc-answer':
-        handleAnswer(msg.payload);
-        break;
+    case 'webrtc-answer':
+      handleAnswer(msg.payload);
+      break;
 
-      case 'webrtc-ice':
-        handleIce(msg.payload);
-        break;
+    case 'webrtc-ice':
+      handleIce(msg.payload);
+      break;
 
-      case 'call': {
-        // Формируем текст системного блока
-        const time = new Date(msg.started_at)
-          .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const durStr = msg.duration
-          ? new Date(msg.duration * 1000).toISOString().substr(11, 8)
-          : '--:--:--';
-        const text = `📞 ${msg.initiator} → ${msg.recipient} • ${msg.status} • ${durStr} • ${time}`;
+    case 'call': {
+      // Формируем текст системного уведомления
+      const durStr = msg.duration
+        ? new Date(msg.duration * 1000).toISOString().substr(11, 8)
+        : '--:--:--';
+      const time = new Date(msg.started_at)
+        .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const text = msg.status === 'cancelled'
+        ? `📞 ${msg.initiator} отменил(а) звонок`
+        : msg.status === 'missed'
+          ? `📞 Пропущенный звонок от ${msg.initiator}`
+          : `📞 Звонок с ${msg.recipient} завершён. Длительность ${durStr}`;
 
-        appendCenterCall(text);
-        break;
-      }
+      // 1) Системное сообщение
+      appendCenterCall(text);
+      break;
+    }
 
-      default:
-        console.warn('Unknown message type:', msg.type);
-    }  // ← закрываем switch
-
-  };   // ← закрываем стрелочную функцию onmessage
+    default:
+      console.warn('Unknown message type:', msg.type);
+  }
+};
 
 
   // ─── Загрузка всей истории из одного эндпоинта ───────────────────────────
