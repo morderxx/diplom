@@ -413,12 +413,12 @@ socket.send(JSON.stringify({
   }
 
   async function handleAnswer(answer) {
+     answeredCall = true;
     if (!pc) return;
     await pc.setRemoteDescription(answer);
     callStatus.textContent = 'В разговоре';
     incomingCall = false;
     answerBtn.style.display = 'none';
-     answeredCall = true;
   }
 
   async function handleIce(candidate) {
@@ -431,6 +431,7 @@ socket.send(JSON.stringify({
   };
   
 answerBtn.onclick = async () => {
+    answeredCall = true;
   clearTimeout(answerTimeout); 
   try {
     if (!pc) return;
@@ -453,7 +454,6 @@ answerBtn.onclick = async () => {
   } catch (err) {
     console.error('Ошибка при ответе на звонок:', err);
   }
-  answeredCall = true;
 };
 
 
