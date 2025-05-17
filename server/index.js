@@ -14,30 +14,45 @@ const filesRoutes    = require('./routes/files');
 
 const { setupWebSocket } = require('./chat');
 
-
 const app    = express();
 const server = http.createServer(app);
 
 // 1) Middleware
 app.use(cors());
+// важно: JSON-парсер должен быть ДО роутов, обрабатывающих POST /calls и POST /messages
 app.use(express.json());
 
 // 2) API
-app.use('/api',       authRoutes);
+
+// аутентификация
+app.use('/api', authRoutes);
+
+// пользователи
 app.use('/api/users', usersRoutes);
 
-// Сначала узкие роуты сообщений и звонков
+// сообщения в комнатах:  
+//      POST /api/rooms/:roomId/messages
+//      GET  /api/rooms/:roomId/messages
 app.use('/api/rooms', messagesRoutes);
+
+// звонки в комнатах:
+//      POST /api/rooms/:roomId/calls
+//      GET  /api/rooms/:roomId/calls
 app.use('/api/rooms', callsRouter);
 
-// Потом все остальные роуты комнат
+// остальные операции с комнатами:
+//      GET /api/rooms
+//      POST /api/rooms
+//      и т.п.
 app.use('/api/rooms', roomsRoutes);
+
+// файлы
 app.use('/api/files', filesRoutes);
 
-// 3) Статика клиента
+// 3) Статика клиентской части
 app.use(express.static(path.join(__dirname, 'client')));
 
-// 4) SPA fallback (все, что не /api)
+// 4) SPA fallback — всё, что не /api, отдадим клиентский index.html
 app.get(/^\/(?!api).*/, (req, res) =>
   res.sendFile(path.join(__dirname, 'client', 'index.html'))
 );
