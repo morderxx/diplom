@@ -48,7 +48,7 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
       case 'finished': {
         const mm = String(Math.floor(duration / 60)).padStart(2, '0');
         const ss = String(duration % 60).padStart(2, '0');
-        text = `${initiator} сбросил(а) вызов`;
+        text = `${initiator} сбросил(а) звонок`;
         break;
       }
       default:
