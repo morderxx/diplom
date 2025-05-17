@@ -112,11 +112,19 @@ function appendCenterCall(text) {
       const s = String(sec % 60).padStart(2, '0');
       callTimerEl.textContent = `${m}:${s}`;
     }, 1000);
+      if (incoming) {
+    // через 30 секунд — считаем пропущенным
+    answerTimeout = setTimeout(() => {
+      endCall('missed', peer, /* sendToServer */ true);
+      incomingCall = false;
+    }, 30_000);
+  }
   }
 
   // Скрыть окно звонка
   function hideCallWindow() {
     clearInterval(callTimerIntvl);
+    clearTimeout(answerTimeout);
     callWindow.classList.add('hidden');
   }
 
@@ -397,6 +405,7 @@ answerBtn.onclick = async () => {
     callStatus.textContent = 'В разговоре';
     incomingCall = false;  // сбросим флаг
     answerBtn.style.display = 'none';
+    cancelBtn.textContent = 'Завершить';
   } catch (err) {
     console.error('Ошибка при ответе на звонок:', err);
   }
@@ -404,24 +413,36 @@ answerBtn.onclick = async () => {
 
 
 cancelBtn.onclick = () => {
-  // 1) шлём отмену на сервер
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    socket.send(JSON.stringify({
-      type:   'webrtc-cancel',
-      roomId: currentRoom,
-      from:   userNickname,
-    }));
+  const inCall = callStatus.textContent === 'В разговоре';
+
+  // если мы уже в разговоре — повесить трубку
+  if (inCall) {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type:   'webrtc-hangup',
+        roomId: currentRoom,
+        from:   userNickname,
+        to:     currentPeer
+      }));
+    }
+    endCall('finished', userNickname, /* sendToServer */ true);
+
+  // иначе — отмена до ответа
+  } else {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type:   'webrtc-cancel',
+        roomId: currentRoom,
+        from:   userNickname
+      }));
+    }
+    endCall('cancelled', userNickname, /* sendToServer */ true);
   }
 
-  // 2) закрываем окно звонка
   hideCallWindow();
-
-  // 3) локально рендерим отмену как ваша
-  endCall('cancelled', userNickname);
-
-  // 4) сбрасываем флаг входящего на будущее
   incomingCall = false;
 };
+
 
  // minimizeBtn.onclick = () => callWindow.classList.toggle('minimized');
 
@@ -560,6 +581,12 @@ document.getElementById('chat-section').classList.add('active');
   if (msg.roomId !== currentRoom) return;
 
   switch (msg.type) {
+      case 'webrtc-hangup':
+  if (msg.from !== userNickname) {
+    endCall('finished', msg.from, /* sendToServer */ false);
+  }
+  break;
+      
     case 'webrtc-cancel':
       // рисуем только если это сделал НЕ мы сами
        if (msg.from !== userNickname) {
