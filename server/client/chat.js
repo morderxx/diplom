@@ -387,17 +387,13 @@ cancelBtn.onclick = () => {
   // 2) закрываем окно звонка
   hideCallWindow();
 
-  // 3) вычисляем инициатора: 
-  //    если это входящий (incomingCall === true), то инициатор — currentPeer,
-  //    иначе — вы сами
-  const initiator = incomingCall ? currentPeer : userNickname;
+  // 3) локально рендерим отмену как ваша
+  endCall('cancelled', userNickname);
 
-  // 4) рендерим отмену через endCall (status = 'cancelled')
-  endCall('cancelled', initiator);
-
-  // 5) сбрасываем флаг входящего, чтобы следующее showCallWindow снова выставил его корректно
+  // 4) сбрасываем флаг входящего на будущее
   incomingCall = false;
 };
+
  // minimizeBtn.onclick = () => callWindow.classList.toggle('minimized');
 
   // Перетаскивание окна звонка
@@ -564,7 +560,10 @@ document.getElementById('chat-section').classList.add('active');
 
   switch (msg.type) {
     case 'webrtc-cancel':
-      endCall('cancelled', msg.from);
+      // рисуем только если это сделал НЕ мы сами
+      if (msg.from !== userNickname) {
+        endCall('cancelled', msg.from);
+      }
       break;
 
     case 'message':
