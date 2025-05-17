@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let callTimerIntvl = null;
   let incomingCall = false;
   let answerTimeout  = null;
-
+  let answeredCall = false;
   // Хелпер для формирования текста «системного» сообщения по звонку
 function formatCallText({ initiator, recipient, status, duration, time }) {
   const displayTime = new Date(time)
@@ -418,6 +418,7 @@ socket.send(JSON.stringify({
     callStatus.textContent = 'В разговоре';
     incomingCall = false;
     answerBtn.style.display = 'none';
+     answeredCall = true;
   }
 
   async function handleIce(candidate) {
@@ -452,6 +453,7 @@ answerBtn.onclick = async () => {
   } catch (err) {
     console.error('Ошибка при ответе на звонок:', err);
   }
+  answeredCall = true;
 };
 
 
@@ -625,22 +627,25 @@ document.getElementById('chat-section').classList.add('active');
 
   switch (msg.type) {
 case 'webrtc-hangup':
-      // 1) Пропускаем эхо
-      if (msg.from === userNickname) break;
+  if (msg.from === userNickname) break; // своё эхо
 
-      // 2) Проверяем, были ли мы в «В разговоре»
-      const wasInCall = callStatus.textContent === 'В разговоре';
+  // 1) Закрываем WebRTC и окно
+  if (pc) { pc.close(); pc = null; }
+  if (localStream) {
+    localStream.getTracks().forEach(t => t.stop());
+    localStream = null;
+  }
+  clearInterval(callTimerIntvl);
+  clearTimeout(answerTimeout);
+  hideCallWindow();
 
-      // 3) Останавливаем все таймеры и прячем окно
-      clearInterval(callTimerIntvl);
-      clearTimeout(answerTimeout);
-      hideCallWindow();
-
-      // 4) Если разговор уже шел — рисуем «finished»
-      if (wasInCall) {
-        endCall('finished', msg.from, /* sendToServer */ false);
-      }
-      break;
+  // 2) Рисуем только если действительно разговаривали
+  if (answeredCall) {
+    endCall('finished', msg.from, /* sendToServer */ false);
+  }
+  // 3) Сбросим флаг для следующего звонка
+  answeredCall = false;
+  break;
 
       
     case 'webrtc-cancel':
