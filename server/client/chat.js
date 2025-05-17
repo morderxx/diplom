@@ -702,18 +702,16 @@ case 'call': {
   const history = await res.json();
 history.forEach(m => {
 
-  // 1) Обрабатываем звонки: только не-пропущенные
+
   if (m.type === 'call') {
-    if (m.status !== 'missed') {
-      const fullTextHist = formatCallText({
-        initiator: m.initiator,
-        recipient: m.recipient,
-        status:    m.status,
-        duration:  m.duration || 0,
-        time:      m.ended_at || m.started_at
-      });
-      appendCenterCall(fullTextHist);
-    }
+    const fullTextHist = formatCallText({
+      initiator: m.initiator,
+      recipient: m.recipient,
+      status:    m.status,
+      duration:  m.duration || 0,
+      time:      m.ended_at || m.started_at
+    });
+    appendCenterCall(fullTextHist);
     return;
   }
 
