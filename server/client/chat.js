@@ -374,8 +374,8 @@ answerBtn.onclick = async () => {
 };
 
 
- cancelBtn.onclick = () => {
-  // 1) всегда шлём отмену на сервер
+cancelBtn.onclick = () => {
+  // 1) шлём отмену на сервер
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({
       type:   'webrtc-cancel',
@@ -384,14 +384,19 @@ answerBtn.onclick = async () => {
     }));
   }
 
-  // 2) закрываем окно
+  // 2) закрываем окно звонка
   hideCallWindow();
 
-  // 3) если это НЕ входящий звонок — то есть вы отменили собственный исходящий —
-  //    рисуем локально. Если это входящий, ждём WS-сообщения и endCall будет вызван там.
-  if (!incomingCall) {
-    endCall('cancelled', userNickname);
+  // 3a) если это входящий — показываем локально «пропущенный»
+  if (incomingCall) {
+    const nowISO = new Date().toISOString();
+    appendCenterCall(`📞 Пропущенный звонок от ${currentPeer}.`);
+    appendMessage(currentPeer, 'Пропущенный звонок', nowISO, null);
+    return;
   }
+
+  // 3b) если это исходящий — вызываем endCall, как раньше
+  endCall('cancelled', userNickname);
 };
  // minimizeBtn.onclick = () => callWindow.classList.toggle('minimized');
 
