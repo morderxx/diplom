@@ -173,8 +173,10 @@ function showCallWindow(peer, incoming = false) {
   }
 
 async function endCall(status = 'finished', initiator = userNickname, sendToServer = true) {
-  // 1) Останавливаем таймер и WebRTC
+  // 1) Останавливаем таймеры и WebRTC
   clearInterval(callTimerIntvl);
+  clearTimeout(answerTimeout);
+  
   if (pc) { pc.close(); pc = null; }
   if (localStream) {
     localStream.getTracks().forEach(t => t.stop());
@@ -187,10 +189,9 @@ async function endCall(status = 'finished', initiator = userNickname, sendToServ
   const startedISO  = new Date(callStartTime).toISOString();
   const endedISO    = new Date().toISOString();
 
-  // 3) Определяем, кто был получателем
   const recipient = (initiator === userNickname) ? currentPeer : userNickname;
 
-  // 4) Формируем тексты через общий хелпер
+  // 3) Формируем описание звонка
   const fullText = formatCallText({
     initiator,
     recipient,
@@ -199,21 +200,23 @@ async function endCall(status = 'finished', initiator = userNickname, sendToServ
     time: endedISO
   });
 
-
-
-  // 5) Локальная отрисовка
-  const shortText = durationSec === 0
-    ? `${initiator} отменил(а) звонок`
-    : `${initiator} отменил(а) звонок.`;
-    // 5) Локальная отрисовка
+  // 4) Показываем результат в центре
   appendCenterCall(fullText);
 
-  // Только если это не пропущенный звонок, показываем «пузырёк»
+  // 5) Отображаем в истории только если это не пропущенный звонок
   if (status !== 'missed') {
-    appendMessage(initiator, shortText, endedISO, null);
+    let shortText = '';
+    if (status === 'finished') {
+      shortText = `${initiator} завершил(а) звонок`;
+    } else if (status === 'cancelled') {
+      shortText = `${initiator} отменил(а) звонок`;
+    }
+    if (shortText) {
+      appendMessage(initiator, shortText, endedISO, null);
+    }
   }
 
-  // 6) Отправляем на бэкенд (если нужно)
+  // 6) Отправляем данные на сервер (если нужно)
   if (sendToServer) {
     try {
       const res = await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
@@ -242,8 +245,17 @@ async function endCall(status = 'finished', initiator = userNickname, sendToServ
   }
 
   // 7) Закрываем окно звонка
-  hideCallWindow();
+  callWindow.classList.add('hidden');
+  callTimerEl.textContent = '00:00';
+  callStatus.textContent  = '';
+  callTitle.textContent   = '';
+
+  // 8) Сброс переменных
+  currentPeer  = null;
+  incomingCall = false;
+  answeredCall = false;
 }
+
 
 
 
