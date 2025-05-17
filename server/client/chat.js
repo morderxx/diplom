@@ -626,17 +626,14 @@ document.getElementById('chat-section').classList.add('active');
   if (msg.roomId !== currentRoom) return;
 
   switch (msg.type) {
-case 'webrtc-hangup':
-    // Игнорим собственное эхо
+  case 'webrtc-hangup':
+    // своё эхо не обрабатываем
     if (msg.from === userNickname) break;
 
-    // Унифицировано: рисуем окончание звонка и закрываем окно в endCall
-    endCall(
-      'finished',     // статус «завершён»
-      msg.from,       // инициатор – тот, кто сбросил трубку
-      /* sendToServer */ false
-    );
-    // Сбрасываем флаг, чтобы не прокатилась двойная рендеринга
+    // Универсально закрываем звонок для обоих участников
+    // (endCall выполнит hideCallWindow + остановку WebRTC)
+    endCall('finished', msg.from, /* sendToServer */ false);
+    // Сбрасываем флаг, чтобы не осталось “зависших” стейтов
     answeredCall = false;
     break;
 
