@@ -10,7 +10,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 async function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth) return res.status(401).send('No token provided');
-  
+
   try {
     const token = auth.split(' ')[1];
     const payload = jwt.verify(token, JWT_SECRET);
@@ -28,16 +28,16 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
   const { initiator, recipient, started_at, ended_at, status, duration } = req.body;
 
   try {
-    // 1. Сохранение звонка в базу данных
+    // 1. Сохраняем звонок в базу данных
     const { rows } = await pool.query(`
       INSERT INTO calls (room_id, initiator, recipient, started_at, ended_at, status, duration)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id, initiator, recipient, started_at, ended_at, status, duration;
     `, [roomId, initiator, recipient, started_at, ended_at, status, duration]);
-    
+
     const call = rows[0];
 
-    // 2. Генерация текста уведомления
+    // 2. Генерация текста системного сообщения
     let text;
     switch (status) {
       case 'cancelled':
@@ -56,19 +56,22 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
         text = `Статус звонка: ${status}`;
     }
 
-    // 3. Вставка системного сообщения в таблицу messages
-    await pool.query(`
+    // 3. Сохраняем системное сообщение в messages и сразу возвращаем его
+    const insertMsgResult = await pool.query(`
       INSERT INTO messages (room_id, sender_nickname, text, time, call_id)
-      VALUES ($1, $2, $3, $4, $5);
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING id, room_id, sender_nickname AS sender, text, time, call_id;
     `, [roomId, initiator, text, started_at, call.id]);
 
-    // 4. Ответ клиенту с данными звонка
+    const chatMsg = insertMsgResult.rows[0];
+
+    // 4. Отвечаем клиенту
     res.status(201).json(call);
 
-    // 5. Рассылка события через WebSocket
+    // 5. Рассылаем через WebSocket событие звонка и сообщение
     const wss = getWss();
     if (wss) {
-      const msg = {
+      const callEvent = {
         type: 'call',
         initiator: call.initiator,
         recipient: call.recipient,
@@ -78,9 +81,15 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
         duration: call.duration
       };
 
+      const messageEvent = {
+        type: 'message',
+        ...chatMsg
+      };
+
       wss.clients.forEach(client => {
         if (client.readyState === client.OPEN) {
-          client.send(JSON.stringify(msg));
+          client.send(JSON.stringify(callEvent));
+          client.send(JSON.stringify(messageEvent));
         }
       });
     }
@@ -101,7 +110,7 @@ router.get('/:roomId/calls', authMiddleware, async (req, res) => {
       WHERE room_id = $1
       ORDER BY started_at;
     `, [roomId]);
-    
+
     res.json(rows);
   } catch (err) {
     console.error('Error fetching calls:', err);
