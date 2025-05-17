@@ -131,14 +131,26 @@ function showCallWindow(peer, incoming = false) {
   // 3) Если это исходящий звонок — ставим таймаут пропущенного
   if (!incoming) {
     answerTimeout = setTimeout(() => {
-      // Перед закрытием выравниваем счётчик на ровно 30 сек
+      // 3.1) Зафиксируем таймер на ровно 30 секундах
       callTimerEl.textContent = '00:30';
-      // Отправляем в БД и рисуем пропущенный только инициатору
+
+      // 3.2) Уведомляем удалённого абонента о сбросе трубки
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+          type:   'webrtc-hangup',
+          roomId: currentRoom,
+          from:   userNickname,
+          to:     peer
+        }));
+      }
+
+      // 3.3) Локальное завершение как «пропущенный» звонок (+ сохранение в БД)
       endCall('missed', peer, /* sendToServer */ true);
       incomingCall = false;
     }, 30_000);
   }
 }
+
 
 
   // Скрыть окно звонка
