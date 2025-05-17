@@ -145,8 +145,7 @@ function showCallWindow(peer, incoming = false) {
       endCall('missed', peer, /* sendToServer */ true);
 
     } else {
-      // 2) Входящий: просто скрываем окно
-      hideCallWindow();
+       endCall('missed', peer, /* sendToServer */ false);
     }
     incomingCall = false;
   }, 30_000);
