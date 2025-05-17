@@ -683,7 +683,19 @@ document.getElementById('chat-section').classList.add('active');
 case 'call': {
   // Не дублируем свои собственные звонки
   if (msg.initiator === userNickname) break;
-
+  // ——— Принудительное закрытие окна звонка у обоих при любом финальном статусе ———
+  if (['finished', 'cancelled', 'missed'].includes(msg.status)) {
+    // Останавливаем таймер и WebRTC
+    clearInterval(callTimerIntvl);
+    clearTimeout(answerTimeout);
+    if (pc) { pc.close(); pc = null; }
+    if (localStream) {
+      localStream.getTracks().forEach(t => t.stop());
+      localStream = null;
+    }
+    hideCallWindow();
+  }
+  // —————————————————————————————————————————————————————————————
   // Формируем и отрисовываем через хелпер
   const fullTextCall = formatCallText({
     initiator: msg.initiator,
