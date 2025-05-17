@@ -27,7 +27,7 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
   const { initiator, recipient, started_at, ended_at, status, duration } = req.body;
 
   try {
-    // 1) Сохраняем звонок
+    // 1) Сохраняем звонок в таблицу calls
     const { rows: callRows } = await pool.query(`
       INSERT INTO calls
         (room_id, initiator, recipient, started_at, ended_at, status, duration)
@@ -36,7 +36,7 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
     `, [roomId, initiator, recipient, started_at, ended_at, status, duration]);
     const call = callRows[0];
 
-    // 2) Генерируем текст по статусу
+    // 2) Генерируем текст для системного сообщения
     let text;
     switch (status) {
       case 'cancelled':
@@ -60,18 +60,22 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
       ? ended_at
       : started_at;
 
-    // 4) Сохраняем системное сообщение
-    const { rows: msgRows } = await pool.query(`
-      INSERT INTO messages (room_id, sender_nickname, text, time, call_id)
-      VALUES ($1,$2,$3,$4,$5)
-      RETURNING id, room_id, sender_nickname AS sender, text, time, call_id;
-    `, [roomId, initiator, text, msgTime, call.id]);
-    const chatMsg = msgRows[0];
+    let chatMsg = null;
+
+    // 4) Сохраняем в messages и подготовим для рассылки только если это не пропущенный звонок
+    if (status !== 'missed') {
+      const { rows: msgRows } = await pool.query(`
+        INSERT INTO messages (room_id, sender_nickname, text, time, call_id)
+        VALUES ($1,$2,$3,$4,$5)
+        RETURNING id, room_id, sender_nickname AS sender, text, time, call_id;
+      `, [roomId, initiator, text, msgTime, call.id]);
+      chatMsg = msgRows[0];
+    }
 
     // 5) Отправляем клиенту информацию о звонке
     res.status(201).json(call);
 
-    // 6) Бродкастим по WebSocket ивенты call + message
+    // 6) Бродкастим события по WebSocket
     const wss = getWss();
     if (wss) {
       const callEvent = {
@@ -84,24 +88,30 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
         status:     call.status,
         duration:   call.duration
       };
-      const messageEvent = {
-        type:    'message',
-        roomId:  chatMsg.room_id,
-        sender:  chatMsg.sender,
-        text:    chatMsg.text,
-        time:    chatMsg.time,
-        call_id: chatMsg.call_id
-      };
 
+      // Всегда шлём событие о звонке
       wss.clients.forEach(client => {
-        if (
-          client.readyState === client.OPEN &&
-          typeof client.send === 'function'
-        ) {
+        if (client.readyState === client.OPEN && typeof client.send === 'function') {
           client.send(JSON.stringify(callEvent));
-          client.send(JSON.stringify(messageEvent));
         }
       });
+
+      // А событие message — только если звонок не пропущен
+      if (chatMsg) {
+        const messageEvent = {
+          type:    'message',
+          roomId:  chatMsg.room_id,
+          sender:  chatMsg.sender,
+          text:    chatMsg.text,
+          time:    chatMsg.time,
+          call_id: chatMsg.call_id
+        };
+        wss.clients.forEach(client => {
+          if (client.readyState === client.OPEN && typeof client.send === 'function') {
+            client.send(JSON.stringify(messageEvent));
+          }
+        });
+      }
     }
 
   } catch (err) {
