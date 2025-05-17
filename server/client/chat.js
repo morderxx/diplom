@@ -119,36 +119,38 @@ function showCallWindow(peer, incoming = false) {
   cancelBtn.textContent = incoming ? 'Отклонить' : 'Отмена';
   callWindow.classList.remove('hidden');
 
-  // 2) Запускаем секундомер
+  // 2) Секундомер
   callStartTime = Date.now();
   callTimerIntvl = setInterval(() => {
     const sec = Math.floor((Date.now() - callStartTime) / 1000);
-    const m = String(Math.floor(sec / 60)).padStart(2, '0');
-    const s = String(sec % 60).padStart(2, '0');
+    const m   = String(Math.floor(sec / 60)).padStart(2, '0');
+    const s   = String(sec % 60).padStart(2, '0');
     callTimerEl.textContent = `${m}:${s}`;
   }, 1000);
 
-  // 3) Для обоих — ставим таймаут на 30 секунд
-  answerTimeout = setTimeout(() => {
-    // 3.1) Останавливаем секундомер на 00:30
-    callTimerEl.textContent = '00:30';
+  // 3) **Только** для исходящего звонка ставим авто‑сброс
+  if (!incoming) {
+    answerTimeout = setTimeout(() => {
+      // 3.1) Таймер на 00:30
+      callTimerEl.textContent = '00:30';
 
-    // 3.2) Уведомляем другую сторону о “сбросе” трубки
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({
-        type:   'webrtc-hangup',
-        roomId: currentRoom,
-        from:   userNickname,
-        to:     peer
-      }));
-    }
+      // 3.2) Уведомляем принимающего о сбросе
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+          type:   'webrtc-hangup',
+          roomId: currentRoom,
+          from:   userNickname,
+          to:     peer
+        }));
+      }
 
-    // 3.3) Завершаем звонок как «пропущенный»
-    // — инициатору и абоненту попадёт запись со статусом missed
-    endCall('missed', peer, /* sendToServer */ true);
-    incomingCall = false;
-  }, 30_000);
+      // 3.3) Локальное завершение звонка как missed + сохранение
+      endCall('missed', peer, /* sendToServer */ true);
+      incomingCall = false;
+    }, 30_000);
+  }
 }
+
 
 
 
@@ -620,22 +622,22 @@ document.getElementById('chat-section').classList.add('active');
   if (msg.roomId !== currentRoom) return;
 
   switch (msg.type) {
-    case 'webrtc-hangup':
-      if (msg.from === userNickname) break;
+case 'webrtc-hangup':
+  if (msg.from === userNickname) break; // это эхо нашего собственного хэнг‑апа
 
-      // 1) Снимаем таймеры и скроем окно…
-      clearInterval(callTimerIntvl);
-      clearTimeout(answerTimeout);
+  // Снимаем локальные таймеры
+  clearInterval(callTimerIntvl);
+  clearTimeout(answerTimeout);
 
-      // 2) …но в зависимости от текущего состояния либо рисуем finished, либо просто прячем
-      if (callStatus.textContent === 'В разговоре') {
-        // это обычный hangup после ответа
-        endCall('finished', msg.from, /* sendToServer */ false);
-      } else {
-        // это «пропущенный» звонок — окно просто закрываем
-        hideCallWindow();
-      }
-      break;
+  // Если мы уже были в разговоре — рисуем finished,
+  // иначе просто прячем окно (инициатор уже сделал missed)
+  if (callStatus.textContent === 'В разговоре') {
+    endCall('finished', msg.from, /* sendToServer */ false);
+  } else {
+    hideCallWindow();
+  }
+  break;
+
       
     case 'webrtc-cancel':
       // рисуем только если это сделал НЕ мы сами
