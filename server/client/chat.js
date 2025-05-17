@@ -24,6 +24,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Хелпер для формирования текста «системного» сообщения по звонку
 function formatCallText({ initiator, recipient, status, duration, time }) {
+   // Пропущенный звонок — всегда до длительности
+  if (status === 'missed') {
+    const displayTime = new Date(time).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+    return `📞 Пропущенный звонок от ${initiator}.`;
+  }
   const displayTime = new Date(time).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
   const durStr = duration
     ? new Date(duration * 1000).toISOString().substr(11,8)
@@ -31,9 +36,6 @@ function formatCallText({ initiator, recipient, status, duration, time }) {
 
   if (duration === 0 && status === 'cancelled') {
     return `⌛ Ожидание ответа • ${displayTime}`;
-  }
-  if (duration === 0 && status === 'missed') {
-    return `📞 Пропущенный звонок от ${initiator}.`;
   }
   if (duration > 0 && status === 'finished') {
     return `📞 Звонок от ${initiator} к ${recipient} завершен. Длительность ${durStr}.`;
@@ -159,13 +161,16 @@ async function endCall(status = 'finished', initiator = userNickname, sendToServ
     time: endedISO
   });
 
+   const shortText = (status === 'missed')
+    ? `Пропущенный звонок от ${initiator}.`
+     : (durationSec === 0
+         ? `${initiator} отменил(а) звонок`
+         : `${initiator} отменил(а) звонок.`);
+
+  // 5) Локальная отрисовка
   const shortText = durationSec === 0
     ? `${initiator} отменил(а) звонок`
     : `${initiator} отменил(а) звонок.`;
-
-  // 5) Локальная отрисовка
-  appendCenterCall(fullText);
-  appendMessage(initiator, shortText, endedISO, null);
 
   // 6) Отправляем на бэкенд (если нужно)
   if (sendToServer) {
