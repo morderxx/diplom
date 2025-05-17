@@ -117,32 +117,11 @@ async function endCall(message, status = 'finished') {
   const startedISO  = new Date(callStartTime).toISOString();
   const endedISO    = new Date().toISOString();
 
-  // 3) Формируем два текста: fullText для центра и shortText для чата
-  const fullText = durationSec === 0
-    ? `📞 Звонок от ${userNickname} к ${currentPeer} был отменен.`
-    : `📞 Звонок от ${userNickname} к ${currentPeer} завершен. Длительность ${durStr}.`;
-
-  // короткий текст — ровно тот же, что и при загрузке истории
-  let shortText;
-  if (durationSec === 0) {
-    shortText = `${userNickname} отменил(а) звонок`;
-  } else {
-    shortText = `${userNickname} завершил(а) звонок. Длительность ${durStr}`;
-  }
-
-  // 4) Локальная отрисовка
-  appendCenterCall(fullText);
-  appendMessage(
-    userNickname,
-    shortText,
-    endedISO,
-    // если нужно, можете сюда передать call_id, но оно не влияет на текст
-    null
-  );
-
-  // 5) Отправляем на бэкенд
+  // 3) Отправляем на бэкенд и ждём, что сервер:
+  //    – сохранит запись в БД,
+  //    – по WebSocket пришлёт сначала `call` (centerText), затем `message` (bubbleText).
   try {
-    const res = await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
+    await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
       method: 'POST',
       headers: {
         'Content-Type':  'application/json',
@@ -157,19 +136,15 @@ async function endCall(message, status = 'finished') {
         duration:   durationSec
       })
     });
-    if (!res.ok) {
-      const text = await res.text();
-      console.error('Ошибка сохранения звонка:', text);
-      appendSystem(`⚠️ Сервер вернул ошибку при сохранении звонка: ${res.status}`);
-    }
   } catch (err) {
-    console.error('Сетевая ошибка при сохранении звонка:', err);
-    appendSystem('⚠️ Сетевая ошибка при сохранении звонка.');
+    console.error('Ошибка при сохранении звонка:', err);
+    appendSystem('⚠️ Не удалось сохранить информацию о звонке.');
   }
 
-  // 6) Закрываем окно звонка
+  // 4) Закрываем окно звонка — сообщения придут из WebSocket
   hideCallWindow();
 }
+
 
 
 
