@@ -373,16 +373,17 @@ answerBtn.onclick = async () => {
 
 
  cancelBtn.onclick = () => {
+  // шлём отмену на сервер
   if (socket && socket.readyState === WebSocket.OPEN) {
-    // шлём отмену и roomId, чтобы сервер переслал другому
     socket.send(JSON.stringify({
       type:   'webrtc-cancel',
       roomId: currentRoom,
-      from: userNickname,
+      from:   userNickname,
     }));
   }
-  // своё окно закрываем
-  endCall('Вы отменили звонок', 'cancelled');
+  // закрываем своё окно и рендерим локально
+  // передаём только статус, инициатор по умолчанию — userNickname
+  endCall('cancelled');
 };
 
  // minimizeBtn.onclick = () => callWindow.classList.toggle('minimized');
