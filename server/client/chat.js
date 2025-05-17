@@ -375,7 +375,7 @@ answerBtn.onclick = async () => {
 
 
  cancelBtn.onclick = () => {
-  // шлём отмену на сервер
+  // 1) всегда шлём отмену на сервер
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({
       type:   'webrtc-cancel',
@@ -383,10 +383,16 @@ answerBtn.onclick = async () => {
       from:   userNickname,
     }));
   }
-    const initiator = incomingCall ? currentPeer : userNickname;
-    endCall('cancelled', initiator);
-};
 
+  // 2) закрываем окно
+  hideCallWindow();
+
+  // 3) если это НЕ входящий звонок — то есть вы отменили собственный исходящий —
+  //    рисуем локально. Если это входящий, ждём WS-сообщения и endCall будет вызван там.
+  if (!incomingCall) {
+    endCall('cancelled', userNickname);
+  }
+};
  // minimizeBtn.onclick = () => callWindow.classList.toggle('minimized');
 
   // Перетаскивание окна звонка
