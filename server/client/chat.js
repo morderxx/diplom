@@ -100,32 +100,38 @@ function appendCenterCall(text) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
   // Показать окно звонка
-  function showCallWindow(peer, incoming = false) {
-    clearInterval(callTimerIntvl);
-    clearTimeout(answerTimeout);
-    currentPeer = peer;  
-    incomingCall = incoming;
-    callTitle.textContent = `Звонок с ${peer}`;
-    callStatus.textContent = incoming ? 'Входящий звонок' : 'Ожидание ответа';
-    callTimerEl.textContent = '00:00';
-    answerBtn.style.display = incoming ? 'inline-block' : 'none';
-    cancelBtn.textContent = incoming ? 'Отклонить' : 'Отмена';
-    callWindow.classList.remove('hidden');
-    callStartTime = Date.now();
-    callTimerIntvl = setInterval(() => {
-      const sec = Math.floor((Date.now() - callStartTime) / 1000);
-      const m = String(Math.floor(sec / 60)).padStart(2, '0');
-      const s = String(sec % 60).padStart(2, '0');
-      callTimerEl.textContent = `${m}:${s}`;
-    }, 1000);
-      if (incoming) {
-    // через 30 секунд — считаем пропущенным
-    answerTimeout = setTimeout(() => {
-      endCall('missed', peer, /* sendToServer */ true);
-      incomingCall = false;
-    }, 30_000);
-  }
-  }
+function showCallWindow(peer, incoming = false) {
+  // 1) Сбрасываем старые таймеры
+  clearInterval(callTimerIntvl);
+  clearTimeout(answerTimeout);
+
+  currentPeer = peer;
+  incomingCall = incoming;
+  callTitle.textContent = `Звонок с ${peer}`;
+  callStatus.textContent = incoming ? 'Входящий звонок' : 'Ожидание ответа';
+  callTimerEl.textContent = '00:00';
+  answerBtn.style.display = incoming ? 'inline-block' : 'none';
+  cancelBtn.textContent = incoming ? 'Отклонить' : 'Отмена';
+  callWindow.classList.remove('hidden');
+
+  // 2) Устанавливаем стартовое время и запускаем интервал
+  callStartTime = Date.now();
+  callTimerIntvl = setInterval(() => {
+    const sec = Math.floor((Date.now() - callStartTime) / 1000);
+    const m = String(Math.floor(sec / 60)).padStart(2, '0');
+    const s = String(sec % 60).padStart(2, '0');
+    callTimerEl.textContent = `${m}:${s}`;
+  }, 1000);
+
+  // 3) **Всегда** ставим таймаут пропущенного
+  answerTimeout = setTimeout(() => {
+    // Перед закрытием выравниваем счётчик на ровно 30 сек
+    callTimerEl.textContent = '00:30';
+    endCall('missed', peer, /* sendToServer */ true);
+    incomingCall = false;
+  }, 30_000);
+}
+
 
   // Скрыть окно звонка
   function hideCallWindow() {
