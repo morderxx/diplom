@@ -625,20 +625,22 @@ document.getElementById('chat-section').classList.add('active');
 
   switch (msg.type) {
 case 'webrtc-hangup':
-  if (msg.from === userNickname) break; // это эхо нашего собственного хэнг‑апа
+      // 1) Пропускаем эхо
+      if (msg.from === userNickname) break;
 
-  // Снимаем локальные таймеры
-  clearInterval(callTimerIntvl);
-  clearTimeout(answerTimeout);
+      // 2) Проверяем, были ли мы в «В разговоре»
+      const wasInCall = callStatus.textContent === 'В разговоре';
 
-  // Если мы уже были в разговоре — рисуем finished,
-  // иначе просто прячем окно (инициатор уже сделал missed)
-  if (callStatus.textContent === 'В разговоре') {
-    endCall('finished', msg.from, /* sendToServer */ false);
-  } else {
-    hideCallWindow();
-  }
-  break;
+      // 3) Останавливаем все таймеры и прячем окно
+      clearInterval(callTimerIntvl);
+      clearTimeout(answerTimeout);
+      hideCallWindow();
+
+      // 4) Если разговор уже шел — рисуем «finished»
+      if (wasInCall) {
+        endCall('finished', msg.from, /* sendToServer */ false);
+      }
+      break;
 
       
     case 'webrtc-cancel':
