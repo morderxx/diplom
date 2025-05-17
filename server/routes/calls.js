@@ -61,7 +61,7 @@ router.post('/:roomId/calls', authMiddleware, async (req, res) => {
       INSERT INTO messages (room_id, sender_nickname, text, time, call_id)
       VALUES ($1,$2,$3,$4,$5)
       RETURNING id, room_id, sender_nickname AS sender, text, time, call_id;
-    `, [roomId, initiator, text, started_at, call.id]);
+    `, [roomId, initiator, text, msgTime, call.id]);
     const chatMsg = msgRows[0];
 
     // 4) Отвечаем клиенту
