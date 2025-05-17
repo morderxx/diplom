@@ -599,44 +599,13 @@ document.getElementById('chat-section').classList.add('active');
       handleIce(msg.payload);
       break;
 
-case 'call': {
-  const dur = msg.duration || 0;
-
-  // 1) полный текст в центре — без изменений
-  const durStr = dur
-    ? new Date(dur * 1000).toISOString().substr(11, 8)
-    : '--:--:--';
-  let fullText;
-  if (msg.status === 'cancelled' && dur === 0) {
-    fullText = `📞 Звонок от ${msg.initiator} к ${msg.recipient} был отменен.`;
-  } else if (msg.status === 'cancelled') {
-    fullText = `📞 Звонок от ${msg.initiator} к ${msg.recipient} был сброшен. Длительность ${durStr}.`;
-  } else if (msg.status === 'missed') {
-    fullText = `📞 Пропущенный звонок от ${msg.initiator}.`;
-  } else {
-    fullText = `📞 Звонок от ${msg.initiator} к ${msg.recipient} завершён. Длительность ${durStr}.`;
-  }
-  appendCenterCall(fullText);
-
-  // 2) короткий текст для «пузырька» — только отмена/сброс
-  let shortText = null;
-  if (msg.status === 'cancelled' && dur === 0) {
-    shortText = `${msg.initiator} отменил(а) звонок`;
-  }
-  else if (msg.status === 'cancelled') {
-    shortText = `${msg.initiator} сбросил(а) звонок`;
-  }
-
-  if (shortText) {
-    appendMessage(
-      msg.initiator,
-      shortText,
-      msg.ended_at || msg.time || new Date().toISOString(),
-      msg.call_id ?? null
-    );
-  }
+case 'call':
+  // сервер присылает уже готовый full‑текст в поле centerText
+  appendCenterCall(msg.centerText);
+  // краткое сообщение‑«пузырёк» прилетит сразу после него как отдельный
+  // WS‑message с type='message'
   break;
-}
+
 
 
 
@@ -657,25 +626,6 @@ case 'call': {
   const history = await res.json();
 history.forEach(m => {
 
- if (m.type === 'call') {
-    const durStr = m.duration
-      ? new Date(m.duration * 1000).toISOString().substr(11, 8)
-      : '00:00:00';
-
-    let callMessage;
-    if (m.status === 'cancelled' && m.duration === 0) {
-      callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} был отменен.`;
-    } else if (m.status === 'cancelled') {
-      callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} был сброшен. Длительность ${durStr}.`;
-    } else if (m.duration === 0) {
-      callMessage = `📞 Исходящий вызов от ${m.initiator} к ${m.recipient} не был принят.`;
-    } else {
-      callMessage = `📞 Звонок от ${m.initiator} к ${m.recipient} завершен. Длительность ${durStr}.`;
-    }
-
-    appendCenterCall(callMessage);
-    return;
-  }
 
   // 3) Файловое сообщение (из таблицы messages + files)
   if (m.type === 'message' && m.file_id !== null) {
@@ -690,14 +640,17 @@ history.forEach(m => {
   }
 
   // 4) Обычное текстовое сообщение
-  if (m.type === 'message' && m.text !== null) {
-    appendMessage(
-      m.sender_nickname,
-      m.text,
-      m.time
-    );
-    return;
-  }
+if (m.type === 'message') {
+  // сюда попадут и обычные тексты, и «пузырьки» звонков из БД (bubbleText)
+  appendMessage(
+    m.sender_nickname,
+    m.text,
+    m.time,
+    m.call_id
+  );
+}
+// и для файлов — как было
+
 
   console.warn('Неизвестный элемент истории:', m);
 });
