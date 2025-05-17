@@ -268,7 +268,7 @@ function createPeerConnection() {
 
   pc.onicecandidate = e => {
     if (e.candidate && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ type: 'webrtc-ice', payload: e.candidate }));
+      socket.send(JSON.stringify({ type: 'webrtc-ice',   roomId: currentRoom, payload: e.candidate }));
     }
   };
 
@@ -304,12 +304,13 @@ async function startCall() {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
-    socket.send(JSON.stringify({
-      type: 'webrtc-offer',
-      from: userNickname,
-      to: currentPeer,
-      payload: offer
-    }));
+socket.send(JSON.stringify({
+  type:   'webrtc-offer',
+  roomId: currentRoom,
+  from:   userNickname,
+  to:     currentPeer,
+  payload: offer
+}));
   } catch (err) {
     console.error('Ошибка получения аудио при звонке:', err);
   }
@@ -350,6 +351,7 @@ answerBtn.onclick = async () => {
     await pc.setLocalDescription(answer);
     socket.send(JSON.stringify({
       type: 'webrtc-answer',
+      roomId: currentRoom,
       from: userNickname,
       payload: answer
     }));
@@ -367,6 +369,7 @@ answerBtn.onclick = async () => {
     // шлём отмену и roomId, чтобы сервер переслал другому
     socket.send(JSON.stringify({
       type:   'webrtc-cancel',
+      roomId: currentRoom,
       from: userNickname,
       roomId: currentRoom
     }));
