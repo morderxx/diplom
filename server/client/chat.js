@@ -20,7 +20,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let callStartTime  = null;
   let callTimerIntvl = null;
   let incomingCall = false;
-// Хелпер для формирования текста «системного» сообщения по звонку
+  let answerTimeout  = null;
+
+  // Хелпер для формирования текста «системного» сообщения по звонку
 function formatCallText({ initiator, recipient, status, duration, time }) {
   const displayTime = new Date(time).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
   const durStr = duration
@@ -388,6 +390,7 @@ socket.send(JSON.stringify({
   };
   
 answerBtn.onclick = async () => {
+  clearTimeout(answerTimeout); 
   try {
     if (!pc) return;
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -401,7 +404,7 @@ answerBtn.onclick = async () => {
       from: userNickname,
       payload: answer
     }));
-
+    callStartTime = Date.now();
     callStatus.textContent = 'В разговоре';
     incomingCall = false;  // сбросим флаг
     answerBtn.style.display = 'none';
