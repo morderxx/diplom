@@ -601,6 +601,7 @@ document.getElementById('chat-section').classList.add('active');
       break;
 
 case 'call': {
+  if (msg.initiator === userNickname) break;
   const dur = msg.duration || 0;
 
   // 1) полный текст в центре — без изменений
