@@ -119,7 +119,7 @@ function showCallWindow(peer, incoming = false) {
   cancelBtn.textContent = incoming ? 'Отклонить' : 'Отмена';
   callWindow.classList.remove('hidden');
 
-  // 2) Устанавливаем стартовое время и запускаем интервал
+  // 2) Запускаем секундомер
   callStartTime = Date.now();
   callTimerIntvl = setInterval(() => {
     const sec = Math.floor((Date.now() - callStartTime) / 1000);
@@ -128,28 +128,28 @@ function showCallWindow(peer, incoming = false) {
     callTimerEl.textContent = `${m}:${s}`;
   }, 1000);
 
-  // 3) Если это исходящий звонок — ставим таймаут пропущенного
-  if (!incoming) {
-    answerTimeout = setTimeout(() => {
-      // 3.1) Зафиксируем таймер на ровно 30 секундах
-      callTimerEl.textContent = '00:30';
+  // 3) Для обоих — ставим таймаут на 30 секунд
+  answerTimeout = setTimeout(() => {
+    // 3.1) Останавливаем секундомер на 00:30
+    callTimerEl.textContent = '00:30';
 
-      // 3.2) Уведомляем удалённого абонента о сбросе трубки
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({
-          type:   'webrtc-hangup',
-          roomId: currentRoom,
-          from:   userNickname,
-          to:     peer
-        }));
-      }
+    // 3.2) Уведомляем другую сторону о “сбросе” трубки
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type:   'webrtc-hangup',
+        roomId: currentRoom,
+        from:   userNickname,
+        to:     peer
+      }));
+    }
 
-      // 3.3) Локальное завершение как «пропущенный» звонок (+ сохранение в БД)
-      endCall('missed', peer, /* sendToServer */ true);
-      incomingCall = false;
-    }, 30_000);
-  }
+    // 3.3) Завершаем звонок как «пропущенный»
+    // — инициатору и абоненту попадёт запись со статусом missed
+    endCall('missed', peer, /* sendToServer */ true);
+    incomingCall = false;
+  }, 30_000);
 }
+
 
 
 
