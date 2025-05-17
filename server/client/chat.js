@@ -27,33 +27,26 @@ function formatCallText({ initiator, recipient, status, duration, time }) {
   const displayTime = new Date(time)
     .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  // Пропущенный звонок
+  // Пропущенный (для всех одна строка)
   if (status === 'missed') {
-    // Если я инициатор — показываем исходящий неответ
-    if (initiator === userNickname) {
-      return `⌛ Исходящий звонок к ${recipient} • ${displayTime}`;
-    }
-    // Иначе — я был принимающим, показываем пропущенный от инициатора
-    return `📞 Пропущенный звонок от ${initiator} • ${displayTime}`;
+    return `⌛ Пропущенный/Исходящий звонок от ${initiator} к ${recipient} • ${displayTime}`;
   }
 
-  // Отменённый до ответа
+  // Отменён до ответа
   if (duration === 0 && status === 'cancelled') {
     return `⌛ Ожидание ответа • ${displayTime}`;
   }
 
-  // Завершённый звонок
-  const durStr = duration
-    ? new Date(duration * 1000).toISOString().substr(11, 8)
-    : '00:00:00';
-
+  // Завершённый
+  const durStr = new Date(duration * 1000).toISOString().substr(11, 8);
   if (duration > 0 && status === 'finished') {
-    return `📞 Звонок от ${initiator} к ${recipient} завершен • ${durStr} • ${displayTime}`;
+    return `📞 Звонок от ${initiator} к ${recipient} завершён • ${durStr} • ${displayTime}`;
   }
 
-  // Отменён после установления соединения
-  return `📞 Звонок от ${initiator} к ${recipient} был отменен • ${durStr} • ${displayTime}`;
+  // Отменён после разговора
+  return `📞 Звонок от ${initiator} к ${recipient} был отменён • ${durStr} • ${displayTime}`;
 }
+
 
 
   const stunConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
