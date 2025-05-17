@@ -650,35 +650,38 @@ document.getElementById('chat-section').classList.add('active');
 
 case 'call': {
   // Не дублируем свои собственные звонки
-  if (msg.initiator === userNickname) break;
+     // сразу закрываем окно звонка и сбрасываем все таймеры
+     hideCallWindow();
+     incomingCall = false;
 
-  // Формируем и отрисовываем через хелпер
-  const fullTextCall = formatCallText({
-    initiator: msg.initiator,
-    recipient: msg.recipient,
-    status:    msg.status,
-    duration:  msg.duration || 0,
-    time:      msg.ended_at || msg.happened_at
-  });
-  appendCenterCall(fullTextCall);
+     // Не дублируем свои собственные звонки
+     if (msg.initiator === userNickname) break;
 
-  // 2) короткий текст для «пузырька» — только отмена/сброс
-  let shortText = null;
-  if (msg.status === 'cancelled' && (msg.duration || 0) === 0) {
-    shortText = `${msg.initiator} отменил(а) звонок`;
-  }
-  else if (msg.status === 'cancelled') {
-    shortText = `${msg.initiator} сбросил(а) звонок`;
-  }
+     // Формируем и отрисовываем через хелпер
+     const fullTextCall = formatCallText({
+       initiator: msg.initiator,
+       recipient: msg.recipient,
+       status:    msg.status,
+       duration:  msg.duration || 0,
+       time:      msg.ended_at || msg.happened_at
+     });
+     appendCenterCall(fullTextCall);
 
-  if (shortText) {
-    appendMessage(
-      msg.initiator,
-      shortText,
-      msg.ended_at || msg.time || new Date().toISOString(),
-      msg.call_id ?? null
-    );
-  }
+     // короткий текст для «пузырька»
+     let shortText = null;
+     if (msg.status === 'cancelled' && (msg.duration || 0) === 0) {
+       shortText = `${msg.initiator} отменил(а) звонок`;
+     } else if (msg.status === 'cancelled') {
+       shortText = `${msg.initiator} сбросил(а) звонок`;
+     }
+     if (shortText) {
+       appendMessage(
+         msg.initiator,
+         shortText,
+         msg.ended_at || msg.time || new Date().toISOString(),
+         msg.call_id ?? null
+       );
+     }
   break;
 }
 
