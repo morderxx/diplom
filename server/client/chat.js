@@ -104,6 +104,13 @@ function appendCenterCall(text) {
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
+  function updateTimerDisplay() {
+  const sec = Math.floor((Date.now() - callStartTime) / 1000);
+  const m   = String(Math.floor(sec / 60)).padStart(2, '0');
+  const s   = String(sec % 60).padStart(2, '0');
+  callTimerEl.textContent = `${m}:${s}`;
+}
+
   // Показать окно звонка
 function showCallWindow(peer, incoming = false) {
   clearInterval(callTimerIntvl);
@@ -111,6 +118,8 @@ function showCallWindow(peer, incoming = false) {
 
   currentPeer   = peer;
   incomingCall  = incoming;
+  answeredCall  = false; // сбрасываем флаг при новом вызове
+
   callTitle.textContent  = `Звонок с ${peer}`;
   callStatus.textContent = incoming ? 'Входящий звонок' : 'Ожидание ответа';
   callTimerEl.textContent = '00:00';
@@ -118,22 +127,20 @@ function showCallWindow(peer, incoming = false) {
   cancelBtn.textContent = incoming ? 'Отклонить' : 'Отмена';
   callWindow.classList.remove('hidden');
 
-  // общий секундомер
-  callStartTime = Date.now();
-  callTimerIntvl = setInterval(() => {
-    const sec = Math.floor((Date.now() - callStartTime) / 1000);
-    const m   = String(Math.floor(sec / 60)).padStart(2, '0');
-    const s   = String(sec % 60).padStart(2, '0');
-    callTimerEl.textContent = `${m}:${s}`;
-  }, 1000);
+  // Секундомер
+  callStartTime  = Date.now();
+  callTimerIntvl = setInterval(updateTimerDisplay, 1000);
 
-  // теперь таймаут ставим всегда, но внутри разделяем логику
+  // Таймаут на 30 секунд
   answerTimeout = setTimeout(() => {
+    // если звонок уже принят — ничего не делаем
+    if (answeredCall) return;
+
     // зафиксировать 00:30
     callTimerEl.textContent = '00:30';
 
     if (!incoming) {
-      // 1) Исходящий: шлём webrtc-hangup + endCall('missed')
+      // Исходящий: шлём webrtc-hangup и закрываем
       if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({
           type:   'webrtc-hangup',
@@ -142,15 +149,16 @@ function showCallWindow(peer, incoming = false) {
           to:     peer
         }));
       }
-   // userNickname звонил → он инициатор missed
-   endCall('missed', userNickname, /* sendToServer */ true);
 
+      endCall('missed', userNickname, /* sendToServer */ true);
     } else {
-       endCall('missed', peer, /* sendToServer */ false);
+      endCall('missed', peer, /* sendToServer */ false);
     }
+
     incomingCall = false;
   }, 30_000);
 }
+
 
 
 
@@ -413,12 +421,21 @@ socket.send(JSON.stringify({
   }
 
   async function handleAnswer(answer) {
-     answeredCall = true;
+      // 3.1 Отключаем старый таймаут и секундомер
+  clearTimeout(answerTimeout);
+  clearInterval(callTimerIntvl);
     if (!pc) return;
     await pc.setRemoteDescription(answer);
     callStatus.textContent = 'В разговоре';
     incomingCall = false;
     answerBtn.style.display = 'none';
+
+      // 3.2 Помечаем, что разговор стартовал
+  answeredCall = true;
+
+  // 3.3 Запускаем новый секундомер разговора
+  callStartTime  = Date.now();
+  callTimerIntvl = setInterval(updateTimerDisplay, 1000);
   }
 
   async function handleIce(candidate) {
@@ -431,8 +448,12 @@ socket.send(JSON.stringify({
   };
   
 answerBtn.onclick = async () => {
-    answeredCall = true;
-  clearTimeout(answerTimeout); 
+    // 2.1 Отключаем таймаут «missed» и секундомер ожидания
+  clearTimeout(answerTimeout);
+  clearInterval(callTimerIntvl);
+
+  // 2.2 Помечаем, что звонок принят
+  answeredCall = true;
   try {
     if (!pc) return;
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
