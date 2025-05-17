@@ -100,54 +100,63 @@ function appendCenterCall(text) {
   }
 
 async function endCall(message, status = 'finished') {
+  // 1) Останавливаем таймер и WebRTC
   clearInterval(callTimerIntvl);
-  if (pc) pc.close();
-  pc = null;
+  if (pc) {
+    pc.close();
+    pc = null;
+  }
   if (localStream) {
     localStream.getTracks().forEach(t => t.stop());
     localStream = null;
   }
 
-  // Формируем текст уведомления на основе статуса и длительности
+  // 2) Собираем данные звонка
   const durationSec = Math.floor((Date.now() - callStartTime) / 1000);
-  const durStr = new Date(durationSec * 1000).toISOString().substr(11, 8);
+  const durStr      = new Date(durationSec * 1000).toISOString().substr(11, 8);
+  const startedISO  = new Date(callStartTime).toISOString();
+  const endedISO    = new Date().toISOString();
 
-  let callMessage = '';
-  if (durationSec === 0) {
-    callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} был отменен.`;
-  } else {
-    callMessage = `📞 Звонок от ${userNickname} к ${currentPeer} завершен. Длительность ${durStr}.`;
-  }
+  // 3) Формируем текст сообщения
+  const callMessage = durationSec === 0
+    ? `📞 Звонок от ${userNickname} к ${currentPeer} был отменен.`
+    : `📞 Звонок от ${userNickname} к ${currentPeer} завершен. Длительность ${durStr}.`;
 
-  // Локальное уведомление (объединенное)
- // appendCenterCall(callMessage);
+  // 4) Локальная отрисовка — системное и «обычное» сообщение
+  appendCenterCall(callMessage);
+  appendMessage(userNickname, callMessage, endedISO);
 
-  // Отправляем на бэкенд
-  const startedISO = new Date(callStartTime).toISOString();
-  const endedISO = new Date().toISOString();
+  // 5) Отправляем на бэкенд
   try {
-    await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
+    const res = await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type':  'application/json',
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        initiator: userNickname,
-        recipient: currentPeer,
+        initiator:  userNickname,
+        recipient:  currentPeer,
         started_at: startedISO,
-        ended_at: endedISO,
-        status: status,
-        duration: durationSec
+        ended_at:   endedISO,
+        status:     status,
+        duration:   durationSec
       })
     });
+    if (!res.ok) {
+      const text = await res.text();
+      console.error('Ошибка сохранения звонка:', text);
+      appendSystem(`⚠️ Сервер вернул ошибку при сохранении звонка: ${res.status}`);
+    }
   } catch (err) {
-    console.error('Ошибка сохранения звонка в БД:', err);
-    appendSystem('⚠️ Не удалось сохранить данные звонка на сервер.');
+    console.error('Сетевая ошибка при сохранении звонка:', err);
+    appendSystem('⚠️ Сетевая ошибка при сохранении звонка.');
   }
 
+  // 6) Закрываем окно звонка
   hideCallWindow();
 }
+
 
 
 
@@ -570,22 +579,34 @@ document.getElementById('chat-section').classList.add('active');
       break;
 
     case 'call': {
-      // Формируем текст системного уведомления
-      const durStr = msg.duration
-        ? new Date(msg.duration * 1000).toISOString().substr(11, 8)
-        : '--:--:--';
-      const time = new Date(msg.started_at)
-        .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const text = msg.status === 'cancelled'
-        ? `📞 ${msg.initiator} отменил(а) звонок`
-        : msg.status === 'missed'
-          ? `📞 Пропущенный звонок от ${msg.initiator}`
-          : `📞 Звонок с ${msg.recipient} завершён. Длительность ${durStr}`;
+  // Формируем строки длительности и времени
+  const durStr = msg.duration
+    ? new Date(msg.duration * 1000).toISOString().substr(11, 8)
+    : '--:--:--';
+  const callTime = new Date(msg.started_at)
+    .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-      // 1) Системное сообщение
-      appendCenterCall(text);
-      break;
-    }
+  // Составляем текст
+  const text = msg.status === 'cancelled'
+    ? `📞 ${msg.initiator} отменил(а) звонок`
+    : msg.status === 'missed'
+      ? `📞 Пропущенный звонок от ${msg.initiator}`
+      : `📞 Звонок с ${msg.recipient} завершён. Длительность ${durStr}`;
+
+  // 1) Системное сообщение по центру
+  appendCenterCall(text);
+
+  // 2) Обычное сообщение в стиле чата — используем msg.ended_at или msg.time,
+  //    а если сервер присылает call_id, можно его передать четвертым аргументом
+  appendMessage(
+    msg.initiator,
+    text,
+    msg.ended_at || msg.time || new Date().toISOString(),
+    msg.call_id ?? null
+  );
+  break;
+}
+
 
     default:
       console.warn('Unknown message type:', msg.type);
