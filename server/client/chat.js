@@ -590,9 +590,6 @@ document.getElementById('chat-section').classList.add('active');
     return;
   }
   const history = await res.json();
-// сразу после const history = await res.json();
-console.log('RAW HISTORY:', JSON.stringify(history, null, 2));
-
 history.forEach(m => {
 
  if (m.type === 'call') {
