@@ -101,7 +101,7 @@ function appendCenterCall(text) {
     callWindow.classList.add('hidden');
   }
 
-async function endCall(status = 'finished', initiator = userNickname) {
+async function endCall(status = 'finished', initiator = userNickname, sendToServer = true) {
   // 1) Останавливаем таймер и WebRTC
   clearInterval(callTimerIntvl);
   if (pc) { pc.close(); pc = null; }
@@ -132,35 +132,38 @@ async function endCall(status = 'finished', initiator = userNickname) {
   appendCenterCall(fullText);
   appendMessage(initiator, shortText, endedISO, null);
 
-  // 6) Отправляем на бэкенд
-  try {
-    const res = await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
-      method: 'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        initiator,
-        recipient,
-        started_at: startedISO,
-        ended_at:   endedISO,
-        status,
-        duration:   durationSec
-      })
-    });
-    if (!res.ok) {
-      console.error('Ошибка сохранения звонка:', await res.text());
-      appendSystem(`⚠️ Сервер вернул ошибку: ${res.status}`);
+  // 6) Отправляем на бэкенд (если нужно)
+  if (sendToServer) {
+    try {
+      const res = await fetch(`${API_URL}/rooms/${currentRoom}/calls`, {
+        method: 'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          initiator,
+          recipient,
+          started_at: startedISO,
+          ended_at:   endedISO,
+          status,
+          duration:   durationSec
+        })
+      });
+      if (!res.ok) {
+        console.error('Ошибка сохранения звонка:', await res.text());
+        appendSystem(`⚠️ Сервер вернул ошибку: ${res.status}`);
+      }
+    } catch (err) {
+      console.error('Сетевая ошибка при сохранении звонка:', err);
+      appendSystem('⚠️ Сетевая ошибка при сохранении звонка.');
     }
-  } catch (err) {
-    console.error('Сетевая ошибка при сохранении звонка:', err);
-    appendSystem('⚠️ Сетевая ошибка при сохранении звонка.');
   }
 
   // 7) Закрываем окно звонка
   hideCallWindow();
 }
+
 
 
 
@@ -561,9 +564,10 @@ document.getElementById('chat-section').classList.add('active');
   switch (msg.type) {
     case 'webrtc-cancel':
       // рисуем только если это сделал НЕ мы сами
-      if (msg.from !== userNickname) {
-        endCall('cancelled', msg.from);
-      }
+       if (msg.from !== userNickname) {
+    // только рендерим, без второго POST
+    endCall('cancelled', msg.from, /*sendToServer*/ false);
+  }
       break;
 
     case 'message':
