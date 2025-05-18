@@ -310,7 +310,7 @@ textarea#message {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  /* height: 100%;  — УБРАТЬ */
+  height: 100%;
 }
 /* Главное меню */
 .menu-panel {
