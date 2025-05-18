@@ -97,6 +97,7 @@ button:hover {
   flex-direction: column;
   padding: 20px;
   background: #f0f2f5;
+  align-items: stretch;
 }
 
 .chat-container.active {
@@ -303,17 +304,17 @@ textarea#message {
 /* ========== Sidebar navigation ========== */
 
 .sidebar {
-  flex: 0 0 260px;   /* фиксированная ширина */
-  height: 100%;      /* Точно заполняем всю высоту родителя */
+  flex: 0 0 260px;       /* фиксированная ширина 260px */
   background: #fafafa;
   border-right: 1px solid #ddd;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* height: 100%;  — УБРАТЬ */
 }
 /* Главное меню */
 .menu-panel {
-  flex: 1;
+  flex: 0 0 auto; 
   overflow-y: auto;
 }
 .menu-list {
