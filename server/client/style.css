@@ -77,6 +77,46 @@ button:hover {
 /* =================== */
 /*   СТИЛИ ДЛЯ ЧАТА    */
 /* =================== */
+.sidebar-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.menu-btn {
+  padding: 10px;
+  background: #e8f0fe;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  transition: background 0.2s;
+  text-align: left;
+}
+
+.menu-btn:hover {
+  background: #d2e3fc;
+}
+
+.submenu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.submenu.hidden {
+  display: none;
+}
+
+.back-btn {
+  align-self: flex-start;
+  background: transparent;
+  border: none;
+  color: #007bff;
+  cursor: pointer;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
 
 .chat-wrapper {
   display: flex;
