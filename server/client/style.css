@@ -340,9 +340,7 @@ textarea#message {
     margin: 4px 0;
     border-radius: 8px;
 }
-/* ============================= */
-/*   СТИЛИ ДЛЯ БОКОВОГО МЕНЮ    */
-/* ============================= */
+/* ========== Sidebar navigation ========== */
 
 .sidebar {
   width: 260px;
@@ -353,44 +351,38 @@ textarea#message {
   overflow: hidden;
 }
 
-/* Вкладки навигации (горизонтальное меню) */
-.sidebar-nav {
-  position: relative;
-  background: #fff;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-}
-.nav-tabs {
-  display: flex;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.nav-tabs li {
+/* Главное меню */
+.menu-panel {
   flex: 1;
-  text-align: center;
-  padding: 12px 0;
+  overflow-y: auto;
+}
+.menu-list {
+  list-style: none;
+  margin: 0;
+  padding: 10px 0;
+}
+.menu-list li {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
   cursor: pointer;
-  font-weight: 600;
-  border-bottom: 2px solid transparent;
-  transition: background 0.2s, border-color 0.2s;
+  transition: background 0.2s;
 }
-.nav-tabs li.active {
-  background: #f7faff;
-  border-color: #4CAF50;
+.menu-list li:hover {
+  background: #e0e0e0;
 }
-.nav-tabs li:hover {
-  background: #f0f2f5;
+.menu-list .icon {
+  margin-right: 12px;
+  font-size: 18px;
+  /* здесь подставь свои классы-спрайты или fontawesome */
 }
 
-/* Кнопка «Назад» */
+/* Back button */
 .back-btn {
-  display: block;
-  padding: 8px 12px;
+  padding: 10px 20px;
   background: #4CAF50;
   color: #fff;
   border: none;
-  width: 100%;
-  text-align: left;
   font-size: 14px;
   cursor: pointer;
   transition: background 0.2s;
@@ -402,16 +394,18 @@ textarea#message {
   display: none;
 }
 
-/* Панели содержимого */
-.tab-panels {
+/* Контент‑панели */
+.content-panel {
+  display: none;
   flex: 1;
   overflow-y: auto;
+  padding: 20px;
+  background: #fff;
 }
-.panel {
-  display: none;
-  padding: 16px 20px;
+.content-panel h2 {
+  margin-top: 0;
 }
-.panel.active {
+.content-panel.active {
   display: block;
 }
 
