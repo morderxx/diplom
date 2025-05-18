@@ -949,6 +949,26 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
     }
   });
 
+  // В самом низу chat.js
+document.querySelectorAll('.nav-tabs li').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelector('.nav-tabs li.active').classList.remove('active');
+    tab.classList.add('active');
+
+    document.querySelector('.panel.active').classList.remove('active');
+    document.getElementById(tab.dataset.tab).classList.add('active');
+
+    document.querySelector('.back-btn').classList.remove('hidden');
+    document.querySelector('.sidebar-nav .nav-tabs').classList.add('hidden');
+  });
+});
+
+document.querySelector('.back-btn').addEventListener('click', () => {
+  document.querySelector('.panel.active').classList.remove('active');
+  document.querySelector('.sidebar-nav .nav-tabs').classList.remove('hidden');
+  document.querySelector('.back-btn').classList.add('hidden');
+});
+
   // Initialization
   loadRooms();
   loadUsers();
