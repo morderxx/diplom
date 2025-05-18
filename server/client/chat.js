@@ -23,36 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let answerTimeout  = null;
   let answeredCall = false;
 
-  document.addEventListener('DOMContentLoaded', () => {
-  const menu = document.getElementById('sidebar-menu');
-  const submenu = document.getElementById('submenu');
-  const submenuTitle = document.getElementById('submenu-title');
-  const submenuList = document.getElementById('submenu-list');
-  const backBtn = document.getElementById('back-btn');
 
-  document.querySelectorAll('.menu-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const section = btn.dataset.section;
-      submenuTitle.textContent = btn.textContent;
-
-      // Пример: подгружаем чаты только для "Чаты"
-      if (section === 'chats') {
-        const rooms = document.getElementById('rooms-list');
-        submenuList.innerHTML = rooms.innerHTML; // Копируем чаты
-      } else {
-        submenuList.innerHTML = `<li>Раздел "${btn.textContent}" пока пуст...</li>`;
-      }
-
-      menu.style.display = 'none';
-      submenu.classList.remove('hidden');
-    });
-  });
-
-  backBtn.addEventListener('click', () => {
-    submenu.classList.add('hidden');
-    menu.style.display = 'flex';
-  });
-});
   // Хелпер для формирования текста «системного» сообщения по звонку
 function formatCallText({ initiator, recipient, status, duration, time }) {
   const displayTime = new Date(time)
@@ -979,7 +950,36 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
       sendMessage();
     }
   });
+  document.addEventListener('DOMContentLoaded', () => {
+  const menu = document.getElementById('sidebar-menu');
+  const submenu = document.getElementById('submenu');
+  const submenuTitle = document.getElementById('submenu-title');
+  const submenuList = document.getElementById('submenu-list');
+  const backBtn = document.getElementById('back-btn');
 
+  document.querySelectorAll('.menu-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const section = btn.dataset.section;
+      submenuTitle.textContent = btn.textContent;
+
+      // Пример: подгружаем чаты только для "Чаты"
+      if (section === 'chats') {
+        const rooms = document.getElementById('rooms-list');
+        submenuList.innerHTML = rooms.innerHTML; // Копируем чаты
+      } else {
+        submenuList.innerHTML = `<li>Раздел "${btn.textContent}" пока пуст...</li>`;
+      }
+
+      menu.style.display = 'none';
+      submenu.classList.remove('hidden');
+    });
+  });
+
+  backBtn.addEventListener('click', () => {
+    submenu.classList.add('hidden');
+    menu.style.display = 'flex';
+  });
+});
   // Initialization
   loadRooms();
   loadUsers();
