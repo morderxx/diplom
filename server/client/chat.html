@@ -4,43 +4,110 @@
   <meta charset="UTF-8" />
   <title>Чат</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    /* --- Стили боковой панели и меню --- */
+    .sidebar {
+      width: 250px;
+      background: #f5f5f5;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #ddd;
+    }
+    .menu-tabs {
+      display: flex;
+      border-bottom: 1px solid #ccc;
+    }
+    .menu-tabs .tab {
+      flex: 1;
+      padding: 10px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      text-align: center;
+      font-weight: bold;
+    }
+    .menu-tabs .tab.active {
+      background: #fff;
+      border-bottom: 2px solid #007bff;
+    }
+    .menu-content {
+      position: relative;
+      flex: 1;
+      overflow: hidden;
+    }
+    .menu-content > .section {
+      display: none;
+      padding: 10px;
+    }
+    .menu-content > .section.active {
+      display: block;
+    }
+    /* подгоняем стандартный список */
+    .rooms-list { list-style: none; padding: 0; margin: 0; }
+    .rooms-list li { padding: 5px; cursor: pointer; }
+    .rooms-list li:hover { background: #e0e0e0; }
+  </style>
 </head>
 <body>
-  <div class="chat-wrapper">
-    <aside class="rooms-sidebar">
-      <div class="current-user">Вы: <span id="current-user"></span></div>
-      <h2>Чаты</h2>
-      <ul id="rooms-list" class="rooms-list"></ul>
-      <h2>Пользователи</h2>
-      <ul id="users-list" class="rooms-list"></ul>
+  <div class="chat-wrapper" style="display: flex; height: 100vh;">
+    <!-- Новая боковая панель -->
+    <aside class="sidebar">
+      <nav class="menu-tabs">
+        <button data-section="chats" class="tab active">Чаты</button>
+        <button data-section="groups" class="tab">Группы</button>
+        <button data-section="channels" class="tab">Каналы</button>
+        <button data-section="games" class="tab">Игры</button>
+        <button data-section="miniapps" class="tab">Мини‑приложения</button>
+      </nav>
+      <div class="menu-content">
+        <div id="section-chats" class="section active">
+          <div class="current-user">Вы: <span id="current-user"></span></div>
+          <h2>Чаты</h2>
+          <ul id="rooms-list" class="rooms-list"></ul>
+        </div>
+        <div id="section-groups" class="section">
+          <h2>Группы</h2>
+          <ul id="groups-list" class="rooms-list"></ul>
+        </div>
+        <div id="section-channels" class="section">
+          <h2>Каналы</h2>
+          <ul id="channels-list" class="rooms-list"></ul>
+        </div>
+        <div id="section-games" class="section">
+          <h2>Игры</h2>
+          <ul id="games-list" class="rooms-list"></ul>
+        </div>
+        <div id="section-miniapps" class="section">
+          <h2>Мини‑приложения</h2>
+          <ul id="miniapps-list" class="rooms-list"></ul>
+        </div>
+      </div>
     </aside>
 
-<section id="chat-section" class="chat-container">
-  <div class="chat-message-area">
-    <!-- шапка -->
-    <div id="chat-header" class="chat-header">
-      <div class="chat-header__left">
-        Собеседник: <span id="chat-peer"></span>
+    <!-- Основная область чата -->
+    <section id="chat-section" class="chat-container" style="flex:1; display:flex; flex-direction:column;">
+      <div class="chat-message-area" style="flex:1; display:flex; flex-direction:column;">
+        <!-- шапка -->
+        <div id="chat-header" class="chat-header" style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #ccc;">
+          <div class="chat-header__left">
+            Собеседник: <span id="chat-peer"></span>
+          </div>
+          <button id="call-btn" class="icon-btn chat-header__call-btn">☎️</button>
+        </div>
+
+        <!-- окно сообщений -->
+        <div id="chat-box" class="chat-box" style="flex:1; overflow:auto; padding:10px;"></div>
       </div>
-      <button id="call-btn" class="icon-btn chat-header__call-btn">☎️</button>
-    </div>
 
-    <!-- окно сообщений -->
-    <div id="chat-box" class="chat-box"></div>
+      <!-- поле ввода -->
+      <div class="input-container" style="display:flex; padding:10px; border-top:1px solid #ccc;">
+        <button id="attach-btn" class="icon-btn">📎</button>
+        <textarea id="message" placeholder="Введите сообщение..." rows="1" style="flex:1; margin:0 10px;"></textarea>
+        <button id="send-btn" class="icon-btn">➤</button>
+        <button id="voice-btn" class="icon-btn">🎤</button>
+      </div>
+    </section>
   </div>
-
-  <!-- поле ввода без кнопки звонка -->
-  <div class="input-container">
-    <button id="attach-btn" class="icon-btn">📎</button>
-    <!-- <button id="call-btn" …>☎️</button> — убрали -->
-    <textarea id="message" placeholder="Введите сообщение..." rows="1"></textarea>
-    <button id="send-btn" class="icon-btn">➤</button>
-    <button id="voice-btn" class="icon-btn">🎤</button>
-  </div>
-</section>
-
-  </div>
-
 
   <!-- Lightbox Overlay -->
   <div id="lightbox-overlay" class="hidden">
@@ -50,6 +117,7 @@
       <img id="lightbox-image" src="" alt="Preview">
     </div>
   </div>
+
   <!-- Окно звонка -->
   <div id="call-window" class="call-window hidden">
     <div class="call-header">
@@ -65,6 +133,23 @@
       </div>
     </div>
   </div>
+
+  <!-- Подключение основного скрипта -->
+  <script>
+    // Логика переключения меню
+    const sections = ['chats','groups','channels','games','miniapps'];
+    document.querySelectorAll('.menu-tabs .tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelector('.menu-tabs .tab.active').classList.remove('active');
+        tab.classList.add('active');
+        const sec = tab.dataset.section;
+        sections.forEach(s => {
+          document.getElementById(`section-${s}`)
+            .classList.toggle('active', s === sec);
+        });
+      });
+    });
+  </script>
   <script src="chat.js"></script>
 </body>
 </html>
