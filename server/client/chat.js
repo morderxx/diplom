@@ -948,6 +948,30 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
       sendMessage();
     }
   });
+// ---- МЕНЮШКА С КНОПКАМИ
+const mainMenu    = document.getElementById('main-menu');
+const chatsSection = document.getElementById('chats-section');
+const chatMenuBtns = mainMenu.querySelectorAll('.menu-btn');
+const backBtn     = chatsSection.querySelector('.back-btn');
+
+// Клик по «Чаты»
+chatMenuBtns.forEach(btn => {
+  if (btn.dataset.section === 'chats') {
+    btn.addEventListener('click', () => {
+      mainMenu.classList.add('hidden');
+      chatsSection.classList.remove('hidden');
+      // если нужно сразу показать комнаты:
+      loadRooms();
+    });
+  }
+});
+
+// Кнопка «← Назад» внутри секции Чаты
+backBtn.addEventListener('click', () => {
+  chatsSection.classList.add('hidden');
+  mainMenu.classList.remove('hidden');
+});
+// ---- Конец вставки
 
   // Initialization
   loadRooms();
