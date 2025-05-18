@@ -521,7 +521,7 @@ body.lightbox-open {
 .menu-btn {
   padding: 10px;
   border: none;
-  background: #fff;
+  background: #45a049;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
@@ -530,7 +530,7 @@ body.lightbox-open {
 }
 
 .menu-btn:hover {
-  background: #d0d0d0;
+  background: #449d48;
 }
 
 .sidebar-section.hidden {
