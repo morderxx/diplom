@@ -512,3 +512,42 @@ body.lightbox-open {
     background-color: #e0f7fa;
   }
   
+.sidebar-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.menu-btn {
+  padding: 10px;
+  border: none;
+  background: #e9e9e9;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  text-align: left;
+  transition: background 0.2s ease;
+}
+
+.menu-btn:hover {
+  background: #d0d0d0;
+}
+
+.sidebar-section.hidden {
+  display: none;
+}
+
+.back-btn {
+  align-self: flex-start;
+  padding: 6px 12px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  background: #ddd;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.back-btn:hover {
+  background: #ccc;
+}
