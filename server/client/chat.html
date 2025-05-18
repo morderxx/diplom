@@ -8,41 +8,57 @@
 <body>
   <div class="chat-wrapper" style="display: flex; height: 100vh;">
     <!-- Новая боковая панель -->
-    <aside class="sidebar">
-     <nav class="sidebar-nav">
-  <ul class="nav-tabs">
-    <li data-tab="chats" class="active">Чаты</li>
-    <li data-tab="groups">Группы</li>
-    <li data-tab="channels">Каналы</li>
-    <li data-tab="games">Игры</li>
-    <li data-tab="miniapps">Мини‑приложения</li>
-  </ul>
-  <button class="back-btn hidden">← Назад</button>
-  <div class="tab-panels">
-    <div id="chats" class="panel active">
-      <div class="current-user">Вы: <span id="current-user"></span></div>
-      <h2>Чаты</h2>
-      <ul id="rooms-list" class="rooms-list"></ul>
-    </div>
-    <div id="groups" class="panel">
-      <h2>Группы</h2>
-      <ul class="rooms-list"><li>Группа 1</li><li>Группа 2</li></ul>
-    </div>
-    <div id="channels" class="panel">
-      <h2>Каналы</h2>
-      <ul class="rooms-list"><li>Канал A</li><li>Канал B</li></ul>
-    </div>
-    <div id="games" class="panel">
-      <h2>Игры</h2>
-      <ul class="rooms-list"><li>Игра X</li><li>Игра Y</li></ul>
-    </div>
-    <div id="miniapps" class="panel">
-      <h2>Мини‑приложения</h2>
-      <ul class="rooms-list"><li>Приложение α</li><li>Приложение β</li></ul>
-    </div>
+<aside class="sidebar">
+  <!-- Главное меню -->
+  <div class="menu-panel active" data-panel="menu">
+    <ul class="menu-list">
+      <li data-target="chats"><i class="icon chat"></i> Чаты</li>
+      <li data-target="groups"><i class="icon group"></i> Группы</li>
+      <li data-target="channels"><i class="icon channel"></i> Каналы</li>
+      <li data-target="games"><i class="icon gamepad"></i> Игры</li>
+      <li data-target="miniapps"><i class="icon app"></i> Мини‑приложения</li>
+    </ul>
   </div>
-</nav>
-    </aside>
+
+  <!-- Кнопка «Назад» для внутренних панелей -->
+  <button class="back-btn hidden">← Назад</button>
+
+  <!-- Содержимое по разделам -->
+  <div class="content-panel" id="chats">
+    <div class="current-user">Вы: <span id="current-user"></span></div>
+    <h2>Чаты</h2>
+    <ul id="rooms-list" class="rooms-list"></ul>
+  </div>
+
+  <div class="content-panel" id="groups">
+    <h2>Группы</h2>
+    <ul class="rooms-list">
+      <!-- сюда придут ваши группы -->
+    </ul>
+  </div>
+
+  <div class="content-panel" id="channels">
+    <h2>Каналы</h2>
+    <ul class="rooms-list">
+      <!-- сюда придут ваши каналы -->
+    </ul>
+  </div>
+
+  <div class="content-panel" id="games">
+    <h2>Игры</h2>
+    <ul class="rooms-list">
+      <!-- сюда придут ваши игры -->
+    </ul>
+  </div>
+
+  <div class="content-panel" id="miniapps">
+    <h2>Мини‑приложения</h2>
+    <ul class="rooms-list">
+      <!-- сюда придут ваши мини‑приложения -->
+    </ul>
+  </div>
+</aside>
+
 
     <!-- Основная область чата -->
     <section id="chat-section" class="chat-container" style="flex:1; display:flex; flex-direction:column;">
