@@ -949,25 +949,38 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
     }
   });
 
-  // В самом низу chat.js
-document.querySelectorAll('.nav-tabs li').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelector('.nav-tabs li.active').classList.remove('active');
-    tab.classList.add('active');
+  document.addEventListener('DOMContentLoaded', () => {
+  const menuItems = document.querySelectorAll('.menu-list li');
+  const backBtn   = document.querySelector('.back-btn');
+  const menuPanel = document.querySelector('.menu-panel');
+  const panels    = document.querySelectorAll('.content-panel');
 
-    document.querySelector('.panel.active').classList.remove('active');
-    document.getElementById(tab.dataset.tab).classList.add('active');
+  menuItems.forEach(li => {
+    li.addEventListener('click', () => {
+      const targetId = li.dataset.target;
+      // Скрыть главное меню
+      menuPanel.classList.remove('active');
+      // Показать бэк‑кнопку
+      backBtn.classList.remove('hidden');
+      // Показать нужную панель
+      panels.forEach(p => {
+        p.id === targetId
+          ? p.classList.add('active')
+          : p.classList.remove('active');
+      });
+    });
+  });
 
-    document.querySelector('.back-btn').classList.remove('hidden');
-    document.querySelector('.sidebar-nav .nav-tabs').classList.add('hidden');
+  backBtn.addEventListener('click', () => {
+    // Скрыть все панели
+    panels.forEach(p => p.classList.remove('active'));
+    // Скрыть бэк‑кнопку
+    backBtn.classList.add('hidden');
+    // Вернуть главное меню
+    menuPanel.classList.add('active');
   });
 });
 
-document.querySelector('.back-btn').addEventListener('click', () => {
-  document.querySelector('.panel.active').classList.remove('active');
-  document.querySelector('.sidebar-nav .nav-tabs').classList.remove('hidden');
-  document.querySelector('.back-btn').classList.add('hidden');
-});
 
   // Initialization
   loadRooms();
