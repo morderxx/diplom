@@ -7,13 +7,23 @@
 </head>
 <body>
   <div class="chat-wrapper">
-    <aside class="rooms-sidebar">
-      <div class="current-user">Вы: <span id="current-user"></span></div>
-      <h2>Чаты</h2>
-      <ul id="rooms-list" class="rooms-list"></ul>
-      <h2>Пользователи</h2>
-      <ul id="users-list" class="rooms-list"></ul>
-    </aside>
+<aside class="rooms-sidebar">
+  <div class="sidebar-menu" id="sidebar-menu">
+    <div class="current-user">Вы: <span id="current-user"></span></div>
+    <button class="menu-btn" data-section="chats">Чаты</button>
+    <button class="menu-btn" data-section="groups">Группы</button>
+    <button class="menu-btn" data-section="channels">Каналы</button>
+    <button class="menu-btn" data-section="games">Игры</button>
+    <button class="menu-btn" data-section="apps">Мини-приложения</button>
+  </div>
+
+  <div class="submenu hidden" id="submenu">
+    <button id="back-btn" class="back-btn">← Назад</button>
+    <h2 id="submenu-title">Раздел</h2>
+    <ul id="submenu-list" class="rooms-list"></ul>
+  </div>
+</aside>
+
 
 <section id="chat-section" class="chat-container">
   <div class="chat-message-area">
