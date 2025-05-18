@@ -340,6 +340,80 @@ textarea#message {
     margin: 4px 0;
     border-radius: 8px;
 }
+/* ============================= */
+/*   СТИЛИ ДЛЯ БОКОВОГО МЕНЮ    */
+/* ============================= */
+
+.sidebar {
+  width: 260px;
+  background: #fafafa;
+  border-right: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Вкладки навигации (горизонтальное меню) */
+.sidebar-nav {
+  position: relative;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+.nav-tabs {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.nav-tabs li {
+  flex: 1;
+  text-align: center;
+  padding: 12px 0;
+  cursor: pointer;
+  font-weight: 600;
+  border-bottom: 2px solid transparent;
+  transition: background 0.2s, border-color 0.2s;
+}
+.nav-tabs li.active {
+  background: #f7faff;
+  border-color: #4CAF50;
+}
+.nav-tabs li:hover {
+  background: #f0f2f5;
+}
+
+/* Кнопка «Назад» */
+.back-btn {
+  display: block;
+  padding: 8px 12px;
+  background: #4CAF50;
+  color: #fff;
+  border: none;
+  width: 100%;
+  text-align: left;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.back-btn:hover {
+  background: #45a049;
+}
+.back-btn.hidden {
+  display: none;
+}
+
+/* Панели содержимого */
+.tab-panels {
+  flex: 1;
+  overflow-y: auto;
+}
+.panel {
+  display: none;
+  padding: 16px 20px;
+}
+.panel.active {
+  display: block;
+}
 
 /* ======= Lightbox Overlay ======= */
 #lightbox-overlay {
