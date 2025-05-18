@@ -522,7 +522,7 @@ body.lightbox-open {
   padding: 10px;
   border: none;
   background: #45a049;
-  border-radius: 8px;
+  border-radius: 12px;
   cursor: pointer;
   font-size: 14px;
   text-align: left;
@@ -544,7 +544,7 @@ body.lightbox-open {
   font-size: 14px;
   background: #45a049;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   cursor: pointer;
 }
 
