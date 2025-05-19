@@ -90,6 +90,50 @@ function formatCallText({ initiator, recipient, status, duration, time }) {
     chatBox.appendChild(el);
     chatBox.scrollTop = chatBox.scrollHeight;
   }
+
+   // 1) Заведём массив для всех пользователей
+  let allUsers = [];
+
+  // 2) Функция рендера списка по переданному массиву
+  function renderUsersList(users) {
+    const ul = document.getElementById('users-list');
+    if (!ul) return;
+    ul.innerHTML = '';
+    users.forEach(u => {
+      if (u.nickname === userNickname) return;
+      const li = document.createElement('li');
+      li.textContent = u.nickname;
+      li.onclick = () => openPrivateChat(u.nickname);
+      ul.appendChild(li);
+    });
+  }
+
+  // 3) Обновлённый loadUsers сохраняет в allUsers и сразу рендерит
+  async function loadUsers() {
+    try {
+      const res = await fetch(`${API_URL}/users`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error(res.statusText);
+      allUsers = await res.json();
+      renderUsersList(allUsers);
+    } catch (err) {
+      console.error('Ошибка загрузки пользователей:', err);
+    }
+  }
+
+  // 4) Вешаем «живой» фильтр по input
+  const searchInput = document.getElementById('user-search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.trim().toLowerCase();
+      renderUsersList(
+        q
+          ? allUsers.filter(u => u.nickname.toLowerCase().startsWith(q))
+          : allUsers
+      );
+    });
+  }
 // В самом начале chat.js:
 function appendCenterCall(text) {
   const chatBox = document.getElementById('chat-box');
@@ -558,21 +602,6 @@ document.getElementById('chat-box').addEventListener('click', e => {
     });
   }
 
-  async function loadUsers() {
-    const res = await fetch(`${API_URL}/users`, { headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) return console.error(await res.text());
-    const users = await res.json();
-    const ul = document.getElementById('users-list');
-    ul.innerHTML = '';
-    users.forEach(u => {
-      if (u.nickname === userNickname) return;
-      const li = document.createElement('li');
-      li.textContent = u.nickname;
-      li.onclick = () => openPrivateChat(u.nickname);
-      ul.appendChild(li);
-    });
-  }
-
   async function openPrivateChat(otherNick) {
     currentPeer = otherNick;
     const rr = await fetch(`${API_URL}/rooms`, { headers: { Authorization: `Bearer ${token}` } });
@@ -973,49 +1002,7 @@ backBtn.addEventListener('click', () => {
   mainMenu.classList.remove('hidden');
 });
 // ---- Конец вставки
- // 1) Заведём массив для всех пользователей
-  let allUsers = [];
 
-  // 2) Функция рендера списка по переданному массиву
-  function renderUsersList(users) {
-    const ul = document.getElementById('users-list');
-    if (!ul) return;
-    ul.innerHTML = '';
-    users.forEach(u => {
-      if (u.nickname === userNickname) return;
-      const li = document.createElement('li');
-      li.textContent = u.nickname;
-      li.onclick = () => openPrivateChat(u.nickname);
-      ul.appendChild(li);
-    });
-  }
-
-  // 3) Обновлённый loadUsers сохраняет в allUsers и сразу рендерит
-  async function loadUsers() {
-    try {
-      const res = await fetch(`${API_URL}/users`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error(res.statusText);
-      allUsers = await res.json();
-      renderUsersList(allUsers);
-    } catch (err) {
-      console.error('Ошибка загрузки пользователей:', err);
-    }
-  }
-
-  // 4) Вешаем «живой» фильтр по input
-  const searchInput = document.getElementById('user-search-input');
-  if (searchInput) {
-    searchInput.addEventListener('input', () => {
-      const q = searchInput.value.trim().toLowerCase();
-      renderUsersList(
-        q
-          ? allUsers.filter(u => u.nickname.toLowerCase().startsWith(q))
-          : allUsers
-      );
-    });
-  }
 
   // Initialization
   loadRooms();
