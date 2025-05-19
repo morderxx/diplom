@@ -41,43 +41,48 @@ function setupWebSocket(server) {
         return;
       }
 
-      // TEXT MESSAGE
-      if (msg.type === 'message') {
-        try {
-          const payload = jwt.verify(msg.token, JWT_SECRET);
-          const login   = payload.login;
-          const r       = await pool.query(
-            `SELECT u.nickname
-               FROM users u
-               JOIN secret_profile s ON s.id = u.id
-              WHERE s.login = $1`,
-            [login]
-          );
-          const sender = r.rows[0] && r.rows[0].nickname;
-          if (!sender) return;
+// TEXT MESSAGE
+if (msg.type === 'message') {
+  try {
+    const payload = jwt.verify(msg.token, JWT_SECRET);
+    const login   = payload.login;
+    const r       = await pool.query(
+      `SELECT u.nickname
+         FROM users u
+         JOIN secret_profile s ON s.id = u.id
+        WHERE s.login = $1`,
+      [login]
+    );
+    const sender = r.rows[0] && r.rows[0].nickname;
+    if (!sender) return;
 
-          const time = new Date().toISOString();
-          await pool.query(
-            `INSERT INTO messages (room_id, sender_nickname, text, time)
-               VALUES ($1, $2, $3, $4)`,
-            [msg.roomId, sender, msg.text, time]
-          );
+    const time = new Date().toISOString();
+    await pool.query(
+      `INSERT INTO messages (room_id, sender_nickname, text, time)
+         VALUES ($1, $2, $3, $4)`,
+      [msg.roomId, sender, msg.text, time]
+    );
 
-          wss.clients.forEach(c => {
-            const info = clients.get(c);
-        if (info && info.roomId === msg.roomId && c.readyState === WebSocket.OPEN) {
-          c.send(JSON.stringify({
-            type:   'message',
-            roomId: msg.roomId,      // ← вот эта строка!
-            sender,
-            text:   msg.text,
-            time
-          }));
-        } catch (e) {
-          console.error('WS message error', e);
-        }
-        return;
+    // <-- Весь forEach внутри try, всё ок
+    wss.clients.forEach(c => {
+      const info = clients.get(c);
+      if (info && info.roomId === msg.roomId && c.readyState === WebSocket.OPEN) {
+        c.send(JSON.stringify({
+          type:   'message',
+          roomId: msg.roomId,
+          sender,
+          text:   msg.text,
+          time
+        }));
       }
+    });
+
+  } catch (e) {
+    console.error('WS message error', e);
+  }
+  return;
+}
+
 
       // FILE MESSAGE
       if (msg.type === 'file') {
