@@ -511,43 +511,34 @@ body.lightbox-open {
   .other-message .call-message {
     background-color: #e0f7fa;
   }
-  
+
+.hidden { display: none; }
+
 .sidebar-menu {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.menu-btn {
+.menu-btn,
+.back-btn {
   padding: 10px;
   border: none;
   background: #45a049;
-  border-radius: 12px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
   text-align: left;
-  transition: background 0.2s ease;
 }
 
-.menu-btn:hover {
-  background: #818f7e;
-}
-
-.sidebar-section.hidden {
-  display: none;
-}
-
-.back-btn {
-  align-self: flex-start;
-  padding: 6px 12px;
-  margin-bottom: 10px;
-  font-size: 14px;
-  background: #45a049;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-}
-
+.menu-btn:hover,
 .back-btn:hover {
   background: #818f7e;
 }
+
+.sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
