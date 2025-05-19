@@ -949,29 +949,49 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
     }
   });
 // ---- МЕНЮШКА С КНОПКАМИ
-const mainMenu    = document.getElementById('main-menu');
-const chatsSection = document.getElementById('chats-section');
-const chatMenuBtns = mainMenu.querySelectorAll('.menu-btn');
-const backBtn     = chatsSection.querySelector('.back-btn');
+// Селекторы
+const mainMenu      = document.getElementById('main-menu');
+const menuButtons   = mainMenu.querySelectorAll('.menu-btn');
+const sections      = document.querySelectorAll('.sidebar-section');
 
-// Клик по «Чаты»
-chatMenuBtns.forEach(btn => {
-  if (btn.dataset.section === 'chats') {
-    btn.addEventListener('click', () => {
-      mainMenu.classList.add('hidden');
-      chatsSection.classList.remove('hidden');
-      // если нужно сразу показать комнаты:
-      loadRooms();
-    });
-  }
+// Функции-загрузчики (заготовки, реализуйте сами)
+async function loadGroups() { /* fetch и отрисовка в #groups-list */ }
+async function loadChannels() { /* fetch и отрисовка в #channels-list */ }
+
+// Переключатель меню
+menuButtons.forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const target = btn.dataset.section; // "chats", "groups", ...
+
+    // 1) Скрыть главное меню и все секции
+    mainMenu.classList.add('hidden');
+    sections.forEach(sec => sec.classList.add('hidden'));
+
+    // 2) Показать нужную секцию
+    const sel = document.getElementById(`${target}-section`);
+    sel.classList.remove('hidden');
+
+    // 3) В зависимости от раздела — подгрузить список
+    if (target === 'chats') {
+      await loadRooms();
+    } else if (target === 'groups') {
+      await loadGroups();
+    } else if (target === 'channels') {
+      await loadChannels();
+    }
+    // Игры/приложения пока статичные, без загрузки
+  });
 });
 
-// Кнопка «← Назад» внутри секции Чаты
-backBtn.addEventListener('click', () => {
-  chatsSection.classList.add('hidden');
-  mainMenu.classList.remove('hidden');
+// Кнопки «← Назад» внутри каждого .sidebar-section
+document.querySelectorAll('.sidebar-section .back-btn').forEach(back => {
+  back.addEventListener('click', () => {
+    // Скрываем ВСЕ секции и показываем main-menu
+    sections.forEach(sec => sec.classList.add('hidden'));
+    mainMenu.classList.remove('hidden');
+  });
 });
-// ---- Конец вставки
+
 
   // Initialization
   loadRooms();
