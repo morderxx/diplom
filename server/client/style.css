@@ -512,6 +512,11 @@ body.lightbox-open {
     background-color: #e0f7fa;
   }
 
+/* скрываем сразу весь блок со всеми подменю */
+.sidebar-sections.hidden {
+  display: none;
+}
+
 .hidden { display: none; }
 
 .sidebar-menu {
