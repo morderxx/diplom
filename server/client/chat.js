@@ -547,6 +547,7 @@ document.getElementById('chat-box').addEventListener('click', e => {
        // если это не группа — один на один, то peer = другой участник
        if (!r.is_group) {
          currentPeer = r.members.find(n => n !== userNickname);
+         console.log('clicked room', r.id);
        } else {
          // для групп — либо имя группы, либо заголовок по id
          currentPeer = r.name || `Группа #${r.id}`;
