@@ -65,15 +65,14 @@ function setupWebSocket(server) {
 
           wss.clients.forEach(c => {
             const info = clients.get(c);
-            if (info && info.roomId === msg.roomId && c.readyState === WebSocket.OPEN) {
-              c.send(JSON.stringify({
-                type: 'message',
-                sender,
-                text: msg.text,
-                time
-              }));
-            }
-          });
+        if (info && info.roomId === msg.roomId && c.readyState === WebSocket.OPEN) {
+          c.send(JSON.stringify({
+            type:   'message',
+            roomId: msg.roomId,      // ← вот эта строка!
+            sender,
+            text:   msg.text,
+            time
+          }));
         } catch (e) {
           console.error('WS message error', e);
         }
