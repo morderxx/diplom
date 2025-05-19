@@ -949,48 +949,46 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
     }
   });
 // ---- МЕНЮШКА С КНОПКАМИ
-// Селекторы
-const mainMenu      = document.getElementById('main-menu');
-const menuButtons   = mainMenu.querySelectorAll('.menu-btn');
-const sections      = document.querySelectorAll('.sidebar-section');
+const mainMenu       = document.getElementById('main-menu');
+  const sectionsWrap   = document.querySelector('.sidebar-sections');
+  const sections       = document.querySelectorAll('.sidebar-section');
+  const menuButtons    = mainMenu.querySelectorAll('.menu-btn');
+  const backButtons    = document.querySelectorAll('.sidebar-section .back-btn');
 
-// Функции-загрузчики (заготовки, реализуйте сами)
-async function loadGroups() { /* fetch и отрисовка в #groups-list */ }
-async function loadChannels() { /* fetch и отрисовка в #channels-list */ }
+  // сначала на старте показываем только mainMenu
+  mainMenu.classList.remove('hidden');
+  sectionsWrap.classList.add('hidden');
 
-// Переключатель меню
-menuButtons.forEach(btn => {
-  btn.addEventListener('click', async () => {
-    const target = btn.dataset.section; // "chats", "groups", ...
+  // клик по любому пункту главного меню
+  menuButtons.forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const target = btn.dataset.section;        // e.g. "chats"
+      // 1) спрячем главное меню
+      mainMenu.classList.add('hidden');
+      // 2) покажем обёртку секций и сразу скрыть все внутри
+      sectionsWrap.classList.remove('hidden');
+      sections.forEach(s => s.classList.add('hidden'));
+      // 3) и только ту, что нужно
+      const sel = document.getElementById(`${target}-section`);
+      sel.classList.remove('hidden');
 
-    // 1) Скрыть главное меню и все секции
-    mainMenu.classList.add('hidden');
-    sections.forEach(sec => sec.classList.add('hidden'));
-
-    // 2) Показать нужную секцию
-    const sel = document.getElementById(`${target}-section`);
-    sel.classList.remove('hidden');
-
-    // 3) В зависимости от раздела — подгрузить список
-    if (target === 'chats') {
-      await loadRooms();
-    } else if (target === 'groups') {
-      await loadGroups();
-    } else if (target === 'channels') {
-      await loadChannels();
-    }
-    // Игры/приложения пока статичные, без загрузки
+      // 4) если это чаты — загружаем их
+      if (target === 'chats') await loadRooms();
+      // аналогично для групп / каналов:
+      if (target === 'groups') await loadGroups();
+      if (target === 'channels') await loadChannels();
+    });
   });
-});
 
-// Кнопки «← Назад» внутри каждого .sidebar-section
-document.querySelectorAll('.sidebar-section .back-btn').forEach(back => {
-  back.addEventListener('click', () => {
-    // Скрываем ВСЕ секции и показываем main-menu
-    sections.forEach(sec => sec.classList.add('hidden'));
-    mainMenu.classList.remove('hidden');
+  // «Назад» внутри любой секции
+  backButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      // спрятать секции
+      sectionsWrap.classList.add('hidden');
+      // вновь показать главное меню
+      mainMenu.classList.remove('hidden');
+    });
   });
-});
 
 
   // Initialization
