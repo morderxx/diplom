@@ -16,16 +16,48 @@
     <button class="menu-btn" data-section="groups">Группы</button>
     <button class="menu-btn" data-section="channels">Каналы</button>
     <button class="menu-btn" data-section="games">Игры</button>
-    <button class="menu-btn" data-section="apps">Мини-приложения</button>
+    <button class="menu-btn" data-section="apps">Мини‑приложения</button>
   </div>
 
-  <!-- Секция чатов -->
-  <div id="chats-section" class="sidebar-section hidden">
-    <button class="back-btn">← Назад</button>
-    <h2>Доступные чаты</h2>
-    <ul id="rooms-list" class="rooms-list"></ul>
+  <!-- Обёртка для всех подменю -->
+  <div class="sidebar-sections">
+
+    <!-- Секция: Чаты -->
+    <div id="chats-section" class="sidebar-section hidden">
+      <button class="back-btn">← Назад</button>
+      <h2>Чаты</h2>
+      <ul id="rooms-list" class="rooms-list"></ul>
+    </div>
+
+    <!-- Секция: Группы -->
+    <div id="groups-section" class="sidebar-section hidden">
+      <button class="back-btn">← Назад</button>
+      <h2>Группы</h2>
+      <ul id="groups-list" class="rooms-list"></ul>
+    </div>
+
+    <!-- Секция: Каналы -->
+    <div id="channels-section" class="sidebar-section hidden">
+      <button class="back-btn">← Назад</button>
+      <h2>Каналы</h2>
+      <ul id="channels-list" class="rooms-list"></ul>
+    </div>
+
+    <!-- Секция: Игры (пока пустая, без «назад») -->
+    <div id="games-section" class="sidebar-section hidden">
+      <h2>Игры</h2>
+      <p>Раздел «Игры» в разработке.</p>
+    </div>
+
+    <!-- Секция: Мини‑приложения -->
+    <div id="apps-section" class="sidebar-section hidden">
+      <h2>Мини‑приложения</h2>
+      <p>Раздел «Мини‑приложения» в разработке.</p>
+    </div>
+
   </div>
 </aside>
+
 
 
 <section id="chat-section" class="chat-container">
