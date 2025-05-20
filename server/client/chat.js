@@ -60,7 +60,9 @@ function formatCallText({ initiator, recipient, status, duration, time }) {
   const sendBtn      = document.getElementById('send-btn');
   const voiceBtn     = document.getElementById('voice-btn');
   const createGroupBtn = document.getElementById('create-group-btn');
-  const inputContainer = document.querySelector('.input-container');
+  const inputContainer = document.getElementById('input-container');
+  const readonlyNote   = document.getElementById('readonly-note');
+
 
 
   // File input
@@ -727,12 +729,12 @@ async function joinRoom(roomId) {
   currentRoom = roomId;
 
   // блокируем ввод, если это канал и мы не автор
-  const meta = roomMeta[roomId] || {};
-  const readOnly = meta.is_channel && meta.creator !== userNickname;
+const meta = roomMeta[roomId] || {};
+const readOnly = meta.is_channel && meta.creator !== userNickname;
 
-  if (inputContainer) {
-    inputContainer.style.display = readOnly ? 'none' : 'flex';
-  }
+if (inputContainer) inputContainer.style.display = readOnly ? 'none' : 'flex';
+if (readonlyNote)   readonlyNote.style.display   = readOnly ? 'block' : 'none';
+
 
   
   // показываем заголовок и подставляем ник текущего собеседника
