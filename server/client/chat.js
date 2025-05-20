@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const token        = localStorage.getItem('token');
   const userNickname = localStorage.getItem('nickname');
   const renderedFileIds = new Set();
+  const roomMeta = {}; 
 
   if (!token || !userNickname) {
     window.location.href = 'index.html';
@@ -59,6 +60,8 @@ function formatCallText({ initiator, recipient, status, duration, time }) {
   const sendBtn      = document.getElementById('send-btn');
   const voiceBtn     = document.getElementById('voice-btn');
   const createGroupBtn = document.getElementById('create-group-btn');
+  const inputContainer = document.querySelector('.input-container');
+
 
   // File input
   const fileInput    = document.createElement('input');
@@ -649,6 +652,13 @@ document.getElementById('chat-box').addEventListener('click', e => {
     const res = await fetch(`${API_URL}/rooms`, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) return console.error(await res.text());
     const rooms = await res.json();
+       // ─── запоминаем, что это канал и кто его автор ─────────
+   rooms.forEach(r => {
+     roomMeta[r.id] = {
+       is_channel: r.is_channel,
+       creator:    r.creator_nickname
+     };
+   });
     const ul = document.getElementById('rooms-list');
     ul.innerHTML = '';
     rooms.forEach(r => {
@@ -715,6 +725,16 @@ async function joinRoom(roomId) {
   // начинаем с чистого списка отрисованных файлов
   renderedFileIds.clear();
   currentRoom = roomId;
+
+  // блокируем ввод, если это канал и мы не автор
+  const meta = roomMeta[roomId] || {};
+  const readOnly = meta.is_channel && meta.creator !== userNickname;
+
+  if (inputContainer) {
+    inputContainer.style.display = readOnly ? 'none' : 'flex';
+  }
+
+  
   // показываем заголовок и подставляем ник текущего собеседника
 const header = document.getElementById('chat-header');
 const peerEl = document.getElementById('chat-peer');
