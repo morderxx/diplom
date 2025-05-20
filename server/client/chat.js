@@ -805,11 +805,13 @@ async function joinRoom(roomId) {
   inputContainer.style.display = readOnly ? 'none' : 'flex';
   readonlyNote  .style.display = readOnly ? 'block' : 'none';
   const callBtn = document.getElementById('call-btn');
-if (meta.is_channel) {
-  callBtn.style.display = 'none';
-} else {
-  callBtn.style.display = 'inline-block';
-}
+// Здесь используем именно m, а не meta
+  if (m.is_channel) {
+    callBtn.style.display = 'none';
+  } else {
+    callBtn.style.display = 'inline-block';
+  }
+
   // формируем заголовок
   const header = document.getElementById('chat-header');
   const left   = header.querySelector('.chat-header__left');
