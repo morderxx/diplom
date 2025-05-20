@@ -41,6 +41,8 @@ router.get('/', authMiddleware, async (req, res) => {
          r.id,
          r.name,
          r.is_group,
+         r.is_channel,                       -- ← добавлено
+         r.creator_nickname,                 -- ← добавлено
          r.created_at,
          array_agg(m.nickname ORDER BY m.nickname) AS members
        FROM rooms r
@@ -59,9 +61,9 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
-// 2) POST /api/rooms — создать или вернуть чат
+// 2) POST /api/rooms — создать или вернуть чат/группу/канал
 router.post('/', authMiddleware, async (req, res) => {
-  let { is_group, members } = req.body;
+  let { is_group, is_channel = false, members } = req.body;  // ← добавлен is_channel
   let name = req.body.name || null;
 
   if (!Array.isArray(members) || members.length < 1) {
@@ -74,7 +76,7 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 
   // приватный чат: ровно 2 участника
-  if (!is_group && members.length === 2) {
+  if (!is_group && !is_channel && members.length === 2) {
     const [a, b] = members.sort();
     const exist = await pool.query(
       `SELECT r.id
@@ -82,6 +84,7 @@ router.post('/', authMiddleware, async (req, res) => {
          JOIN room_members m1 ON m1.room_id = r.id
          JOIN room_members m2 ON m2.room_id = r.id
         WHERE r.is_group = FALSE
+          AND r.is_channel = FALSE
           AND m1.nickname = $1
           AND m2.nickname = $2`,
       [a, b]
@@ -95,12 +98,17 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 
   try {
+    // создаём комнату/группу/канал
     const roomRes = await pool.query(
-      'INSERT INTO rooms (name, is_group) VALUES ($1,$2) RETURNING id, name',
-      [name, is_group]
+      `INSERT INTO rooms 
+         (name, is_group, is_channel, creator_nickname)    -- ← добавлены поля
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, name, is_channel, creator_nickname`,  // ← возвращаем оба
+      [ name, is_group, is_channel, req.userNickname ]
     );
     const roomId = roomRes.rows[0].id;
 
+    // в любом случае добавляем записи в room_members
     await Promise.all(
       members.map(nick =>
         pool.query(
@@ -110,7 +118,13 @@ router.post('/', authMiddleware, async (req, res) => {
       )
     );
 
-    res.json({ roomId, name: roomRes.rows[0].name });
+    // возвращаем клиенту id, name и новый флаг канала + автора
+    res.json({
+      roomId,
+      name:        roomRes.rows[0].name,
+      is_channel:  roomRes.rows[0].is_channel,
+      creator:     roomRes.rows[0].creator_nickname
+    });
   } catch (err) {
     console.error('Error creating room:', err);
     res.status(500).send('Error creating room');
