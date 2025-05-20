@@ -81,6 +81,119 @@ function formatCallText({ initiator, recipient, status, duration, time }) {
   const lbCloseBtn   = document.getElementById('lightbox-close');
   const lbDownloadBtn= document.getElementById('lightbox-download');
 
+  // Элементы модалки
+const groupModal        = document.getElementById('group-modal');
+const groupNameInput    = document.getElementById('group-name-input');
+const userSearchInput   = document.getElementById('group-user-search');
+const suggestionsList   = document.getElementById('group-user-suggestions');
+const selectedUsersDiv  = document.getElementById('group-selected-users');
+const cancelGroupBtn    = document.getElementById('group-cancel-btn');
+const createGroupBtn2   = document.getElementById('group-create-btn');
+
+// Храним полный список пользователей (никнеймы) и выбранных
+let allUsers = [];
+const selectedUsers = new Set();
+
+// Загрузка всех пользователей один раз
+async function loadAllUsers() {
+  const res = await fetch(`${API_URL}/users`, { headers:{ Authorization:`Bearer ${token}` } });
+  if (!res.ok) return console.error('Cannot load users');
+  const users = await res.json();
+  allUsers = users.map(u => u.nickname);
+}
+loadAllUsers();
+
+// Открыть модалку
+createGroupBtn.onclick = () => {
+  groupNameInput.value = '';
+  userSearchInput.value = '';
+  suggestionsList.innerHTML = '';
+  selectedUsers.clear();
+  renderSelectedUsers();
+  groupModal.classList.remove('hidden');
+  userSearchInput.focus();
+};
+
+// Закрыть модалку
+cancelGroupBtn.onclick = () => {
+  groupModal.classList.add('hidden');
+};
+
+// Рендер выбранных
+function renderSelectedUsers() {
+  selectedUsersDiv.innerHTML = '';
+  for (const nick of selectedUsers) {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = nick;
+    const rem = document.createElement('span');
+    rem.className = 'remove';
+    rem.textContent = '×';
+    rem.onclick = () => {
+      selectedUsers.delete(nick);
+      renderSelectedUsers();
+    };
+    tag.append(rem);
+    selectedUsersDiv.append(tag);
+  }
+}
+
+// Фильтрация подсказок при вводе
+userSearchInput.addEventListener('input', () => {
+  const q = userSearchInput.value.trim().toLowerCase();
+  suggestionsList.innerHTML = '';
+  if (!q) return;
+  // ищем по началу слова
+  const matches = allUsers.filter(n =>
+    n.toLowerCase().includes(q) && !selectedUsers.has(n)
+  ).slice(0, 10);
+  for (const nick of matches) {
+    const li = document.createElement('li');
+    li.textContent = nick;
+    li.onclick = () => {
+      selectedUsers.add(nick);
+      renderSelectedUsers();
+      userSearchInput.value = '';
+      suggestionsList.innerHTML = '';
+      userSearchInput.focus();
+    };
+    suggestionsList.append(li);
+  }
+});
+
+// Нажали «Создать»
+createGroupBtn2.onclick = async () => {
+  const name = groupNameInput.value.trim();
+  if (!name) return alert('Укажи имя группы');
+  if (selectedUsers.size === 0) return alert('Добавь хотя бы одного участника');
+
+  // Обязательно добавить себя
+  selectedUsers.add(userNickname);
+  try {
+    const res = await fetch(`${API_URL}/rooms`, {
+      method:'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        is_group: true,
+        name,
+        members: Array.from(selectedUsers)
+      })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const { roomId } = await res.json();
+    // Закрыть и обновить
+    groupModal.classList.add('hidden');
+    await loadRooms();
+    joinRoom(roomId);
+  } catch (err) {
+    console.error(err);
+    alert('Не удалось создать группу: ' + err.message);
+  }
+};
+
   // Добавляет системное сообщение в чат
   function appendSystem(text) {
     const chatBox = document.getElementById('chat-box');
