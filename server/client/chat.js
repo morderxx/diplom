@@ -199,6 +199,7 @@ setupUserSearch(addUserSearchInput, addSuggestionsList, addSelectedUsers, render
 
 // Открываем нашу новую модалку при клике
 addMemberBtn.onclick = () => {
+  groupModal.dataset.mode = 'add';
   addUserSearchInput.value = '';
   addSuggestionsList.innerHTML = '';
   addSelectedUsers.clear();
@@ -231,20 +232,6 @@ addCancelBtn.onclick = () => {
     console.error(err);
     alert('Не удалось добавить участников: ' + err.message);
   }
-};
-
-
-  // Открываем нашу новую модалку при клике
-addMemberBtn.onclick = () => {
-  addUserSearchInput.value = '';
-  addSuggestionsList.innerHTML = '';
-  addSelectedUsers.clear();
-  renderAddSelected();
-  addMemberModal.classList.remove('hidden');
-  addUserSearchInput.focus();
-};
-addCancelBtn.onclick = () => {
-  addMemberModal.classList.add('hidden');
 };
 
   // Нажали «Создать канал»
