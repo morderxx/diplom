@@ -705,41 +705,40 @@ document.getElementById('chat-box').addEventListener('click', e => {
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.add('hidden'); });
 
   // Загрузка и отправка чата
-  async function loadRooms() {
-    const res = await fetch(`${API_URL}/rooms`, { headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) return console.error(await res.text());
-    const rooms = await res.json();
-// ─── запоминаем, что за комната ───────────────────────────────────
-rooms.forEach(r => {
-  roomMeta[r.id] = {
-    is_group:   r.is_group,
-    is_channel: r.is_channel,
-    name:       r.name,
-    creator:    r.creator_nickname
-  };
-});
+async function loadRooms() {
+  const res = await fetch(`${API_URL}/rooms`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) return console.error(await res.text());
+  const rooms = await res.json();
 
-    const ul = document.getElementById('rooms-list');
-    ul.innerHTML = '';
-    rooms.forEach(r => {
-      const li = document.createElement('li');
-      li.textContent = r.is_group
+  // сброс meta и заполнение
+  Object.keys(roomMeta).forEach(k => delete roomMeta[k]);
+  rooms.forEach(r => {
+    roomMeta[r.id] = {
+      is_group:   r.is_group,
+      is_channel: r.is_channel,
+      name:       r.name,
+      creator:    r.creator_nickname
+    };
+  });
+
+  const ul = document.getElementById('rooms-list');
+  ul.innerHTML = '';
+  rooms.forEach(r => {
+    const li = document.createElement('li');
+    li.textContent = r.is_group
+      ? (r.name || `Группа #${r.id}`)
+      : (r.members.find(n => n !== userNickname) || '(без имени)');
+    li.dataset.id = r.id;
+    li.onclick = () => {
+      // для приватного чата currentPeer
+      currentPeer = r.is_group
         ? (r.name || `Группа #${r.id}`)
-        : (r.members.find(n => n !== userNickname) || '(без имени)');
-      li.dataset.id = r.id;
-        li.onclick = () => {
-       // если это не группа — один на один, то peer = другой участник
-       if (!r.is_group) {
-         currentPeer = r.members.find(n => n !== userNickname);
-       } else {
-         // для групп — либо имя группы, либо заголовок по id
-         currentPeer = r.name || `Группа #${r.id}`;
-       }
-       joinRoom(r.id);
-     };
-      ul.appendChild(li);
-    });
-  }
+        : r.members.find(n => n !== userNickname);
+      joinRoom(r.id);
+    };
+    ul.appendChild(li);
+  });
+}
 
   async function loadUsers() {
     const res = await fetch(`${API_URL}/users`, { headers: { Authorization: `Bearer ${token}` } });
@@ -782,43 +781,30 @@ rooms.forEach(r => {
   
 async function joinRoom(roomId) {
   if (socket) socket.close();
-  // начинаем с чистого списка отрисованных файлов
   renderedFileIds.clear();
   currentRoom = roomId;
 
-  // блокируем ввод, если это канал и мы не автор
-const meta = roomMeta[roomId] || {};
-const readOnly = meta.is_channel && meta.creator !== userNickname;
+  // readonly для каналов
+  const m = roomMeta[roomId] || {};
+  const readOnly = m.is_channel && m.creator !== userNickname;
+  inputContainer.style.display = readOnly ? 'none' : 'flex';
+  readonlyNote  .style.display = readOnly ? 'block' : 'none';
 
-if (inputContainer) inputContainer.style.display = readOnly ? 'none' : 'flex';
-if (readonlyNote)   readonlyNote.style.display   = readOnly ? 'block' : 'none';
-
-
-  
-  // показываем заголовок и подставляем ник текущего собеседника
-// получаем мета-информацию о комнате
-const meta   = roomMeta[roomId] || {};
-const header = document.getElementById('chat-header');
-const left   = header.querySelector('.chat-header__left');
-
-// формируем шапку в зависимости от типа
-let title;
-if (meta.is_channel) {
-  title = `Канал: ${meta.name || `#${roomId}`}`;
-} else if (meta.is_group) {
-  title = `Группа: ${meta.name || `#${roomId}`}`;
-} else {
-  // приватный чат
-  title = `Собеседник: ${currentPeer}`;
-}
-
-// вставляем и показываем
-left.textContent = title;
-header.classList.remove('hidden');
-document.getElementById('chat-section').classList.add('active');
-
-// чистим окно сообщений
-document.getElementById('chat-box').innerHTML = '';
+  // формируем заголовок
+  const header = document.getElementById('chat-header');
+  const left   = header.querySelector('.chat-header__left');
+  let title;
+  if (m.is_channel) {
+    title = `Канал: ${m.name || `#${roomId}`}`;
+  } else if (m.is_group) {
+    title = `Группа: ${m.name || `#${roomId}`}`;
+  } else {
+    title = `Собеседник: ${currentPeer}`;
+  }
+  left.textContent = title;
+  header.classList.remove('hidden');
+  document.getElementById('chat-section').classList.add('active');
+  document.getElementById('chat-box').innerHTML = '';
 
 
   // Настраиваем WebSocket
