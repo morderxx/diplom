@@ -62,7 +62,7 @@ function formatCallText({ initiator, recipient, status, duration, time }) {
   const createGroupBtn = document.getElementById('create-group-btn');
   const inputContainer = document.getElementById('input-container');
   const readonlyNote   = document.getElementById('readonly-note');
-
+ 
 
 
   // File input
@@ -96,6 +96,8 @@ const selectedUsersDiv  = document.getElementById('group-selected-users');
 const cancelGroupBtn    = document.getElementById('group-cancel-btn');
 const createGroupBtn2   = document.getElementById('group-create-btn');
 const createChannelBtn = document.getElementById('create-channel-btn');
+const addMemberBtn      = document.getElementById('add-member-btn');
+const groupNameWrapper  = document.getElementById('group-name-wrapper');
 
 // Храним полный список пользователей (никнеймы) и выбранных
 let allUsers = [];
@@ -144,6 +146,58 @@ function renderSelectedUsers() {
     selectedUsersDiv.append(tag);
   }
 }
+
+  createGroupBtn2.onclick = async () => {
+  const mode    = groupModal.dataset.mode || 'create';  // либо 'create', либо 'add'
+  const name    = groupNameInput.value.trim();
+  const members = Array.from(selectedUsers);
+
+  if (mode === 'create') {
+    if (!name)    return alert('Укажи название');
+    if (!members.length) return alert('Добавь участников');
+
+    // … ваш существующий fetch POST /rooms …
+  } else {
+    // режим добавления
+    if (!members.length) return alert('Выберите хотя бы одного участника');
+    try {
+      const res = await fetch(`${API_URL}/rooms/${currentRoom}/members`, {
+        method: 'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ members })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      groupModal.classList.add('hidden');
+      await loadRooms();
+      joinRoom(currentRoom);
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось добавить участников: ' + err.message);
+    }
+  }
+};
+
+  addMemberBtn.onclick = () => {
+  const meta = roomMeta[currentRoom] || {};
+  if (!meta.is_group) return;      // только для групп
+
+  // переключаем модалку в режим «add»
+  groupModal.dataset.mode = 'add';
+  document.querySelector('#group-modal h3').textContent = 'Добавить участников';
+  groupNameWrapper.style.display = 'none';  // скрываем название
+
+  // сбрасываем форму
+  userSearchInput.value     = '';
+  suggestionsList.innerHTML = '';
+  selectedUsers.clear();
+  renderSelectedUsers();
+
+  groupModal.classList.remove('hidden');
+  userSearchInput.focus();
+};
 
 // Фильтрация подсказок при вводе
 userSearchInput.addEventListener('input', () => {
@@ -813,6 +867,7 @@ async function joinRoom(roomId) {
 
     // Кнопка "Добавить участников" — только для групп
   const addBtn = document.getElementById('add-member-btn');
+  addMemberBtn.style.display = m.is_group ? 'inline-flex' : 'none';
   if (m.is_group) {
     addBtn.style.display = '';
   } else {
