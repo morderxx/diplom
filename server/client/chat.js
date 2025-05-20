@@ -200,6 +200,42 @@ createGroupBtn2.onclick = async () => {
   }
 };
 
+  document.getElementById('create-channel-btn').addEventListener('click', async () => {
+  const name = prompt('Введите название канала:');
+  if (!name) return;
+
+  const membersInput = prompt('Укажите ники участников через запятую:');
+  if (!membersInput) return;
+  const members = membersInput.split(',').map(s => s.trim()).filter(Boolean);
+
+  try {
+    const res = await fetch('/api/rooms', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + localStorage.getItem('token')
+      },
+      body: JSON.stringify({
+        is_group: true,
+        name,
+        members,
+        is_channel: true // 👈 ключ для различия каналов и обычных групп
+      })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      alert(`Канал "${data.name}" создан`);
+    } else {
+      const text = await res.text();
+      alert('Ошибка: ' + text);
+    }
+  } catch (e) {
+    console.error('Ошибка при создании канала:', e);
+    alert('Ошибка при создании канала');
+  }
+});
+
   // Добавляет системное сообщение в чат
   function appendSystem(text) {
     const chatBox = document.getElementById('chat-box');
