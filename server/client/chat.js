@@ -717,7 +717,8 @@ async function loadRooms() {
       is_group:   r.is_group,
       is_channel: r.is_channel,
       name:       r.name,
-      creator:    r.creator_nickname
+      creator:    r.creator_nickname,
+      members:    r.members
     };
   });
 
@@ -725,20 +726,34 @@ async function loadRooms() {
   ul.innerHTML = '';
   rooms.forEach(r => {
     const li = document.createElement('li');
-    li.textContent = r.is_group
-      ? (r.name || `Группа #${r.id}`)
-      : (r.members.find(n => n !== userNickname) || '(без имени)');
+    let label;
+    // сначала каналы
+    if (r.is_channel) {
+      label = r.name || `Канал #${r.id}`;
+    }
+    // потом группы
+    else if (r.is_group) {
+      label = r.name || `Группа #${r.id}`;
+    }
+    // иначе приватный чат
+    else {
+      label = r.members.find(n => n !== userNickname) || '(без имени)';
+    }
+
+    li.textContent = label;
     li.dataset.id = r.id;
     li.onclick = () => {
-      // для приватного чата currentPeer
-      currentPeer = r.is_group
-        ? (r.name || `Группа #${r.id}`)
-        : r.members.find(n => n !== userNickname);
+      // для приватного чата currentPeer = ник другого
+      // для групп/каналов — просто показываем label
+      currentPeer = (!r.is_group && !r.is_channel)
+        ? r.members.find(n => n !== userNickname)
+        : label;
       joinRoom(r.id);
     };
     ul.appendChild(li);
   });
 }
+
 
   async function loadUsers() {
     const res = await fetch(`${API_URL}/users`, { headers: { Authorization: `Bearer ${token}` } });
