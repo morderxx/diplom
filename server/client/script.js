@@ -27,15 +27,19 @@ async function login() {
   const profRes = await fetch(`${API_URL}/profile`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
-  if (profRes.ok) {
-    const { nickname } = await profRes.json();
-    localStorage.setItem('nickname', nickname);
-  } else {
-    window.location.href = 'profile.html';
-    return;
+
+  if (!profRes.ok) {
+    // Профиля нет → заполняем
+    return window.location.href = 'profile.html';
   }
 
-  // 3) Идём в чат
+  const profile = await profRes.json();
+  // Если nickname не задан — считаем профиль неполным
+  if (!profile.nickname) {
+    return window.location.href = 'profile.html';
+  }
+
+  // 3) Всё есть — идём в чат
   window.location.href = 'chat.html';
 }
 
@@ -58,5 +62,7 @@ async function register() {
   await login();
 }
 
+// Навешиваем обработчики
 document.getElementById('registerButton').onclick = register;
-document.getElementById('showRegisterButton').onclick = showRegister;
+document.getElementById('loginButton').onclick    = login;
+document.getElementById('showRegister').onclick   = showRegister;
