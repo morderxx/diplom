@@ -65,6 +65,27 @@
       </div>
     </div>
   </div>
+
+  <div id="group-modal" class="hidden">
+  <div class="modal-overlay"></div>
+  <div class="modal-window">
+    <h3>Новая группа</h3>
+    <label>
+      Название группы:
+      <input type="text" id="group-name-input" placeholder="Введите название">
+    </label>
+    <label>
+      Добавить участников:
+      <input type="text" id="group-user-search" placeholder="Поиск по никам">
+    </label>
+    <ul id="group-user-suggestions" class="suggestions-list"></ul>
+    <div id="group-selected-users" class="selected-list"></div>
+    <div class="modal-actions">
+      <button id="group-cancel-btn">Отмена</button>
+      <button id="group-create-btn">Создать</button>
+    </div>
+  </div>
+</div>
   <script src="chat.js"></script>
 </body>
 </html>
