@@ -29,13 +29,20 @@
     <div id="chat-box" class="chat-box"></div>
   </div>
 
-  <!-- поле ввода без кнопки звонка -->
-  <div class="input-container">
-    <button id="attach-btn" class="icon-btn">📎</button>
-    <!-- <button id="call-btn" …>☎️</button> — убрали -->
-    <textarea id="message" placeholder="Введите сообщение..." rows="1"></textarea>
-    <button id="send-btn" class="icon-btn">➤</button>
-    <button id="voice-btn" class="icon-btn">🎤</button>
+  <!-- обёртка, внутри либо поле ввода, либо подсказка -->
+  <div id="chat-input-wrapper">
+    <!-- поле ввода -->
+    <div class="input-container" id="input-container">
+      <button id="attach-btn" class="icon-btn">📎</button>
+      <textarea id="message" placeholder="Введите сообщение..." rows="1"></textarea>
+      <button id="send-btn" class="icon-btn">➤</button>
+      <button id="voice-btn" class="icon-btn">🎤</button>
+    </div>
+
+    <!-- подсказка -->
+    <p class="readonly-note" id="readonly-note" style="display: none;">
+      Это канал. Только автор может публиковать сообщения.
+    </p>
   </div>
 </section>
 
