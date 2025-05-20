@@ -811,6 +811,13 @@ async function joinRoom(roomId) {
     callBtn.style.display = ''; 
   }
 
+    // Кнопка "Добавить участников" — только для групп
+  const addBtn = document.getElementById('add-member-btn');
+  if (m.is_group) {
+    addBtn.style.display = '';
+  } else {
+    addBtn.style.display = 'none';
+  }
   // формируем заголовок
   const header = document.getElementById('chat-header');
   const left   = header.querySelector('.chat-header__left');
