@@ -234,48 +234,6 @@ addCancelBtn.onclick = () => {
 };
 
 
-  addMemberBtn.onclick = () => {
-  const meta = roomMeta[currentRoom] || {};
-  if (!meta.is_group) return;      // только для групп
-
-  // переключаем модалку в режим «add»
-  groupModal.dataset.mode = 'add';
-  document.querySelector('#group-modal h3').textContent = 'Добавить участников';
-  groupNameWrapper.style.display = 'none';  // скрываем название
-
-  // сбрасываем форму
-  userSearchInput.value     = '';
-  suggestionsList.innerHTML = '';
-  selectedUsers.clear();
-  renderSelectedUsers();
-
-  groupModal.classList.remove('hidden');
-  userSearchInput.focus();
-};
-
-// Фильтрация подсказок при вводе
-userSearchInput.addEventListener('input', () => {
-  const q = userSearchInput.value.trim().toLowerCase();
-  suggestionsList.innerHTML = '';
-  if (!q) return;
-  // ищем по началу слова
-  const matches = allUsers.filter(n =>
-    n.toLowerCase().includes(q) && !selectedUsers.has(n)
-  ).slice(0, 10);
-  for (const nick of matches) {
-    const li = document.createElement('li');
-    li.textContent = nick;
-    li.onclick = () => {
-      selectedUsers.add(nick);
-      renderSelectedUsers();
-      userSearchInput.value = '';
-      suggestionsList.innerHTML = '';
-      userSearchInput.focus();
-    };
-    suggestionsList.append(li);
-  }
-});
-
   // Открываем нашу новую модалку при клике
 addMemberBtn.onclick = () => {
   addUserSearchInput.value = '';
