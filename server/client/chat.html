@@ -98,6 +98,25 @@
     </div>
   </div>
 </div>
+
+  <!-- Модалка для добавления участников -->
+<div id="add-member-modal" class="hidden">
+  <div class="modal-overlay"></div>
+  <div class="modal-window">
+    <h3>Добавить участников</h3>
+    <label>
+      Поиск по никам:
+      <input type="text" id="add-user-search" placeholder="Введите ник">
+    </label>
+    <ul id="add-user-suggestions" class="suggestions-list"></ul>
+    <div id="add-selected-users" class="selected-list"></div>
+    <div class="modal-actions">
+      <button id="add-cancel-btn">Отмена</button>
+      <button id="add-confirm-btn">Добавить</button>
+    </div>
+  </div>
+</div>
+
   <script src="chat.js"></script>
 </body>
 </html>
