@@ -804,7 +804,12 @@ async function joinRoom(roomId) {
   const readOnly = m.is_channel && m.creator !== userNickname;
   inputContainer.style.display = readOnly ? 'none' : 'flex';
   readonlyNote  .style.display = readOnly ? 'block' : 'none';
-
+  const callBtn = document.getElementById('call-btn');
+if (meta.is_channel) {
+  callBtn.style.display = 'none';
+} else {
+  callBtn.style.display = 'inline-block';
+}
   // формируем заголовок
   const header = document.getElementById('chat-header');
   const left   = header.querySelector('.chat-header__left');
