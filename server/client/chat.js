@@ -95,6 +95,7 @@ const suggestionsList   = document.getElementById('group-user-suggestions');
 const selectedUsersDiv  = document.getElementById('group-selected-users');
 const cancelGroupBtn    = document.getElementById('group-cancel-btn');
 const createGroupBtn2   = document.getElementById('group-create-btn');
+const createChannelBtn = document.getElementById('create-channel-btn');
 
 // Храним полный список пользователей (никнеймы) и выбранных
 let allUsers = [];
@@ -200,41 +201,59 @@ createGroupBtn2.onclick = async () => {
   }
 };
 
-  document.getElementById('create-channel-btn').addEventListener('click', async () => {
-  const name = prompt('Введите название канала:');
-  if (!name) return;
+  // Нажали «Создать канал»
+createChannelBtn.onclick = () => {
+  // переиспользуем ту же модалку, но меняем текст заголовка
+  document.querySelector('#group-modal h3').textContent = 'Новый канал';
+  groupNameInput.placeholder = 'Введите название канала';
+  groupModal.classList.remove('hidden');
+  userSearchInput.value = '';
+  suggestionsList.innerHTML = '';
+  selectedUsers.clear();
+  renderSelectedUsers();
+  userSearchInput.focus();
+};
 
-  const membersInput = prompt('Укажите ники участников через запятую:');
-  if (!membersInput) return;
-  const members = membersInput.split(',').map(s => s.trim()).filter(Boolean);
+// Обработчик «Создать» для каналов
+// Можно переиспользовать тот же createGroupBtn2, но различить по флагу is_channel:
+createGroupBtn2.onclick = async () => {
+  const name = groupNameInput.value.trim();
+  if (!name) return alert('Укажи название');
+  if (selectedUsers.size === 0) return alert('Добавь хотя бы одного участника');
+
+  // Добавляем себя
+  selectedUsers.add(userNickname);
+
+  // Определяем, это мы создаём канал или группу
+  const isChannel = document.querySelector('#group-modal h3').textContent.includes('канал');
 
   try {
-    const res = await fetch('/api/rooms', {
+    const res = await fetch(`${API_URL}/rooms`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + localStorage.getItem('token')
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        is_group: true,
+        is_group:   !isChannel,          // если канал — false
+        is_channel: isChannel,           // если канал — true
         name,
-        members,
-        is_channel: true // 👈 ключ для различия каналов и обычных групп
+        members: Array.from(selectedUsers)
       })
     });
 
-    if (res.ok) {
-      const data = await res.json();
-      alert(`Канал "${data.name}" создан`);
-    } else {
-      const text = await res.text();
-      alert('Ошибка: ' + text);
-    }
-  } catch (e) {
-    console.error('Ошибка при создании канала:', e);
-    alert('Ошибка при создании канала');
+    if (!res.ok) throw new Error(await res.text());
+    const { roomId } = await res.json();
+
+    groupModal.classList.add('hidden');
+    await loadRooms();
+    joinRoom(roomId);
+
+  } catch (err) {
+    console.error(err);
+    alert(`Не удалось создать ${isChannel ? 'канал' : 'группу'}: ` + err.message);
   }
-});
+};
 
   // Добавляет системное сообщение в чат
   function appendSystem(text) {
