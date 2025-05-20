@@ -55,7 +55,7 @@ async function register() {
   }
 
   // После регистрации — сразу логинимся
-  await login();
+   window.location.href = 'profile.html';
 }
 
 document.getElementById('registerButton').onclick = register;
