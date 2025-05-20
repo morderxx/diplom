@@ -40,14 +40,14 @@ async function login() {
 }
 
 async function register() {
-  const login    = document.getElementById('login').value;
-  const password = document.getElementById('password').value;
-  const keyword  = document.getElementById('keyword').value;
+  const loginInput = document.getElementById('login').value;
+  const password   = document.getElementById('password').value;
+  const keyword    = document.getElementById('keyword').value;
 
   const res = await fetch(`${API_URL}/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ login, pass: password, keyword })
+    body: JSON.stringify({ login: loginInput, pass: password, keyword })
   });
   if (!res.ok) {
     document.getElementById('message').innerText = 'Ошибка регистрации';
@@ -57,5 +57,6 @@ async function register() {
   // После регистрации — сразу логинимся
   await login();
 }
+
 
 document.getElementById('registerButton').onclick = register;
