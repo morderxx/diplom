@@ -808,9 +808,7 @@ async function joinRoom(roomId) {
 // Здесь используем именно m, а не meta
   if (m.is_channel) {
     callBtn.style.display = 'none';
-  } else {
-    callBtn.style.display = 'inline-block';
-  }
+  } 
 
   // формируем заголовок
   const header = document.getElementById('chat-header');
