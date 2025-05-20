@@ -58,6 +58,7 @@ function formatCallText({ initiator, recipient, status, duration, time }) {
   const callBtn      = document.getElementById('call-btn');
   const sendBtn      = document.getElementById('send-btn');
   const voiceBtn     = document.getElementById('voice-btn');
+  const createGroupBtn = document.getElementById('create-group-btn');
 
   // File input
   const fileInput    = document.createElement('input');
