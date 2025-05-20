@@ -77,7 +77,7 @@ button:hover {
 /* =================== */
 /*   СТИЛИ ДЛЯ ЧАТА    */
 /* =================== */
-
+.hidden { display: none; }
 .chat-wrapper {
   display: flex;
   width: 90%;
