@@ -156,6 +156,11 @@ button:hover {
   overflow: hidden;
 }
 
+.chat-header__actions {
+  display: flex;
+  gap: 8px;
+}
+
 /* Шапка чата */
 .chat-header {
   display: flex;
