@@ -709,13 +709,16 @@ document.getElementById('chat-box').addEventListener('click', e => {
     const res = await fetch(`${API_URL}/rooms`, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) return console.error(await res.text());
     const rooms = await res.json();
-       // ─── запоминаем, что это канал и кто его автор ─────────
-   rooms.forEach(r => {
-     roomMeta[r.id] = {
-       is_channel: r.is_channel,
-       creator:    r.creator_nickname
-     };
-   });
+// ─── запоминаем, что за комната ───────────────────────────────────
+rooms.forEach(r => {
+  roomMeta[r.id] = {
+    is_group:   r.is_group,
+    is_channel: r.is_channel,
+    name:       r.name,
+    creator:    r.creator_nickname
+  };
+});
+
     const ul = document.getElementById('rooms-list');
     ul.innerHTML = '';
     rooms.forEach(r => {
@@ -793,15 +796,30 @@ if (readonlyNote)   readonlyNote.style.display   = readOnly ? 'block' : 'none';
 
   
   // показываем заголовок и подставляем ник текущего собеседника
+// получаем мета-информацию о комнате
+const meta   = roomMeta[roomId] || {};
 const header = document.getElementById('chat-header');
-const peerEl = document.getElementById('chat-peer');
-peerEl.textContent = currentPeer;       // currentPeer уже установлен в .onclick выбора чата
+const left   = header.querySelector('.chat-header__left');
+
+// формируем шапку в зависимости от типа
+let title;
+if (meta.is_channel) {
+  title = `Канал: ${meta.name || `#${roomId}`}`;
+} else if (meta.is_group) {
+  title = `Группа: ${meta.name || `#${roomId}`}`;
+} else {
+  // приватный чат
+  title = `Собеседник: ${currentPeer}`;
+}
+
+// вставляем и показываем
+left.textContent = title;
 header.classList.remove('hidden');
-// если вы хотите добавить класс .active к контейнеру, то ниже
 document.getElementById('chat-section').classList.add('active');
 
-  document.getElementById('chat-box').innerHTML = '';
-  document.getElementById('chat-section').classList.add('active');
+// чистим окно сообщений
+document.getElementById('chat-box').innerHTML = '';
+
 
   // Настраиваем WebSocket
   socket = new WebSocket(
