@@ -69,10 +69,12 @@ router.post('/', authMiddleware, async (req, res) => {
     return res.status(400).send('Members list required');
   }
 
+  // добавляем себя, если забыли
   if (!members.includes(req.userNickname)) {
     members.push(req.userNickname);
   }
 
+  // приватный чат: ровно 2 участника и НЕ канал
   if (!is_group && !is_channel && members.length === 2) {
     const [a, b] = members.sort();
     const exist = await pool.query(
@@ -91,19 +93,22 @@ router.post('/', authMiddleware, async (req, res) => {
       const other = members.find(n => n !== req.userNickname);
       return res.json({ roomId, name: other });
     }
+    // только для приватного чата — имя собеседника
     name = members.find(n => n !== req.userNickname);
   }
 
   try {
+    // создаём комнату/группу/канал
     const roomRes = await pool.query(
-      `INSERT INTO rooms 
+      `INSERT INTO rooms
          (name, is_group, is_channel, creator_nickname)
        VALUES ($1, $2, $3, $4)
        RETURNING id, name, is_channel, creator_nickname`,
-      [ name, is_group, is_channel, req.userNickname ]
+      [name, is_group, is_channel, req.userNickname]
     );
     const roomId = roomRes.rows[0].id;
 
+    // добавляем участников
     await Promise.all(
       members.map(nick =>
         pool.query(
@@ -113,11 +118,12 @@ router.post('/', authMiddleware, async (req, res) => {
       )
     );
 
+    // возвращаем клиенту
     res.json({
       roomId,
-      name:        roomRes.rows[0].name,
-      is_channel:  roomRes.rows[0].is_channel,
-      creator:     roomRes.rows[0].creator_nickname
+      name:       roomRes.rows[0].name,
+      is_channel: roomRes.rows[0].is_channel,
+      creator:    roomRes.rows[0].creator_nickname
     });
   } catch (err) {
     console.error('Error creating room:', err);
