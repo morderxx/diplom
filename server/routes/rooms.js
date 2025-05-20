@@ -1,4 +1,3 @@
-// server/routes/rooms.js
 const express = require('express');
 const jwt     = require('jsonwebtoken');
 const pool    = require('../db');
@@ -14,7 +13,7 @@ async function authMiddleware(req, res, next) {
     const token   = auth.split(' ')[1];
     const payload = jwt.verify(token, JWT_SECRET);
     req.userLogin = payload.login;
-    // подтягиваем nickname
+
     const prof = await pool.query(
       `SELECT u.nickname
          FROM users u
@@ -33,7 +32,7 @@ async function authMiddleware(req, res, next) {
   }
 }
 
-// 1) GET /api/rooms — список своих комнат + массив участников
+// 1) GET /api/rooms — список своих комнат + участников
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -41,8 +40,8 @@ router.get('/', authMiddleware, async (req, res) => {
          r.id,
          r.name,
          r.is_group,
-         r.is_channel,                       -- ← добавлено
-         r.creator_nickname,                 -- ← добавлено
+         r.is_channel,
+         r.creator_nickname,
          r.created_at,
          array_agg(m.nickname ORDER BY m.nickname) AS members
        FROM rooms r
@@ -63,19 +62,17 @@ router.get('/', authMiddleware, async (req, res) => {
 
 // 2) POST /api/rooms — создать или вернуть чат/группу/канал
 router.post('/', authMiddleware, async (req, res) => {
-  let { is_group, is_channel = false, members } = req.body;  // ← добавлен is_channel
+  let { is_group, is_channel = false, members } = req.body;
   let name = req.body.name || null;
 
   if (!Array.isArray(members) || members.length < 1) {
     return res.status(400).send('Members list required');
   }
 
-  // всегда добавляем себя
   if (!members.includes(req.userNickname)) {
     members.push(req.userNickname);
   }
 
-  // приватный чат: ровно 2 участника
   if (!is_group && !is_channel && members.length === 2) {
     const [a, b] = members.sort();
     const exist = await pool.query(
@@ -98,17 +95,15 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 
   try {
-    // создаём комнату/группу/канал
     const roomRes = await pool.query(
       `INSERT INTO rooms 
-         (name, is_group, is_channel, creator_nickname)    -- ← добавлены поля
+         (name, is_group, is_channel, creator_nickname)
        VALUES ($1, $2, $3, $4)
-       RETURNING id, name, is_channel, creator_nickname`,  // ← возвращаем оба
+       RETURNING id, name, is_channel, creator_nickname`,
       [ name, is_group, is_channel, req.userNickname ]
     );
     const roomId = roomRes.rows[0].id;
 
-    // в любом случае добавляем записи в room_members
     await Promise.all(
       members.map(nick =>
         pool.query(
@@ -118,7 +113,6 @@ router.post('/', authMiddleware, async (req, res) => {
       )
     );
 
-    // возвращаем клиенту id, name и новый флаг канала + автора
     res.json({
       roomId,
       name:        roomRes.rows[0].name,
@@ -131,11 +125,10 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });
 
-// 3) GET /api/rooms/:roomId/messages — история (текст + файлы)
+// 3) GET /api/rooms/:roomId/messages — история
 router.get('/:roomId/messages', authMiddleware, async (req, res) => {
   const { roomId } = req.params;
   try {
-    // проверяем членство
     const mem = await pool.query(
       'SELECT 1 FROM room_members WHERE room_id = $1 AND nickname = $2',
       [roomId, req.userNickname]
@@ -144,7 +137,6 @@ router.get('/:roomId/messages', authMiddleware, async (req, res) => {
       return res.status(403).send('Not a member');
     }
 
-    // возвращаем историю сообщений (текст и файлы)
     const { rows } = await pool.query(
       `SELECT
          m.sender_nickname,
