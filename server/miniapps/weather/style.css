@@ -1,4 +1,3 @@
-/* Основные переменные */
 :root {
   --bg: #e0f7fa;
   --card-bg: #ffffff;
@@ -7,12 +6,7 @@
   --shadow: rgba(0, 0, 0, 0.1);
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
+* { box-sizing: border-box; margin:0; padding:0; }
 body {
   font-family: 'Segoe UI', Tahoma, sans-serif;
   background: var(--bg);
@@ -23,11 +17,8 @@ body {
 }
 
 .weather-app {
-  width: 100%;
-  max-width: 500px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  width: 100%; max-width: 500px;
+  display: flex; flex-direction: column; gap: 20px;
 }
 
 .weather-header {
@@ -39,142 +30,61 @@ body {
   box-shadow: 0 4px 10px var(--shadow);
 }
 
-.weather-header h1 {
-  font-size: 2em;
-  margin-bottom: 10px;
-}
+.weather-header h1 { font-size: 2em; margin-bottom: 10px; }
 
 .input-group {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  margin-bottom: 10px;
+  display: flex; justify-content: center; gap: 10px; margin-bottom: 10px;
 }
 
 .input-group input {
-  flex: 1;
-  padding: 8px 12px;
-  border: none;
-  border-radius: 6px;
-  font-size: 1em;
+  flex: 1; padding: 8px 12px; border: none; border-radius: 6px; font-size: 1em;
 }
 
 .input-group button {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  background: var(--text);
-  color: white;
-  font-weight: bold;
-  cursor: pointer;
+  padding: 8px 16px; border: none; border-radius: 6px;
+  background: var(--text); color: white; font-weight: bold; cursor: pointer;
   transition: background 0.3s;
 }
-
-.input-group button:hover {
-  background: black;
-}
+.input-group button:hover { background: black; }
 
 .change-city-btn {
-  background: none;
-  border: none;
-  color: white;
-  text-decoration: underline;
-  cursor: pointer;
-  font-size: 0.9em;
+  background: none; border: none; color: white;
+  text-decoration: underline; cursor: pointer; font-size: 0.9em;
 }
 
-main {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
+main { display: flex; flex-direction: column; gap: 20px; }
 .card {
   background: var(--card-bg);
-  border-radius: 12px;
-  box-shadow: 0 2px 8px var(--shadow);
+  border-radius: 12px; box-shadow: 0 2px 8px var(--shadow);
   padding: 16px;
 }
 
-.current-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.current-card .icon {
-  font-size: 3em;
-}
-
-.current-card .details {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.current-card .temp {
-  font-size: 2.5em;
-  font-weight: bold;
-}
-
-.current-card .desc {
-  font-size: 1.1em;
-  color: #555;
-}
-
-.current-card .place {
-  font-size: 0.9em;
-  color: #777;
-}
+.current-card { display: flex; align-items: center; gap: 16px; }
+.current-card .icon { font-size: 3em; }
+.current-card .details { display: flex; flex-direction: column; gap: 4px; }
+.current-card .temp { font-size: 2.5em; font-weight: bold; }
+.current-card .desc { font-size: 1.1em; color: #555; }
+.current-card .place { font-size: 0.9em; color: #777; }
 
 .horizontal-scroll h2,
-.grid-weekly h2 {
-  margin-bottom: 10px;
-  color: var(--accent);
-}
+.grid-weekly h2 { margin-bottom: 10px; color: var(--accent); }
 
-.horizontal-scroll {
-  overflow-x: auto;
-}
-
-.forecast-hourly {
-  display: flex;
-  gap: 12px;
-}
-
+.horizontal-scroll { overflow-x: auto; }
+.forecast-hourly { display: flex; gap: 12px; }
 .forecast-hourly .hour {
-  min-width: 60px;
-  text-align: center;
-  padding: 10px;
-  border-radius: 8px;
-  background: #f5f5f5;
+  min-width: 60px; text-align: center;
+  padding: 10px; border-radius: 8px; background: #f5f5f5;
   transition: transform 0.2s;
 }
-
-.forecast-hourly .hour:hover {
-  transform: translateY(-4px);
-}
+.forecast-hourly .hour:hover { transform: translateY(-4px); }
 
 .grid-weekly .forecast-weekly {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-  gap: 12px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 12px;
 }
-
 .forecast-weekly .day {
-  text-align: center;
-  padding: 10px;
-  border-radius: 8px;
-  background: #f5f5f5;
-  transition: transform 0.2s;
+  text-align: center; padding: 10px; border-radius: 8px;
+  background: #f5f5f5; transition: transform 0.2s;
 }
+.forecast-weekly .day:hover { transform: translateY(-4px); }
 
-.forecast-weekly .day:hover {
-  transform: translateY(-4px);
-}
-
-.weather-footer {
-  text-align: center;
-  font-size: 0.8em;
-  color: #555;
-}
+.weather-footer { text-align: center; font-size: 0.8em; color: #555; }
