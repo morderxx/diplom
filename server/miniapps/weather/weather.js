@@ -1,54 +1,95 @@
-document.getElementById("get-weather").addEventListener("click", () => {
-  const city = document.getElementById("city").value.trim();
-  if (!city) return;
+const inputGroup     = document.getElementById('input-group');
+const changeCityBtn  = document.getElementById('change-city');
+const getWeatherBtn  = document.getElementById('get-weather');
+const cityInput      = document.getElementById('city');
 
-  const url = `https://wttr.in/${encodeURIComponent(city)}?format=j1`;
-  fetch(url)
-    .then(res => res.json())
-    .then(data => renderWeather(data, city))
-    .catch(err => {
-      document.querySelector("#current .content").innerText = "Ошибка загрузки";
-      console.error(err);
-    });
+window.addEventListener('load', () => {
+  // Пробуем геолокацию
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => fetchWeather({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+      err => showCityInput()
+    );
+  } else {
+    showCityInput();
+  }
 });
 
-function renderWeather(data, city) {
-  const current = data.current_condition[0];
-  const today = data.weather[0];
-  const week  = data.weather;
+getWeatherBtn.addEventListener('click', () => {
+  const city = cityInput.value.trim();
+  if (!city) return;
+  fetchWeather({ city });
+});
 
-  // 1) Секция «Сейчас»
-  document.querySelector("#current .content").innerHTML = `
-    <div>${city}</div>
-    <div>${current.temp_C}°C</div>
-    <div>${current.weatherDesc[0].value}</div>
-    <div>Влажность: ${current.humidity}%</div>
+changeCityBtn.addEventListener('click', () => {
+  showCityInput(true);
+});
+
+function showCityInput(showButtonAfter = false) {
+  inputGroup.style.display = 'flex';
+  changeCityBtn.style.display = showButtonAfter ? 'none' : 'none';
+}
+
+function fetchWeather({ city, lat, lon }) {
+  // Скрываем ввод
+  inputGroup.style.display = 'none';
+  changeCityBtn.style.display = 'block';
+
+  let query;
+  if (city) {
+    query = encodeURIComponent(city);
+  } else {
+    query = `${lat},${lon}`;
+  }
+
+  const url = `https://wttr.in/${query}?format=j1&lang=ru`;
+  fetch(url)
+    .then(res => res.json())
+    .then(data => renderWeather(data))
+    .catch(err => {
+      document.querySelector('#current .content').innerText = 'Ошибка загрузки';
+      console.error(err);
+    });
+}
+
+function renderWeather(data) {
+  const current = data.current_condition[0];
+  const today   = data.weather[0];
+  const week    = data.weather;
+
+  // Секция «Сейчас»
+  const place = data.nearest_area?.[0]?.areaName?.[0]?.value || '';
+  document.querySelector('#current .content').innerHTML = `
+    <div>${place}</div>
+    <div>${current.temp_C}°C, ${current.weatherDesc[0].value}</div>
+    <div>Ощущается как ${current.FeelsLikeC}°C</div>
+    <div>Влажность ${current.humidity}%</div>
   `;
 
-  // 2) Секция «Сегодня» по часам (первые 8 часов)
-  const hourlyContainer = document.querySelector(".forecast-hourly");
-  hourlyContainer.innerHTML = "";
-  today.hourly.slice(0, 8).forEach(h => {
-    const hour = new Date().getHours() + today.hourly.indexOf(h);
-    const el = document.createElement("div");
-    el.className = "hour";
+  // «Сегодня» по часам (первые 8 часов)
+  const hourlyContainer = document.querySelector('.forecast-hourly');
+  hourlyContainer.innerHTML = '';
+  today.hourly.slice(0, 8).forEach((h, i) => {
+    const hour = (new Date().getHours() + i) % 24;
+    const el = document.createElement('div');
+    el.className = 'hour';
     el.innerHTML = `
-      <span>${hour % 24}:00</span>
+      <span>${hour}:00</span>
       <span class="temp">${h.tempC}°</span>
       <span>${h.weatherDesc[0].value}</span>
     `;
     hourlyContainer.append(el);
   });
 
-  // 3) Секция «На неделю»
-  const weeklyContainer = document.querySelector(".forecast-weekly");
-  weeklyContainer.innerHTML = "";
+  // «На неделю»
+  const weeklyContainer = document.querySelector('.forecast-weekly');
+  weeklyContainer.innerHTML = '';
   week.forEach(day => {
-    const el = document.createElement("div");
-    el.className = "day";
+    const el = document.createElement('div');
+    el.className = 'day';
     el.innerHTML = `
-      <span>${day.date.substring(5)}</span>
-      <span class="temp">↑${day.maxtempC}°↓${day.mintempC}°</span>
+      <span>${day.date.slice(5)}</span>
+      <span class="temp">↑${day.maxtempC}° ↓${day.mintempC}°</span>
       <span>${day.hourly[4].weatherDesc[0].value}</span>
     `;
     weeklyContainer.append(el);
