@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Крестики-Нолики</title>
+  <style>
+    body { display: flex; flex-direction: column; align-items: center; font-family: sans-serif; }
+    #board { display: grid; grid-template: repeat(3,100px) / repeat(3,100px); gap: 5px; margin-top: 20px; }
+    .cell { background: #f0f0f0; font-size: 2rem; display: flex;
+            justify-content: center; align-items: center; cursor: pointer; }
+    #status { margin-top: 10px; }
+    button { margin-top: 10px; padding: 5px 10px; }
+  </style>
+</head>
+<body>
+  <h1>Крестики-Нолики</h1>
+  <div id="board"></div>
+  <div id="status"></div>
+  <button onclick="reset()">Новая игра</button>
+
+  <script>
+    const boardEl = document.getElementById('board');
+    const statusEl = document.getElementById('status');
+    let cells, turn, moves;
+
+    function createBoard() {
+      boardEl.innerHTML = '';
+      cells = Array(9).fill(null);
+      turn = 'X';
+      moves = 0;
+      for (let i = 0; i < 9; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.dataset.i = i;
+        cell.onclick = onCellClick;
+        boardEl.append(cell);
+      }
+      statusEl.textContent = `Ходит ${turn}`;
+    }
+
+    function onCellClick(e) {
+      const i = e.target.dataset.i;
+      if (cells[i] || checkWin()) return;
+      cells[i] = turn;
+      e.target.textContent = turn;
+      moves++;
+      if (checkWin()) {
+        statusEl.textContent = `Победили ${turn}!`;
+      } else if (moves === 9) {
+        statusEl.textContent = 'Ничья.';
+      } else {
+        turn = turn === 'X' ? 'O' : 'X';
+        statusEl.textContent = `Ходит ${turn}`;
+      }
+    }
+
+    function lines() {
+      return [
+        [0,1,2],[3,4,5],[6,7,8],
+        [0,3,6],[1,4,7],[2,5,8],
+        [0,4,8],[2,4,6]
+      ];
+    }
+
+    function checkWin() {
+      return lines().some(([a,b,c]) =>
+        cells[a] && cells[a] === cells[b] && cells[a] === cells[c]
+      );
+    }
+
+    function reset() {
+      createBoard();
+    }
+
+    createBoard();
+  </script>
+</body>
+</html>
