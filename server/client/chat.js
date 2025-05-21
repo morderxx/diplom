@@ -913,6 +913,7 @@ async function joinRoom(roomId) {
   );
   socket.onopen = () =>
     socket.send(JSON.stringify({ type: 'join', token, roomId }));
+  
  socket.onmessage = ev => {
   const msg = JSON.parse(ev.data);
 
@@ -1030,7 +1031,15 @@ case 'call': {
   }
 };
 
-
+  window._chatGlobals = {
+    get socket()       { return socket; },
+    get userNickname() { return userNickname; },
+    get currentRoom()  { return currentRoom; },
+    set currentRoom(v) { currentRoom = v; },
+    get currentPeer()  { return currentPeer; },
+    set currentPeer(v) { currentPeer = v; },
+    get roomMeta()     { return roomMeta; }
+  };
   // ─── Загрузка всей истории из одного эндпоинта ───────────────────────────
   const res = await fetch(`${API_URL}/rooms/${roomId}/messages`, {
     headers: { Authorization: `Bearer ${token}` }
@@ -1079,19 +1088,6 @@ history.forEach(m => {
 
   console.warn('Неизвестный элемент истории:', m);
 });
-
-  // Обновляем глобал, чтобы любой код (включая tictactoe.js) видел новый socket
-  window._chatGlobals = {
-    get socket()       { return socket; },
-    get userNickname() { return userNickname; },
-    get currentRoom()  { return currentRoom; },
-    set currentRoom(v) { currentRoom = v; },
-    get currentPeer()  { return currentPeer; },
-    set currentPeer(v) { currentPeer = v; },
-    get roomMeta()     { return roomMeta; }
-  };
-
-
 }  // <-- закрыли функцию joinRoom
   
 function appendMessage(sender, text, time, callId = null) {
