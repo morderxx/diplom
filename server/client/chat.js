@@ -1031,15 +1031,6 @@ case 'call': {
   }
 };
 
-  window._chatGlobals = {
-    get socket()       { return socket; },
-    get userNickname() { return userNickname; },
-    get currentRoom()  { return currentRoom; },
-    set currentRoom(v) { currentRoom = v; },
-    get currentPeer()  { return currentPeer; },
-    set currentPeer(v) { currentPeer = v; },
-    get roomMeta()     { return roomMeta; }
-  };
   // ─── Загрузка всей истории из одного эндпоинта ───────────────────────────
   const res = await fetch(`${API_URL}/rooms/${roomId}/messages`, {
     headers: { Authorization: `Bearer ${token}` }
