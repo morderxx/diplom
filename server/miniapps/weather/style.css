@@ -1,25 +1,97 @@
 body {
-  font-family: sans-serif;
-  padding: 20px;
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f0f4f8;
+  color: #333;
 }
 
-#weather-container {
-  max-width: 300px;
-  margin: auto;
+.weather-app {
+  max-width: 480px;
+  margin: 20px auto;
+  padding: 0 10px;
+}
+
+header {
   text-align: center;
+  margin-bottom: 20px;
 }
 
-input {
-  width: 80%;
-  padding: 8px;
+header h1 {
   margin-bottom: 10px;
 }
 
-button {
+.input-group {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.input-group input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.input-group button {
   padding: 8px 16px;
+  border: none;
+  background: #0077cc;
+  color: #fff;
+  border-radius: 4px;
   cursor: pointer;
 }
 
-#result {
-  margin-top: 20px;
+.input-group button:hover {
+  background: #005fa3;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  padding: 12px;
+}
+
+.card h2 {
+  margin: 0 0 8px;
+  font-size: 1.2em;
+}
+
+#current .content {
+  font-size: 2em;
+  text-align: center;
+}
+
+.forecast-hourly, .forecast-weekly {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.forecast-hourly .hour, .forecast-weekly .day {
+  flex: 0 0 60px;
+  text-align: center;
+  background: #e7ecf0;
+  border-radius: 6px;
+  padding: 6px;
+}
+
+.forecast-hourly .hour span,
+.forecast-weekly .day span {
+  display: block;
+  font-size: 0.9em;
+}
+
+.forecast-hourly .hour .temp,
+.forecast-weekly .day .temp {
+  font-weight: bold;
+  margin-top: 4px;
 }
