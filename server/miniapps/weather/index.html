@@ -9,10 +9,13 @@
   <div class="weather-app">
     <header>
       <h1>Погода</h1>
-      <div class="input-group">
+      <div class="input-group" id="input-group">
         <input type="text" id="city" placeholder="Введите город…" />
         <button id="get-weather">Показать</button>
       </div>
+      <button id="change-city" style="display:none; margin-top:8px; background:none; border:none; color:#0077cc; cursor:pointer;">
+        Хотите узнать погоду в другом городе?
+      </button>
     </header>
 
     <main>
