@@ -666,3 +666,6 @@ body.lightbox-open {
 #open-game-btn:hover {
   background: #e0a800;
 }
+
+.game-section { display: none; }
+.game-section.active { display: block; }
