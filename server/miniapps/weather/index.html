@@ -6,11 +6,31 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="weather-container">
-    <h2>Погода в вашем городе</h2>
-    <input type="text" id="city" placeholder="Введите город..." />
-    <button id="get-weather">Узнать</button>
-    <div id="result"></div>
+  <div class="weather-app">
+    <header>
+      <h1>Погода</h1>
+      <div class="input-group">
+        <input type="text" id="city" placeholder="Введите город…" />
+        <button id="get-weather">Показать</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="current" class="card">
+        <h2>Сейчас</h2>
+        <div class="content">—</div>
+      </section>
+
+      <section id="today" class="card">
+        <h2>Сегодня</h2>
+        <div class="forecast-hourly"></div>
+      </section>
+
+      <section id="weekly" class="card">
+        <h2>На неделю</h2>
+        <div class="forecast-weekly"></div>
+      </section>
+    </main>
   </div>
 
   <script src="weather.js"></script>
