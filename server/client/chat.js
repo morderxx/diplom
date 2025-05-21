@@ -23,15 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let incomingCall = false;
   let answerTimeout  = null;
   let answeredCall = false;
-  window._chatGlobals = {
-  get socket()       { return socket; },
-  get userNickname() { return userNickname; },
-  get currentRoom()  { return currentRoom; },
-  set currentRoom(v) { currentRoom = v; },
-  get currentPeer()  { return currentPeer; },
-  set currentPeer(v) { currentPeer = v; },
-  get roomMeta()     { return roomMeta; }
-};
   // Хелпер для формирования текста «системного» сообщения по звонку
 function formatCallText({ initiator, recipient, status, duration, time }) {
   const displayTime = new Date(time)
@@ -1089,6 +1080,16 @@ history.forEach(m => {
   console.warn('Неизвестный элемент истории:', m);
 });
 
+  // Обновляем глобал, чтобы любой код (включая tictactoe.js) видел новый socket
+  window._chatGlobals = {
+    get socket()       { return socket; },
+    get userNickname() { return userNickname; },
+    get currentRoom()  { return currentRoom; },
+    set currentRoom(v) { currentRoom = v; },
+    get currentPeer()  { return currentPeer; },
+    set currentPeer(v) { currentPeer = v; },
+    get roomMeta()     { return roomMeta; }
+  };
 
 
 }  // <-- закрыли функцию joinRoom
