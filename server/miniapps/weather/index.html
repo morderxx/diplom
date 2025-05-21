@@ -2,40 +2,46 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Погода</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="weather-app">
-    <header>
-      <h1>Погода</h1>
+    <header class="weather-header">
+      <h1>🌤 Погода</h1>
       <div class="input-group" id="input-group">
         <input type="text" id="city" placeholder="Введите город…" />
         <button id="get-weather">Показать</button>
       </div>
-      <button id="change-city" style="display:none; margin-top:8px; background:none; border:none; color:#0077cc; cursor:pointer;">
-        Хотите узнать погоду в другом городе?
-      </button>
+      <button id="change-city" class="change-city-btn">Хотите другой город?</button>
     </header>
 
     <main>
-      <section id="current" class="card">
-        <h2>Сейчас</h2>
-        <div class="content">—</div>
+      <section id="current" class="card current-card">
+        <div class="icon">—</div>
+        <div class="details">
+          <div class="temp">—°C</div>
+          <div class="desc">—</div>
+          <div class="place">—</div>
+        </div>
       </section>
 
-      <section id="today" class="card">
+      <section id="today" class="card horizontal-scroll">
         <h2>Сегодня</h2>
         <div class="forecast-hourly"></div>
       </section>
 
-      <section id="weekly" class="card">
+      <section id="weekly" class="card grid-weekly">
         <h2>На неделю</h2>
         <div class="forecast-weekly"></div>
       </section>
     </main>
-  </div>
 
+    <footer class="weather-footer">
+      &copy; 2025 Your Messenger
+    </footer>
+  </div>
   <script src="weather.js"></script>
 </body>
 </html>
