@@ -1,3 +1,5 @@
+// tictactoe.js
+
 document.addEventListener('DOMContentLoaded', () => {
   const chatGlobals = window._chatGlobals;
   if (!chatGlobals || !chatGlobals.socket) {
@@ -32,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let myMark = 'X';
   let turn   = 'X';
 
+  // Открыть/закрыть модалку
   openGameBtn.onclick  = () => gameModal.classList.remove('hidden');
   closeGameBtn.onclick = () => {
     gameModal.classList.add('hidden');
@@ -39,11 +42,13 @@ document.addEventListener('DOMContentLoaded', () => {
     onlineGameSection.classList.remove('active');
   };
 
+  // Кнопка "Против бота"
   modeBotBtn.onclick = () => {
     setupGameSection('bot');
     startGame('bot');
   };
 
+  // Кнопка "Онлайн"
   modeOnlineBtn.onclick = () => {
     if (!chatGlobals.currentRoom) {
       return alert('Сначала выберите чат для игры онлайн');
@@ -64,10 +69,12 @@ document.addEventListener('DOMContentLoaded', () => {
     onlineGameSection.classList.remove('active');
   };
 
+  // Кнопка отмены выбора соперника
   cancelOnlineBtn.onclick = () => {
     onlineSelectEl.classList.remove('active');
   };
 
+  // Приглашение в игру
   function inviteToPlay(opponent, roomId) {
     currentPeer = opponent;
     currentRoom = roomId;
@@ -82,6 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
     onlineSelectEl.innerHTML = '<p>Ожидаем, пока соперник примет приглашение…</p>';
   }
 
+  // Обработка сообщений WebSocket
   socket.addEventListener('message', ev => {
     const msg = JSON.parse(ev.data);
 
@@ -109,6 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Общая инициализация секции
   function setupGameSection(mode) {
     gameModal.classList.remove('hidden');
     onlineSelectEl.classList.remove('active');
@@ -116,6 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('mode-online').disabled = true;
   }
 
+  // Запуск игры
   function startGame(mode) {
     gameMode = mode;
     resetGame();
@@ -127,6 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Онлайн-режим
   function setupOnlineGame(opponent, roomId, youAreO) {
     setupGameSection('online');
     gameMode = 'online';
@@ -140,6 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
     gameStatusEl.textContent = `Вы за ${myMark}. Ходит ${turn}.`;
   }
 
+  // Сброс доски
   function resetGame() {
     board = Array(9).fill(null);
     gameBoardEl.innerHTML = '';
@@ -156,6 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   resetGameBtn.onclick = () => resetGame();
 
+  // Клик по клетке
   function onCellClick(e) {
     const i = +e.target.dataset.i;
     if (board[i] || checkWin(board) || turn !== myMark) return;
@@ -173,6 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Выполнение хода
   function makeMove(i, mark) {
     board[i] = mark;
     const cell = gameBoardEl.querySelector(`.game-cell[data-i="${i}"]`);
@@ -188,12 +202,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Ход бота
   function botMove() {
     const free = board.map((v, idx) => v === null ? idx : null).filter(v => v !== null);
     const choice = free[Math.floor(Math.random() * free.length)];
     makeMove(choice, turn);
   }
 
+  // Проверка победы
   function checkWin(bd) {
     const lines = [
       [0,1,2],[3,4,5],[6,7,8],
