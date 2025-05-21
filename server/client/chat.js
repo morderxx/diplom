@@ -24,9 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let answerTimeout  = null;
   let answeredCall = false;
   let gameMode = null;         
-  let board     = [];            
-  let myMark    = 'X';           
-  let turn      = 'X';           
+  let gameMode = null, board = [], myMark = 'X', turn = 'X';        
   // Хелпер для формирования текста «системного» сообщения по звонку
 function formatCallText({ initiator, recipient, status, duration, time }) {
   const displayTime = new Date(time)
@@ -108,14 +106,17 @@ const addSuggestionsList   = document.getElementById('add-user-suggestions');
 const addSelectedUsersDiv  = document.getElementById('add-selected-users');
 const addCancelBtn         = document.getElementById('add-cancel-btn');
 const addConfirmBtn        = document.getElementById('add-confirm-btn');
-const openGameBtn   = document.getElementById('open-game-btn');
-const gameModal     = document.getElementById('game-modal');
-const closeGameBtn  = document.getElementById('close-game-btn');
-const modeOnlineBtn = document.getElementById('mode-online');
-const modeBotBtn    = document.getElementById('mode-bot');
-const resetGameBtn  = document.getElementById('reset-game-btn');
-const gameBoardEl   = document.getElementById('game-board');
-const gameStatusEl  = document.getElementById('game-status');
+const openGameBtn       = document.getElementById('open-game-btn');
+const gameModal         = document.getElementById('game-modal');
+const onlineSelectEl    = document.getElementById('online-select');
+const onlineUsersList   = document.getElementById('online-users-list');
+const cancelOnlineBtn   = document.getElementById('cancel-online-btn');
+const onlineGameSection = document.getElementById('online-game');
+const closeGameBtn      = document.getElementById('close-game-btn');
+const modeBotBtn        = document.getElementById('mode-bot');
+const resetGameBtn      = document.getElementById('reset-game-btn');
+const gameBoardEl       = document.getElementById('game-board');
+const gameStatusEl      = document.getElementById('game-status');
 
 // Храним полный список пользователей (никнеймы) и выбранных
 let allUsers = [];
@@ -1258,54 +1259,146 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
     }
   });
 
-  // Открыть и закрыть модалку
+// Открыть/закрыть модалку
 openGameBtn.onclick  = () => gameModal.classList.remove('hidden');
-closeGameBtn.onclick = () => gameModal.classList.add('hidden');
+closeGameBtn.onclick = () => {
+  gameModal.classList.add('hidden');
+  // сбросим всё состояние
+  onlineSelectEl.classList.remove('active');
+  onlineGameSection.classList.remove('active');
+};
 
-// Выбор режима
-modeOnlineBtn.onclick = () => startGame('online');
-modeBotBtn.onclick    = () => startGame('bot');
-resetGameBtn.onclick  = () => resetGame();
+// 1) Кнопка «Онлайн» → список соперников
+document.getElementById('mode-online').onclick = () => {
+  if (!currentRoom) return alert('Сначала выберите чат для игры онлайн');
+  // Собираем список приватных комнат
+  onlineUsersList.innerHTML = '';
+  Object.entries(roomMeta).forEach(([roomId, m]) => {
+    if (!m.is_group && !m.is_channel) {
+      const opp = m.members.find(n => n !== userNickname);
+      const li  = document.createElement('li');
+      li.textContent = opp;
+      li.onclick = () => inviteToPlay(opp, roomId);
+      onlineUsersList.append(li);
+    }
+  });
+  // Показываем выбор
+  onlineSelectEl.classList.add('active');
+  onlineGameSection.classList.remove('active');
+};
+cancelOnlineBtn.onclick = () => {
+  onlineSelectEl.classList.remove('active');
+};
 
-// Инициализация игры
+// Функция приглашения
+function inviteToPlay(opponent, roomId) {
+  currentPeer = opponent;
+  currentRoom = roomId;
+  socket.send(JSON.stringify({
+    type:   'tictactoe-invite',
+    roomId,
+    from:   userNickname,
+    to:     opponent
+  }));
+  onlineSelectEl.innerHTML = '<p>Ожидаем, пока соперник примет приглашение…</p>';
+}
+
+// 2) Кнопка «Против бота»
+modeBotBtn.onclick = () => {
+  setupGameSection('bot');
+  startGame('bot');
+};
+
+// 3) «Новая игра»
+resetGameBtn.onclick = () => resetGame();
+
+// Обработка приглашения и принятия
+socket.onmessage = ev => {
+  const msg = JSON.parse(ev.data);
+
+  // Приглашение от другого
+  if (msg.type === 'tictactoe-invite' && msg.to === userNickname) {
+    if (confirm(`Пользователь ${msg.from} приглашает вас сыграть. Принять?`)) {
+      socket.send(JSON.stringify({
+        type:   'tictactoe-accept',
+        roomId: msg.roomId,
+        from:   userNickname,
+        to:     msg.from
+      }));
+      setupOnlineGame(msg.from, msg.roomId, true);
+    }
+    return;
+  }
+
+  // Соперник принял ваше приглашение
+  if (msg.type === 'tictactoe-accept' && msg.to === userNickname) {
+    setupOnlineGame(msg.from, msg.roomId, false);
+    return;
+  }
+
+  // Ход соперника
+  if (msg.type === 'tictactoe-move' && gameMode === 'online' && msg.from !== userNickname) {
+    makeMove(msg.index, turn);
+    return;
+  }
+
+  // … остальной switch для чата, звонков и файлов …
+};
+
+// Общий setup для секций
+function setupGameSection(mode) {
+  gameModal.classList.remove('hidden');
+  onlineSelectEl.classList.remove('active');
+  onlineGameSection.classList.add('active');
+  // Деактивируем «Онлайн»-кнопку в секции игры
+  document.getElementById('mode-online').disabled = true;
+}
+
+// Настройка и запуск игры онлайн
+function setupOnlineGame(opponent, roomId, youAreO) {
+  setupGameSection('online');
+  gameMode = 'online';
+  currentPeer = opponent;
+  currentRoom = roomId;
+  myMark = youAreO ? 'O' : 'X';
+  turn = 'X';
+  resetGame();
+  gameStatusEl.textContent = `Вы за ${myMark}. Ходит ${turn}.`;
+}
+
+// Инициализация партии
 function startGame(mode) {
   gameMode = mode;
   resetGame();
   if (mode === 'online') {
-    // в онлайне X всегда начинает и ходит первый
-    myMark = (userNickname < currentPeer) ? 'X' : 'O';
-    turn = 'X';
-    gameStatusEl.textContent = `Вы играете за ${myMark}. Ходит ${turn}.`;
+    // этот вызов теперь идёт внутри setupOnlineGame
   } else {
-    // против бота вы всегда X и ходите первым
     myMark = 'X';
     turn = 'X';
     gameStatusEl.textContent = `Против бота. Вы X. Ваш ход.`;
   }
 }
 
-// Сброс состояния
+// Сброс доски
 function resetGame() {
   board = Array(9).fill(null);
   gameBoardEl.innerHTML = '';
   for (let i = 0; i < 9; i++) {
     const cell = document.createElement('div');
     cell.className = 'game-cell';
-    cell.dataset.i = i;
-    cell.onclick = onCellClick;
+    cell.dataset.i  = i;
+    cell.onclick    = onCellClick;
     gameBoardEl.appendChild(cell);
   }
-  if (gameMode === 'bot' && myMark !== 'X') botMove(); // если бот X
+  if (gameMode === 'bot') setTimeout(botMove, 300);
 }
 
-// Обработка клика по ячейке
+// Клик по ячейке
 function onCellClick(e) {
-  const i = Number(e.target.dataset.i);
+  const i = +e.target.dataset.i;
   if (board[i] || checkWin(board) || turn !== myMark) return;
-
   makeMove(i, myMark);
   if (gameMode === 'online') {
-    // отправляем ход собеседнику
     socket.send(JSON.stringify({
       type:   'tictactoe-move',
       roomId: currentRoom,
@@ -1313,10 +1406,7 @@ function onCellClick(e) {
       index:  i
     }));
   } else {
-    // против бота
-    if (!checkWin(board) && board.includes(null)) {
-      setTimeout(botMove, 300);
-    }
+    if (!checkWin(board) && board.includes(null)) setTimeout(botMove, 300);
   }
 }
 
@@ -1335,25 +1425,17 @@ function makeMove(i, mark) {
   }
 }
 
-// Простейший бот: рандом из свободных ячеек
+// Бот
 function botMove() {
-  const free = board
-    .map((v, idx) => v===null ? idx : null)
-    .filter(v => v!==null);
+  const free = board.map((v, idx) => v===null ? idx : null).filter(v => v!==null);
   const choice = free[Math.floor(Math.random()*free.length)];
   makeMove(choice, turn);
 }
 
 // Проверка победы
 function checkWin(bd) {
-  const lines = [
-    [0,1,2],[3,4,5],[6,7,8],
-    [0,3,6],[1,4,7],[2,5,8],
-    [0,4,8],[2,4,6]
-  ];
-  return lines.some(([a,b,c]) =>
-    bd[a] && bd[a] === bd[b] && bd[a] === bd[c]
-  );
+  const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  return lines.some(([a,b,c]) => bd[a] && bd[a]===bd[b] && bd[a]===bd[c]);
 }
   // Initialization
   loadRooms();
