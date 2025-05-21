@@ -122,19 +122,37 @@
   <!-- ——— Модалка с игрой ——— -->
 <div id="game-modal" class="modal hidden">
   <div class="modal-content">
-    <header>
-      <h2>Крестики-нолики</h2>
-      <button id="close-game-btn">&times;</button>
-    </header>
-    <div class="game-modes">
-      <button id="mode-online">Онлайн</button>
-      <button id="mode-bot">Против бота</button>
+    
+    <!-- Секция 1: выбор соперника -->
+    <div id="online-select" class="game-section active">
+      <header>
+        <h2>Онлайн: выберите соперника</h2>
+        <button id="cancel-online-btn">&times;</button>
+      </header>
+      <ul id="online-users-list">
+        <!-- JS заполнит сюда <li>никнейма</li> -->
+      </ul>
     </div>
-    <div id="game-board"></div>
-    <div id="game-status"></div>
-    <button id="reset-game-btn">Новая игра</button>
+
+    <!-- Секция 2: сама игра -->
+    <div id="online-game" class="game-section hidden">
+      <header>
+        <h2>Крестики-нолики</h2>
+        <button id="close-game-btn">&times;</button>
+      </header>
+      <!-- ты уже ранее добавил .game-modes, #game-board, #game-status и #reset-game-btn -->
+      <div class="game-modes">
+        <button id="mode-online" disabled>Онлайн</button>
+        <button id="mode-bot">Против бота</button>
+      </div>
+      <div id="game-board"></div>
+      <div id="game-status"></div>
+      <button id="reset-game-btn">Новая игра</button>
+    </div>
+
   </div>
 </div>
+
   <script src="chat.js"></script>
 </body>
 </html>
