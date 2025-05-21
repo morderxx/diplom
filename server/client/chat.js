@@ -23,6 +23,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let incomingCall = false;
   let answerTimeout  = null;
   let answeredCall = false;
+  let gameMode = null;         
+  let board     = [];            
+  let myMark    = 'X';           
+  let turn      = 'X';           
   // Хелпер для формирования текста «системного» сообщения по звонку
 function formatCallText({ initiator, recipient, status, duration, time }) {
   const displayTime = new Date(time)
@@ -104,6 +108,15 @@ const addSuggestionsList   = document.getElementById('add-user-suggestions');
 const addSelectedUsersDiv  = document.getElementById('add-selected-users');
 const addCancelBtn         = document.getElementById('add-cancel-btn');
 const addConfirmBtn        = document.getElementById('add-confirm-btn');
+const openGameBtn   = document.getElementById('open-game-btn');
+const gameModal     = document.getElementById('game-modal');
+const closeGameBtn  = document.getElementById('close-game-btn');
+const modeOnlineBtn = document.getElementById('mode-online');
+const modeBotBtn    = document.getElementById('mode-bot');
+const resetGameBtn  = document.getElementById('reset-game-btn');
+const gameBoardEl   = document.getElementById('game-board');
+const gameStatusEl  = document.getElementById('game-status');
+
 // Храним полный список пользователей (никнеймы) и выбранных
 let allUsers = [];
 const selectedUsers = new Set();
@@ -915,7 +928,9 @@ async function joinRoom(roomId) {
     socket.send(JSON.stringify({ type: 'join', token, roomId }));
  socket.onmessage = ev => {
   const msg = JSON.parse(ev.data);
-
+    if (msg.type === 'tictactoe-move' && gameMode === 'online' && msg.from !== userNickname) {
+    makeMove(msg.index, turn);
+  }
   // 0) Отфильтровываем события, не относящиеся к текущей комнате
   if (msg.roomId !== currentRoom) return;
 
@@ -1243,6 +1258,103 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
     }
   });
 
+  // Открыть и закрыть модалку
+openGameBtn.onclick  = () => gameModal.classList.remove('hidden');
+closeGameBtn.onclick = () => gameModal.classList.add('hidden');
+
+// Выбор режима
+modeOnlineBtn.onclick = () => startGame('online');
+modeBotBtn.onclick    = () => startGame('bot');
+resetGameBtn.onclick  = () => resetGame();
+
+// Инициализация игры
+function startGame(mode) {
+  gameMode = mode;
+  resetGame();
+  if (mode === 'online') {
+    // в онлайне X всегда начинает и ходит первый
+    myMark = (userNickname < currentPeer) ? 'X' : 'O';
+    turn = 'X';
+    gameStatusEl.textContent = `Вы играете за ${myMark}. Ходит ${turn}.`;
+  } else {
+    // против бота вы всегда X и ходите первым
+    myMark = 'X';
+    turn = 'X';
+    gameStatusEl.textContent = `Против бота. Вы X. Ваш ход.`;
+  }
+}
+
+// Сброс состояния
+function resetGame() {
+  board = Array(9).fill(null);
+  gameBoardEl.innerHTML = '';
+  for (let i = 0; i < 9; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'game-cell';
+    cell.dataset.i = i;
+    cell.onclick = onCellClick;
+    gameBoardEl.appendChild(cell);
+  }
+  if (gameMode === 'bot' && myMark !== 'X') botMove(); // если бот X
+}
+
+// Обработка клика по ячейке
+function onCellClick(e) {
+  const i = Number(e.target.dataset.i);
+  if (board[i] || checkWin(board) || turn !== myMark) return;
+
+  makeMove(i, myMark);
+  if (gameMode === 'online') {
+    // отправляем ход собеседнику
+    socket.send(JSON.stringify({
+      type:   'tictactoe-move',
+      roomId: currentRoom,
+      from:   userNickname,
+      index:  i
+    }));
+  } else {
+    // против бота
+    if (!checkWin(board) && board.includes(null)) {
+      setTimeout(botMove, 300);
+    }
+  }
+}
+
+// Применение хода
+function makeMove(i, mark) {
+  board[i] = mark;
+  const cell = gameBoardEl.querySelector(`.game-cell[data-i="${i}"]`);
+  cell.textContent = mark;
+  if (checkWin(board)) {
+    gameStatusEl.textContent = `Выиграли ${mark}!`;
+  } else if (!board.includes(null)) {
+    gameStatusEl.textContent = 'Ничья.';
+  } else {
+    turn = mark === 'X' ? 'O' : 'X';
+    gameStatusEl.textContent = `Ходит ${turn}.`;
+  }
+}
+
+// Простейший бот: рандом из свободных ячеек
+function botMove() {
+  const free = board
+    .map((v, idx) => v===null ? idx : null)
+    .filter(v => v!==null);
+  const choice = free[Math.floor(Math.random()*free.length)];
+  makeMove(choice, turn);
+}
+
+// Проверка победы
+function checkWin(bd) {
+  const lines = [
+    [0,1,2],[3,4,5],[6,7,8],
+    [0,3,6],[1,4,7],[2,5,8],
+    [0,4,8],[2,4,6]
+  ];
+  return lines.some(([a,b,c]) =>
+    bd[a] && bd[a] === bd[b] && bd[a] === bd[c]
+  );
+}
   // Initialization
   loadRooms();
   loadUsers();
