@@ -548,3 +548,121 @@ body.lightbox-open {
 }
 .modal-actions { text-align: right; margin-top: 8px; }
 .modal-actions button { margin-left: 4px; }
+/* ========== Модалка для игры ========== */
+#game-modal {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+#game-modal.hidden {
+  display: none;
+}
+#game-modal .modal-content {
+  background: #fff;
+  border-radius: 8px;
+  width: 320px;
+  padding: 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+#game-modal header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+#game-modal header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+#game-modal header button {
+  background: none;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Кнопки выбора режима */
+.game-modes {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.game-modes button {
+  flex: 1;
+  padding: 8px 0;
+  border: none;
+  border-radius: 6px;
+  background: #007bff;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.game-modes button:hover {
+  background: #0056b3;
+}
+
+/* Доска крестиков-ноликов */
+#game-board {
+  display: grid;
+  grid-template-columns: repeat(3, 80px);
+  grid-template-rows: repeat(3, 80px);
+  gap: 5px;
+  margin-bottom: 12px;
+}
+.game-cell {
+  background: #f0f2f5;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+.game-cell:hover {
+  background: #e0e2e5;
+}
+
+/* Статус игры и кнопка сброса */
+#game-status {
+  font-size: 14px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+#reset-game-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background: #28a745;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+#reset-game-btn:hover {
+  background: #218838;
+}
+
+/* Кнопка открытия модалки */
+#open-game-btn {
+  background: #ffc107;
+  color: #212529;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 14px;
+}
+#open-game-btn:hover {
+  background: #e0a800;
+}
