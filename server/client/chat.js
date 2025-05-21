@@ -23,8 +23,15 @@ document.addEventListener('DOMContentLoaded', () => {
   let incomingCall = false;
   let answerTimeout  = null;
   let answeredCall = false;
-  let gameMode = null;         
-  let gameMode = null, board = [], myMark = 'X', turn = 'X';        
+  window._chatGlobals = {
+  get socket()       { return socket; },
+  get userNickname() { return userNickname; },
+  get currentRoom()  { return currentRoom; },
+  set currentRoom(v) { currentRoom = v; },
+  get currentPeer()  { return currentPeer; },
+  set currentPeer(v) { currentPeer = v; },
+  get roomMeta()     { return roomMeta; }
+};
   // Хелпер для формирования текста «системного» сообщения по звонку
 function formatCallText({ initiator, recipient, status, duration, time }) {
   const displayTime = new Date(time)
@@ -106,18 +113,6 @@ const addSuggestionsList   = document.getElementById('add-user-suggestions');
 const addSelectedUsersDiv  = document.getElementById('add-selected-users');
 const addCancelBtn         = document.getElementById('add-cancel-btn');
 const addConfirmBtn        = document.getElementById('add-confirm-btn');
-const openGameBtn       = document.getElementById('open-game-btn');
-const gameModal         = document.getElementById('game-modal');
-const onlineSelectEl    = document.getElementById('online-select');
-const onlineUsersList   = document.getElementById('online-users-list');
-const cancelOnlineBtn   = document.getElementById('cancel-online-btn');
-const onlineGameSection = document.getElementById('online-game');
-const closeGameBtn      = document.getElementById('close-game-btn');
-const modeBotBtn        = document.getElementById('mode-bot');
-const resetGameBtn      = document.getElementById('reset-game-btn');
-const gameBoardEl       = document.getElementById('game-board');
-const gameStatusEl      = document.getElementById('game-status');
-
 // Храним полный список пользователей (никнеймы) и выбранных
 let allUsers = [];
 const selectedUsers = new Set();
@@ -929,31 +924,7 @@ async function joinRoom(roomId) {
     socket.send(JSON.stringify({ type: 'join', token, roomId }));
  socket.onmessage = ev => {
   const msg = JSON.parse(ev.data);
-  // Приглашение от другого
-  if (msg.type === 'tictactoe-invite' && msg.to === userNickname) {
-    if (confirm(`Пользователь ${msg.from} приглашает вас сыграть. Принять?`)) {
-      socket.send(JSON.stringify({
-        type:   'tictactoe-accept',
-        roomId: msg.roomId,
-        from:   userNickname,
-        to:     msg.from
-      }));
-      setupOnlineGame(msg.from, msg.roomId, true);
-    }
-    return;
-  }
 
-  // Соперник принял ваше приглашение
-  if (msg.type === 'tictactoe-accept' && msg.to === userNickname) {
-    setupOnlineGame(msg.from, msg.roomId, false);
-    return;
-  }
-
-  // Ход соперника
-  if (msg.type === 'tictactoe-move' && gameMode === 'online' && msg.from !== userNickname) {
-    makeMove(msg.index, turn);
-    return;
-  }
   // 0) Отфильтровываем события, не относящиеся к текущей комнате
   if (msg.roomId !== currentRoom) return;
 
@@ -1281,151 +1252,6 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
     }
   });
 
-// Открыть/закрыть модалку
-openGameBtn.onclick  = () => gameModal.classList.remove('hidden');
-closeGameBtn.onclick = () => {
-  gameModal.classList.add('hidden');
-  // сбросим всё состояние
-  onlineSelectEl.classList.remove('active');
-  onlineGameSection.classList.remove('active');
-};
-
-// 1) Кнопка «Онлайн» → список соперников
-document.getElementById('mode-online').onclick = () => {
-  if (!currentRoom) return alert('Сначала выберите чат для игры онлайн');
-  // Собираем список приватных комнат
-  onlineUsersList.innerHTML = '';
-  Object.entries(roomMeta).forEach(([roomId, m]) => {
-    if (!m.is_group && !m.is_channel) {
-      const opp = m.members.find(n => n !== userNickname);
-      const li  = document.createElement('li');
-      li.textContent = opp;
-      li.onclick = () => inviteToPlay(opp, roomId);
-      onlineUsersList.append(li);
-    }
-  });
-  // Показываем выбор
-  onlineSelectEl.classList.add('active');
-  onlineGameSection.classList.remove('active');
-};
-cancelOnlineBtn.onclick = () => {
-  onlineSelectEl.classList.remove('active');
-};
-
-// Функция приглашения
-function inviteToPlay(opponent, roomId) {
-  currentPeer = opponent;
-  currentRoom = roomId;
-  socket.send(JSON.stringify({
-    type:   'tictactoe-invite',
-    roomId,
-    from:   userNickname,
-    to:     opponent
-  }));
-  onlineSelectEl.innerHTML = '<p>Ожидаем, пока соперник примет приглашение…</p>';
-}
-
-// 2) Кнопка «Против бота»
-modeBotBtn.onclick = () => {
-  setupGameSection('bot');
-  startGame('bot');
-};
-
-// 3) «Новая игра»
-resetGameBtn.onclick = () => resetGame();
-
-// Общий setup для секций
-function setupGameSection(mode) {
-  gameModal.classList.remove('hidden');
-  onlineSelectEl.classList.remove('active');
-  onlineGameSection.classList.add('active');
-  // Деактивируем «Онлайн»-кнопку в секции игры
-  document.getElementById('mode-online').disabled = true;
-}
-
-// Настройка и запуск игры онлайн
-function setupOnlineGame(opponent, roomId, youAreO) {
-  setupGameSection('online');
-  gameMode = 'online';
-  currentPeer = opponent;
-  currentRoom = roomId;
-  myMark = youAreO ? 'O' : 'X';
-  turn = 'X';
-  resetGame();
-  gameStatusEl.textContent = `Вы за ${myMark}. Ходит ${turn}.`;
-}
-
-// Инициализация партии
-function startGame(mode) {
-  gameMode = mode;
-  resetGame();
-  if (mode === 'online') {
-    // этот вызов теперь идёт внутри setupOnlineGame
-  } else {
-    myMark = 'X';
-    turn = 'X';
-    gameStatusEl.textContent = `Против бота. Вы X. Ваш ход.`;
-  }
-}
-
-// Сброс доски
-function resetGame() {
-  board = Array(9).fill(null);
-  gameBoardEl.innerHTML = '';
-  for (let i = 0; i < 9; i++) {
-    const cell = document.createElement('div');
-    cell.className = 'game-cell';
-    cell.dataset.i  = i;
-    cell.onclick    = onCellClick;
-    gameBoardEl.appendChild(cell);
-  }
-  if (gameMode === 'bot') setTimeout(botMove, 300);
-}
-
-// Клик по ячейке
-function onCellClick(e) {
-  const i = +e.target.dataset.i;
-  if (board[i] || checkWin(board) || turn !== myMark) return;
-  makeMove(i, myMark);
-  if (gameMode === 'online') {
-    socket.send(JSON.stringify({
-      type:   'tictactoe-move',
-      roomId: currentRoom,
-      from:   userNickname,
-      index:  i
-    }));
-  } else {
-    if (!checkWin(board) && board.includes(null)) setTimeout(botMove, 300);
-  }
-}
-
-// Применение хода
-function makeMove(i, mark) {
-  board[i] = mark;
-  const cell = gameBoardEl.querySelector(`.game-cell[data-i="${i}"]`);
-  cell.textContent = mark;
-  if (checkWin(board)) {
-    gameStatusEl.textContent = `Выиграли ${mark}!`;
-  } else if (!board.includes(null)) {
-    gameStatusEl.textContent = 'Ничья.';
-  } else {
-    turn = mark === 'X' ? 'O' : 'X';
-    gameStatusEl.textContent = `Ходит ${turn}.`;
-  }
-}
-
-// Бот
-function botMove() {
-  const free = board.map((v, idx) => v===null ? idx : null).filter(v => v!==null);
-  const choice = free[Math.floor(Math.random()*free.length)];
-  makeMove(choice, turn);
-}
-
-// Проверка победы
-function checkWin(bd) {
-  const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-  return lines.some(([a,b,c]) => bd[a] && bd[a]===bd[b] && bd[a]===bd[c]);
-}
   // Initialization
   loadRooms();
   loadUsers();
