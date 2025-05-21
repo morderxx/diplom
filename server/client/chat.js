@@ -929,8 +929,30 @@ async function joinRoom(roomId) {
     socket.send(JSON.stringify({ type: 'join', token, roomId }));
  socket.onmessage = ev => {
   const msg = JSON.parse(ev.data);
-    if (msg.type === 'tictactoe-move' && gameMode === 'online' && msg.from !== userNickname) {
+  // Приглашение от другого
+  if (msg.type === 'tictactoe-invite' && msg.to === userNickname) {
+    if (confirm(`Пользователь ${msg.from} приглашает вас сыграть. Принять?`)) {
+      socket.send(JSON.stringify({
+        type:   'tictactoe-accept',
+        roomId: msg.roomId,
+        from:   userNickname,
+        to:     msg.from
+      }));
+      setupOnlineGame(msg.from, msg.roomId, true);
+    }
+    return;
+  }
+
+  // Соперник принял ваше приглашение
+  if (msg.type === 'tictactoe-accept' && msg.to === userNickname) {
+    setupOnlineGame(msg.from, msg.roomId, false);
+    return;
+  }
+
+  // Ход соперника
+  if (msg.type === 'tictactoe-move' && gameMode === 'online' && msg.from !== userNickname) {
     makeMove(msg.index, turn);
+    return;
   }
   // 0) Отфильтровываем события, не относящиеся к текущей комнате
   if (msg.roomId !== currentRoom) return;
@@ -1311,39 +1333,6 @@ modeBotBtn.onclick = () => {
 
 // 3) «Новая игра»
 resetGameBtn.onclick = () => resetGame();
-
-// Обработка приглашения и принятия
-socket.onmessage = ev => {
-  const msg = JSON.parse(ev.data);
-
-  // Приглашение от другого
-  if (msg.type === 'tictactoe-invite' && msg.to === userNickname) {
-    if (confirm(`Пользователь ${msg.from} приглашает вас сыграть. Принять?`)) {
-      socket.send(JSON.stringify({
-        type:   'tictactoe-accept',
-        roomId: msg.roomId,
-        from:   userNickname,
-        to:     msg.from
-      }));
-      setupOnlineGame(msg.from, msg.roomId, true);
-    }
-    return;
-  }
-
-  // Соперник принял ваше приглашение
-  if (msg.type === 'tictactoe-accept' && msg.to === userNickname) {
-    setupOnlineGame(msg.from, msg.roomId, false);
-    return;
-  }
-
-  // Ход соперника
-  if (msg.type === 'tictactoe-move' && gameMode === 'online' && msg.from !== userNickname) {
-    makeMove(msg.index, turn);
-    return;
-  }
-
-  // … остальной switch для чата, звонков и файлов …
-};
 
 // Общий setup для секций
 function setupGameSection(mode) {
