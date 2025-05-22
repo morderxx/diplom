@@ -2,10 +2,10 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../db');
-const auth    = require('../auth').middleware;
+const { authMiddleware } = require('../auth');
 
-// Все роуты защищены
-router.use(auth);
+// «навешиваем» её на все маршруты задач
+router.use(authMiddleware);
 
 /**
  * GET /api/tasks
