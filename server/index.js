@@ -5,7 +5,7 @@ const cors          = require('cors');
 const path          = require('path');
 require('dotenv').config();
 
-const authRoutes     = require('./auth');
+const { router: authRoutes, authMiddleware } = require('./auth');
 const usersRoutes    = require('./routes/users');
 const messagesRoutes = require('./routes/messages');
 const callsRouter    = require('./routes/calls');
