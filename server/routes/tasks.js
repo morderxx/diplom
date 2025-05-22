@@ -1,7 +1,7 @@
 // server/routes/tasks.js
 const express = require('express');
 const router  = express.Router();
-const db      = require('../bd');
+const db      = require('../db');
 const auth    = require('../auth').middleware;
 
 // Все роуты защищены
