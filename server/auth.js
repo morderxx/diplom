@@ -131,5 +131,7 @@ router.get('/profile', authMiddleware, async (req, res) => {
     res.status(500).send('Error fetching profile');
   }
 });
-module.exports.authMiddleware = authMiddleware;
-module.exports = router;
+module.exports = {
+  router,
+  authMiddleware
+};
