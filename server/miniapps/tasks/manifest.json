@@ -1,0 +1,7 @@
+{
+  "id": "tasks",
+  "name": "Таск-менеджер",
+  "entry": "/miniapps/tasks/index.html",
+  "icon": "/miniapps/tasks/icon.png",
+  "permissions": ["storage", "notifications"]
+}
