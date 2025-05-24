@@ -34,16 +34,23 @@
   function fireNotification(time, description, ts) {
     if (notified.has(ts)) return;
     notified.add(ts);
-    console.log(`🚀 Fire at ${new Date(ts)}: ${description}`);
     audio.play().catch(() => {});
     if (Notification.permission === 'granted') {
-      new Notification('Напоминание', { body: `За минуту: ${time} — ${description}`, icon: 'icon.png' });
+      new Notification('Напоминание', {
+        body: `За минуту: ${time} — ${description}`,
+        icon: 'icon.png',
+        tag: String(ts),
+        renotify: true,
+        silent: false
+      });
     }
+    console.log(`🚀 Fire at ${new Date(ts)}: ${description}`);
   }
+
   async function checkNotifications() {
     const now = Date.now();
     const dateStr = getLocalDateStr();
-    console.log('Checking notifications for', dateStr);
+    console.log('Checking notifications for', dateStr, 'at', new Date(now).toLocaleTimeString());
     try {
       const res = await fetch(`/events?date=${dateStr}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
       if (!res.ok) { console.error('Error fetching events', res.status); return; }
@@ -53,7 +60,6 @@
         const [hh, mm] = time.split(':').map(Number);
         const ts = toTimestamp(dateStr, hh, mm);
         const diff = ts - now;
-        // если событие через 0-60 секунд
         if (diff > 0 && diff <= 60000) {
           fireNotification(time, description, ts);
         }
@@ -62,13 +68,12 @@
       console.error('checkNotifications error', e);
     }
   }
-  // Запускать проверку каждую 30 сек
-  setInterval(checkNotifications, 30000);
+  // Запускать проверку каждую секунду
+  setInterval(checkNotifications, 1000);
   // И сразу при загрузке
   checkNotifications();
 
-  // === API и рендер ===
-  const token = () => localStorage.getItem('token');
+  // === Рендер календаря ===
   const today = new Date();
   let current = new Date(today.getFullYear(), today.getMonth(), 1);
   const monthYearEl = document.getElementById('month-year');
@@ -81,7 +86,7 @@
     const year = current.getFullYear();
     const month = current.getMonth() + 1;
     monthYearEl.textContent = current.toLocaleString('ru', { month: 'long', year: 'numeric' });
-    const res = await fetch(`/events?year=${year}&month=${month}`, { headers: { 'Authorization': `Bearer ${token()}` } });
+    const res = await fetch(`/events?year=${year}&month=${month}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
     const eventDates = res.ok ? await res.json() : [];
     const firstDay = new Date(year, month-1, 1).getDay() || 7;
     const daysInMonth = new Date(year, month, 0).getDate();
@@ -112,7 +117,7 @@
   const descInput = document.getElementById('event-desc');
 
   async function openList(dateStr) {
-    const res = await fetch(`/events?date=${dateStr}`, { headers: { 'Authorization': `Bearer ${token()}` } });
+    const res = await fetch(`/events?date=${dateStr}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
     const items = res.ok ? await res.json() : [];
     listDateEl.textContent = dateStr;
     if (items.length === 0) listEl.innerHTML = '<li>Нет событий</li>';
@@ -128,7 +133,7 @@
     try {
       await fetch('/events', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token()}`, 'Content-Type': 'application/json' },
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ date: dateInput.value, time: timeInput.value, desc: descInput.value })
       });
       formOverlay.classList.add('hidden');
