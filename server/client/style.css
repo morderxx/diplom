@@ -564,8 +564,18 @@ body.lightbox-open {
   background: white;
   border-radius: 10px;
   padding: 10px;
-  width: 400px;
-  height: 400px;
+  /* Убираем фиксированные размеры */
+  /* width: 400px;
+     height: 400px; */
+  /* Вместо этого — гибкие ограничения по размеру экрана */
+  max-width: 90vw;
+  max-height: 90vh;
+  width: auto;
+  height: auto;
+  
+  /* Включаем прокрутку, если содержимого больше, чем доступно */
+  overflow: auto;
+  
   position: relative;
 }
 
