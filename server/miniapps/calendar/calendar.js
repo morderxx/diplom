@@ -1,11 +1,22 @@
 (() => {
-  const container   = document.getElementById('calendar-container');
+  // табы
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+    };
+  });
+
+  // === Календарь ===
+  const today   = new Date();
+  let current   = new Date(today.getFullYear(), today.getMonth(), 1);
   const monthYearEl = document.getElementById('month-year');
+  const grid        = document.getElementById('calendar-grid');
   const prevBtn     = document.getElementById('prev-month');
   const nextBtn     = document.getElementById('next-month');
-  const grid        = document.getElementById('calendar-grid');
   const addBtn      = document.getElementById('add-event-btn');
-
   const formOverlay = document.getElementById('event-form');
   const formBack    = formOverlay.querySelector('.form-backdrop');
   const cancelBtn   = document.getElementById('cancel-event');
@@ -14,61 +25,69 @@
   const timeInput   = document.getElementById('event-time');
   const descInput   = document.getElementById('event-desc');
 
-  const today   = new Date();
-  let current   = new Date(today.getFullYear(), today.getMonth(), 1);
-
   function renderCalendar() {
     grid.innerHTML = '';
-    const year       = current.getFullYear();
-    const month      = current.getMonth();
-    monthYearEl.textContent = current.toLocaleString('ru', { month: 'long', year: 'numeric' });
-
-    const firstDay    = new Date(year, month, 1).getDay() || 7;
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    // пустые ячейки до первого дня недели
-    for (let i = 1; i < firstDay; i++) {
-      grid.appendChild(document.createElement('div'));
-    }
-    // дни месяца
-    for (let d = 1; d <= daysInMonth; d++) {
+    const year = current.getFullYear(), month = current.getMonth();
+    monthYearEl.textContent = current.toLocaleString('ru',{month:'long',year:'numeric'});
+    const firstDay = new Date(year,month,1).getDay() ||7;
+    const daysInMonth = new Date(year,month+1,0).getDate();
+    for(let i=1;i<firstDay;i++) grid.appendChild(document.createElement('div'));
+    for(let d=1;d<=daysInMonth;d++){
       const cell = document.createElement('div');
-      const dateStr = `${year}-${String(month + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
       cell.textContent = d;
-      if (dateStr === today.toISOString().slice(0,10)) {
-        cell.classList.add('today');
-      }
-      cell.onclick = () => openForm(dateStr);
+      if(dateStr===today.toISOString().slice(0,10)) cell.classList.add('today');
+      cell.onclick = ()=>openForm(dateStr);
       grid.appendChild(cell);
     }
   }
+  function openForm(dateStr){ formOverlay.classList.remove('hidden');
+    dateInput.value=dateStr; timeInput.value=''; descInput.value=''; }
+  function saveEvent(){ const key=dateInput.value;
+    const list=JSON.parse(localStorage.getItem(key)||'[]');
+    list.push({time:timeInput.value,desc:descInput.value});
+    localStorage.setItem(key,JSON.stringify(list));
+    formOverlay.classList.add('hidden'); }
+  function closeForm(){ formOverlay.classList.add('hidden'); }
 
-  function openForm(dateStr) {
-    formOverlay.classList.remove('hidden');
-    dateInput.value = dateStr;
-    timeInput.value = '';
-    descInput.value = '';
-  }
-
-  function saveEvent() {
-    const key  = dateInput.value;
-    const list = JSON.parse(localStorage.getItem(key) || '[]');
-    list.push({ time: timeInput.value, desc: descInput.value });
-    localStorage.setItem(key, JSON.stringify(list));
-    formOverlay.classList.add('hidden');
-  }
-
-  function closeForm() {
-    formOverlay.classList.add('hidden');
-  }
-
-  prevBtn.onclick = () => { current.setMonth(current.getMonth() - 1); renderCalendar(); };
-  nextBtn.onclick = () => { current.setMonth(current.getMonth() + 1); renderCalendar(); };
-  addBtn.onclick  = () => openForm(today.toISOString().slice(0,10));
-  cancelBtn.onclick   = closeForm;
-  formBack.onclick    = closeForm;
-  saveBtn.onclick     = saveEvent;
-
-  // Инициализация
+  prevBtn.onclick=()=>{current.setMonth(current.getMonth()-1);renderCalendar();};
+  nextBtn.onclick=()=>{current.setMonth(current.getMonth()+1);renderCalendar();};
+  addBtn.onclick =()=>openForm(today.toISOString().slice(0,10));
+  cancelBtn.onclick=closeForm; formBack.onclick=closeForm; saveBtn.onclick=saveEvent;
   renderCalendar();
+
+  // === Заметки ===
+  const notesArea = document.getElementById('notes-area');
+  notesArea.value = localStorage.getItem('tm-notes')||'';
+  notesArea.oninput = ()=>localStorage.setItem('tm-notes',notesArea.value);
+
+  // === Таймер ===
+  let timerInterval= null;
+  let startTime    = null;
+  const display    = document.getElementById('timer-display');
+  const startBtn   = document.getElementById('start-timer');
+  const stopBtn    = document.getElementById('stop-timer');
+  const resetBtn   = document.getElementById('reset-timer');
+
+  function updateTimer(){
+    const diff = Date.now() - startTime;
+    const hrs = String(Math.floor(diff/3600000)).padStart(2,'0');
+    const mins = String(Math.floor(diff%3600000/60000)).padStart(2,'0');
+    const secs = String(Math.floor(diff%60000/1000)).padStart(2,'0');
+    display.textContent = `${hrs}:${mins}:${secs}`;
+  }
+  startBtn.onclick = ()=>{
+    if(timerInterval) return;
+    startTime = Date.now() - (timerInterval?0:0);
+    timerInterval = setInterval(updateTimer,500);
+  };
+  stopBtn.onclick = ()=>{
+    clearInterval(timerInterval);
+    timerInterval = null;
+  };
+  resetBtn.onclick = ()=>{
+    clearInterval(timerInterval);
+    timerInterval = null;
+    display.textContent = '00:00:00';
+  };
 })();
