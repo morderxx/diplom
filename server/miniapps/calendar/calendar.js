@@ -52,27 +52,35 @@
   const descInput   = document.getElementById('event-desc');
 
   // === Планирование уведомлений ===
+  const notified = new Set();
+  function fireNotification(time, description, eventTs) {
+    if (notified.has(eventTs)) return;
+    notified.add(eventTs);
+    console.log(`🚀 Fire "${description}" at ${time}`);
+    audio.play().catch(()=>{});
+    if (Notification.permission === 'granted') {
+      new Notification('Напоминание', {
+        body: `${time} — ${description}`,
+        icon: 'icon.png'
+      });
+    }
+  }
+  
   function scheduleNotifications(events, dateStr) {
     const now = Date.now();
     events.forEach(({ time, description }) => {
       if (!time) return;
       const [hh, mm] = time.split(':').map(Number);
-      const eventTime = new Date(
+      const eventTs = new Date(
         `${dateStr}T${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:00`
       ).getTime();
-      const delay = eventTime - now;
+      const delay = eventTs - now;
       console.log(`Scheduling "${description}" at ${time}: delay=${delay}ms`);
       if (delay > 0) {
-        setTimeout(() => {
-          console.log(`Triggering "${description}" at ${new Date().toLocaleTimeString()}`);
-          audio.play().catch(err => console.warn('Audio play failed:', err));
-          if (Notification.permission === 'granted') {
-            new Notification('Напоминание', {
-              body: `${time} — ${description}`,
-              icon: 'icon.png'
-            });
-          }
-        }, delay);
+        setTimeout(() => fireNotification(time, description, eventTs), delay);
+      } else if (delay >= -60000) {
+        // событие было до минуты назад — сразу уведомляем
+        setTimeout(() => fireNotification(time, description, eventTs), 0);
       }
     });
   }
