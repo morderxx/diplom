@@ -88,16 +88,23 @@
   }
 
   // === Открыть список событий на дату ===
-  async function openList(dateStr) {
-    const items = await fetchEventsByDate(dateStr);
-    listDateEl.textContent = dateStr;
-    listEl.innerHTML = items.length
-      ? items.map(i => `<li>${i.event_time || '—'}  ${i.description}</li>`).join('')
-      : '<li>Нет событий</li>';
-    // запоминаем дату для создания
-    dateInput.value = dateStr;
-    listOverlay.classList.remove('hidden');
+async function openList(dateStr) {
+  const items = await fetchEventsByDate(dateStr);
+  listDateEl.textContent = dateStr;
+  if (items.length === 0) {
+    listEl.innerHTML = '<li>Нет событий</li>';
+  } else {
+    listEl.innerHTML = items.map(i => `
+      <li>
+        <span class="event-time">${i.time || '—'}</span>
+        <span class="event-desc">${i.description}</span>
+      </li>
+    `).join('');
   }
+  dateInput.value = dateStr;
+  listOverlay.classList.remove('hidden');
+}
+
 
   // === Закрыть список ===
   closeList.onclick = () => listOverlay.classList.add('hidden');
