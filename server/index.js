@@ -64,13 +64,13 @@ app.use('/api/rooms', roomsRoutes);
 
 // файлы
 app.use('/api/files', filesRoutes);
-
-// 3) Статика клиентской части
-app.use(express.static(path.join(__dirname, 'client')));
 app.use(
   '/miniapps',
   express.static(path.join(__dirname, 'miniapps'))
 );
+// 3) Статика клиентской части
+app.use(express.static(path.join(__dirname, 'client')));
+
 
 // 4) SPA fallback — всё, что не /api, отдадим клиентский index.html
 app.get(/^\/(?!api).*/, (req, res) =>
