@@ -107,3 +107,22 @@ body {
   display: flex;
   flex-direction: column;
 }
+/* Список событий */
+#events-list {
+  list-style: none;
+  margin: .5rem 0;
+  padding: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+#events-list li {
+  padding: .4rem .6rem;
+  border-bottom: 1px solid #ddd;
+}
+
+/* Кнопка “Добавить событие” в списке */
+#add-new-event {
+  margin-right: auto;
+}
+
+/* Остальные стили (has-event и пр.) — без изменений */
