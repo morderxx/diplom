@@ -66,8 +66,9 @@ app.use('/api/rooms', roomsRoutes);
 app.use('/api/files', filesRoutes);
 app.use(
   '/miniapps',
-  express.static(path.join(__dirname, 'miniapps'))
+  express.static(path.join(__dirname, 'server', 'miniapps'))
 );
+
 // 3) Статика клиентской части
 app.use(express.static(path.join(__dirname, 'client')));
 
