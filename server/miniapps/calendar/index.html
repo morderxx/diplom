@@ -3,44 +3,67 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Календарь / Планировщик</title>
+  <title>Тайм-менеджер</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- Контейнер календаря для iframe -->
-  <div id="calendar-container">
-    <header class="calendar-header">
-      <button id="prev-month" class="nav-btn">⟨</button>
-      <h2 id="month-year"></h2>
-      <button id="next-month" class="nav-btn">⟩</button>
-    </header>
-    <div class="calendar-body">
-      <div class="week-days">
-        <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div>
-        <div>Пт</div><div>Сб</div><div>Вс</div>
+  <div id="manager-container">
+    <!-- Навигация -->
+    <nav class="tabs">
+      <button data-tab="calendar" class="tab-btn active">Календарь</button>
+      <button data-tab="notes"    class="tab-btn">Заметки</button>
+      <button data-tab="timer"    class="tab-btn">Таймер</button>
+    </nav>
+
+    <!-- Содержимое вкладок -->
+    <div class="tab-content active" id="calendar">
+      <!-- сюда подключается календарь -->
+      <div id="calendar-container">
+        <header class="calendar-header">
+          <button id="prev-month" class="nav-btn">⟨</button>
+          <h2 id="month-year"></h2>
+          <button id="next-month" class="nav-btn">⟩</button>
+        </header>
+        <div class="calendar-body">
+          <div class="week-days">
+            <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div>
+            <div>Пт</div><div>Сб</div><div>Вс</div>
+          </div>
+          <div id="calendar-grid" class="calendar-grid"></div>
+        </div>
+        <footer class="calendar-footer">
+          <button id="add-event-btn" class="btn">Добавить событие</button>
+        </footer>
       </div>
-      <div id="calendar-grid" class="calendar-grid"></div>
+      <div id="event-form" class="event-form hidden">
+        <div class="form-backdrop"></div>
+        <div class="form-window">
+          <h3>Новое событие</h3>
+          <label>Дата: <input type="date" id="event-date" /></label>
+          <label>Время: <input type="time" id="event-time" /></label>
+          <label>Описание: <input type="text" id="event-desc" placeholder="Что запланировано?" /></label>
+          <div class="form-actions">
+            <button id="save-event" class="btn">Сохранить</button>
+            <button id="cancel-event" class="btn secondary">Отмена</button>
+          </div>
+        </div>
+      </div>
     </div>
-    <footer class="calendar-footer">
-      <button id="add-event-btn" class="btn">Добавить событие</button>
-    </footer>
+
+    <div class="tab-content" id="notes">
+      <textarea id="notes-area" placeholder="Ваши заметки..." autofocus></textarea>
+    </div>
+
+    <div class="tab-content" id="timer">
+      <div class="timer-controls">
+        <button id="start-timer" class="btn">Старт</button>
+        <button id="stop-timer"  class="btn secondary">Стоп</button>
+        <button id="reset-timer" class="btn secondary">Сброс</button>
+      </div>
+      <div id="timer-display">00:00:00</div>
+    </div>
   </div>
 
-  <!-- Форма события -->
-  <div id="event-form" class="event-form hidden">
-    <div class="form-backdrop"></div>
-    <div class="form-window">
-      <h3>Новое событие</h3>
-      <label>Дата: <input type="date" id="event-date" /></label>
-      <label>Время: <input type="time" id="event-time" /></label>
-      <label>Описание: <input type="text" id="event-desc" placeholder="Что запланировано?" /></label>
-      <div class="form-actions">
-        <button id="save-event" class="btn">Сохранить</button>
-        <button id="cancel-event" class="btn secondary">Отмена</button>
-      </div>
-    </div>
-  </div>
-
-  <script src="calendar.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
