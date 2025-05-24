@@ -6,15 +6,15 @@ const jwt     = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
-// Аутентификация по JWT, кладёт в req.userId
+// Аутентификация по JWT, кладёт в req.userId из payload.id
 async function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth) return res.status(401).send('No token');
   try {
     const token   = auth.split(' ')[1];
     const payload = jwt.verify(token, JWT_SECRET);
-    // payload должен содержать userId
-    req.userId = payload.userId;
+    // В вашем auth.js вы подписываете { id, login }
+    req.userId = payload.id;
     next();
   } catch (e) {
     console.error('JWT error:', e);
@@ -39,7 +39,7 @@ router.get('/', authMiddleware, async (req, res) => {
     `, [userId, year, month]);
     res.json(rows.map(r => r.date));
   } catch (err) {
-    console.error(err);
+    console.error('Error fetching events:', err);
     res.status(500).send('DB error');
   }
 });
@@ -58,7 +58,7 @@ router.post('/', authMiddleware, async (req, res) => {
     `, [userId, date, time || null, desc]);
     res.status(201).send('ok');
   } catch (err) {
-    console.error(err);
+    console.error('Error saving event:', err);
     res.status(500).send('DB error');
   }
 });
