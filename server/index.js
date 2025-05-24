@@ -64,6 +64,18 @@ app.use('/api/rooms', roomsRoutes);
 
 // файлы
 app.use('/api/files', filesRoutes);
+const fs = require('fs');
+
+// Логи для диагностики
+console.log('== SERVER __dirname =', __dirname);
+const miniPath = path.join(__dirname, 'miniapps');
+console.log('== Serving miniapps from', miniPath);
+try {
+  console.log('== miniapps contents:', fs.readdirSync(miniPath));
+} catch (e) {
+  console.error('!! Cannot read miniapps dir:', e.message);
+}
+
 app.use(
   '/miniapps',
   express.static(path.join(__dirname, 'miniapps'))
