@@ -9,6 +9,25 @@
     };
   });
 
+  // === Звук и разрешения ===
+  const audio = new Audio('notify.mp3');
+  audio.preload = 'auto';
+  // разблокируем autoplay при первом клике
+  document.body.addEventListener('click', () => {
+    audio.play().then(() => {
+      audio.pause();
+      audio.currentTime = 0;
+      console.log('Audio unlocked for autoplay');
+    }).catch(() => {});
+  }, { once: true });
+
+  // запрос разрешения на системные уведомления
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().then(p => {
+      console.log('Notification permission:', p);
+    });
+  }
+
   // === Элементы ===
   const today       = new Date();
   let current       = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -32,15 +51,7 @@
   const timeInput   = document.getElementById('event-time');
   const descInput   = document.getElementById('event-desc');
 
-  // === Звук и уведомления ===
-  // путь без слэша — файл в той же папке, что и index.html
-  const audio = new Audio('notify.mp3');
-  if ('Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission().then(p => {
-      console.log('Notification permission:', p);
-    });
-  }
-
+  // === Планирование уведомлений ===
   function scheduleNotifications(events, dateStr) {
     const now = Date.now();
     events.forEach(({ time, description }) => {
