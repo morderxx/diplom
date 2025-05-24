@@ -33,24 +33,32 @@
   const descInput   = document.getElementById('event-desc');
 
   // === Звук и уведомления ===
-  const audio = new Audio('/miniapps/calendar/notify.mp3');
-  if ('Notification' in window && Notification.permission !== 'granted') {
-    Notification.requestPermission();
+  // путь без слэша — файл в той же папке, что и index.html
+  const audio = new Audio('notify.mp3');
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().then(p => {
+      console.log('Notification permission:', p);
+    });
   }
+
   function scheduleNotifications(events, dateStr) {
     const now = Date.now();
     events.forEach(({ time, description }) => {
       if (!time) return;
       const [hh, mm] = time.split(':').map(Number);
-      const eventTime = new Date(`${dateStr}T${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:00`).getTime();
+      const eventTime = new Date(
+        `${dateStr}T${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:00`
+      ).getTime();
       const delay = eventTime - now;
+      console.log(`Scheduling "${description}" at ${time}: delay=${delay}ms`);
       if (delay > 0) {
         setTimeout(() => {
-          audio.play().catch(()=>{});
+          console.log(`Triggering "${description}" at ${new Date().toLocaleTimeString()}`);
+          audio.play().catch(err => console.warn('Audio play failed:', err));
           if (Notification.permission === 'granted') {
             new Notification('Напоминание', {
               body: `${time} — ${description}`,
-              icon: '/miniapps/calendar/icon.png'
+              icon: 'icon.png'
             });
           }
         }, delay);
@@ -127,7 +135,6 @@
           <span class="event-desc">${i.description}</span>
         </li>
       `).join('');
-      // планируем уведомления на эту дату
       scheduleNotifications(items, dateStr);
     }
     dateInput.value = dateStr;
@@ -155,11 +162,11 @@
       });
       formOverlay.classList.add('hidden');
       await renderCalendar();
-      // если событие на сегодня — планируем уведомление
       if (dateInput.value === today.toISOString().slice(0,10)) {
         scheduleNotifications([{ time: timeInput.value, description: descInput.value }], dateInput.value);
       }
     } catch (e) {
+      console.error(e);
       alert(e.message);
     }
   };
@@ -175,7 +182,7 @@
   // Первичный рендер + планирование на сегодня
   (async () => {
     await renderCalendar();
-    const todayStr = today.toISOString().slice(0,10);
+    const todayStr    = today.toISOString().slice(0,10);
     const todayEvents = await fetchEventsByDate(todayStr);
     scheduleNotifications(todayEvents, todayStr);
   })();
