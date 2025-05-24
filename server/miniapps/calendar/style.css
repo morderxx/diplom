@@ -116,9 +116,20 @@ body {
   overflow-y: auto;
 }
 #events-list li {
+  display: flex;
+  gap: 0.5rem;
   padding: .4rem .6rem;
   border-bottom: 1px solid #ddd;
 }
+.event-time {
+  font-weight: 600;
+  color: #4a90e2;
+  width: 50px;
+}
+.event-desc {
+  flex: 1;
+}
+
 
 /* Кнопка “Добавить событие” в списке */
 #add-new-event {
