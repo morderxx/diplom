@@ -1,5 +1,5 @@
 (() => {
-  // табы (без изменений)
+  // === Таб-навигатор ===
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.onclick = () => {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -17,7 +17,7 @@
   const prevBtn     = document.getElementById('prev-month');
   const nextBtn     = document.getElementById('next-month');
 
-  // Оверлеи
+  // Оверлеи списка и формы
   const listOverlay = document.getElementById('events-list-overlay');
   const listDateEl  = document.getElementById('list-date');
   const listEl      = document.getElementById('events-list');
@@ -32,7 +32,33 @@
   const timeInput   = document.getElementById('event-time');
   const descInput   = document.getElementById('event-desc');
 
-  // === Вспомогательные API ===
+  // === Звук и уведомления ===
+  const audio = new Audio('/miniapps/calendar/notify.mp3');
+  if ('Notification' in window && Notification.permission !== 'granted') {
+    Notification.requestPermission();
+  }
+  function scheduleNotifications(events, dateStr) {
+    const now = Date.now();
+    events.forEach(({ time, description }) => {
+      if (!time) return;
+      const [hh, mm] = time.split(':').map(Number);
+      const eventTime = new Date(`${dateStr}T${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:00`).getTime();
+      const delay = eventTime - now;
+      if (delay > 0) {
+        setTimeout(() => {
+          audio.play().catch(()=>{});
+          if (Notification.permission === 'granted') {
+            new Notification('Напоминание', {
+              body: `${time} — ${description}`,
+              icon: '/miniapps/calendar/icon.png'
+            });
+          }
+        }, delay);
+      }
+    });
+  }
+
+  // === API ===
   const token = () => localStorage.getItem('token');
 
   async function fetchEventDates(year, month) {
@@ -73,7 +99,9 @@
     const firstDay    = new Date(year, month-1, 1).getDay() || 7;
     const daysInMonth = new Date(year, month, 0).getDate();
 
-    for (let i = 1; i < firstDay; i++) grid.appendChild(document.createElement('div'));
+    for (let i = 1; i < firstDay; i++) {
+      grid.appendChild(document.createElement('div'));
+    }
 
     for (let d = 1; d <= daysInMonth; d++) {
       const cell    = document.createElement('div');
@@ -81,35 +109,35 @@
       cell.textContent = d;
       if (dateStr === today.toISOString().slice(0,10)) cell.classList.add('today');
       if (eventDates.includes(dateStr))       cell.classList.add('has-event');
-      // Теперь — не форма, а список событий
       cell.onclick = () => openList(dateStr);
       grid.appendChild(cell);
     }
   }
 
-  // === Открыть список событий на дату ===
-async function openList(dateStr) {
-  const items = await fetchEventsByDate(dateStr);
-  listDateEl.textContent = dateStr;
-  if (items.length === 0) {
-    listEl.innerHTML = '<li>Нет событий</li>';
-  } else {
-    listEl.innerHTML = items.map(i => `
-      <li>
-        <span class="event-time">${i.time || '—'}</span>
-        <span class="event-desc">${i.description}</span>
-      </li>
-    `).join('');
+  // === Открыть список событий ===
+  async function openList(dateStr) {
+    const items = await fetchEventsByDate(dateStr);
+    listDateEl.textContent = dateStr;
+    if (items.length === 0) {
+      listEl.innerHTML = '<li>Нет событий</li>';
+    } else {
+      listEl.innerHTML = items.map(i => `
+        <li>
+          <span class="event-time">${i.time || '—'}</span>
+          <span class="event-desc">${i.description}</span>
+        </li>
+      `).join('');
+      // планируем уведомления на эту дату
+      scheduleNotifications(items, dateStr);
+    }
+    dateInput.value = dateStr;
+    listOverlay.classList.remove('hidden');
   }
-  dateInput.value = dateStr;
-  listOverlay.classList.remove('hidden');
-}
-
 
   // === Закрыть список ===
   closeList.onclick = () => listOverlay.classList.add('hidden');
 
-  // === Открыть форму создания ===
+  // === Открыть форму для нового события ===
   addNewBtn.onclick = () => {
     listOverlay.classList.add('hidden');
     timeInput.value = '';
@@ -117,7 +145,7 @@ async function openList(dateStr) {
     formOverlay.classList.remove('hidden');
   };
 
-  // === Сохранить новое событие ===
+  // === Сохранить событие ===
   saveBtn.onclick = async () => {
     try {
       await createEvent({
@@ -127,6 +155,10 @@ async function openList(dateStr) {
       });
       formOverlay.classList.add('hidden');
       await renderCalendar();
+      // если событие на сегодня — планируем уведомление
+      if (dateInput.value === today.toISOString().slice(0,10)) {
+        scheduleNotifications([{ time: timeInput.value, description: descInput.value }], dateInput.value);
+      }
     } catch (e) {
       alert(e.message);
     }
@@ -136,9 +168,15 @@ async function openList(dateStr) {
   cancelBtn.onclick = () => formOverlay.classList.add('hidden');
   formBack.onclick   = () => formOverlay.classList.add('hidden');
 
-  // === Навигация ===
+  // === Навигация месяца ===
   prevBtn.onclick = () => { current.setMonth(current.getMonth()-1); renderCalendar(); };
   nextBtn.onclick = () => { current.setMonth(current.getMonth()+1); renderCalendar(); };
 
-  renderCalendar();
+  // Первичный рендер + планирование на сегодня
+  (async () => {
+    await renderCalendar();
+    const todayStr = today.toISOString().slice(0,10);
+    const todayEvents = await fetchEventsByDate(todayStr);
+    scheduleNotifications(todayEvents, todayStr);
+  })();
 })();
