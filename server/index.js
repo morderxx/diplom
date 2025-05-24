@@ -11,6 +11,7 @@ const messagesRoutes = require('./routes/messages');
 const callsRouter    = require('./routes/calls');
 const roomsRoutes    = require('./routes/rooms');
 const filesRoutes    = require('./routes/files');
+const eventsRouter = require('./routes/events');
 
 const { setupWebSocket } = require('./chat');
 
@@ -80,7 +81,7 @@ app.use(
   '/miniapps',
   express.static(path.join(__dirname, 'miniapps'))
 );
-
+app.use('/events', eventsRouter);
 // 3) Статика клиентской части
 app.use(express.static(path.join(__dirname, 'client')));
 
