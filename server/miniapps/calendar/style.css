@@ -1,189 +1,86 @@
-/* === Сброс и базовые стили === */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+/* Сброс */
+* { box-sizing:border-box; margin:0; padding:0; }
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: #f0f4f8;
-  color: #333;
-  line-height: 1.4;
+  font-family:'Segoe UI',Arial,sans-serif;
+  background:#f0f4f8; color:#333;
+  display:flex; justify-content:center; align-items:center;
+  height:100vh;
 }
 
-/* === Контейнер календаря === */
-#calendar-container {
-  width: 100%;
-  max-width: 380px;
-  margin: auto;
-  background: #ffffff;
-  border-radius: 16px;
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-/* === Хедер === */
-.calendar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  background: linear-gradient(135deg, #4a90e2 0%, #50a7ff 100%);
-  color: #fff;
-}
-.calendar-header h2 {
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-.nav-btn {
-  background: rgba(255,255,255,0.2);
-  border: none;
-  color: #fff;
-  font-size: 1.5rem;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
-}
-.nav-btn:hover {
-  background: rgba(255,255,255,0.4);
-  transform: scale(1.1);
-}
-
-/* === Тело календаря === */
-.calendar-body {
-  padding: 0.5rem 1rem;
-}
-.week-days {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  margin-bottom: 0.5rem;
-}
-.week-days div {
-  text-align: center;
-  font-weight: 600;
-  padding: 0.5rem 0;
-  color: #666;
-}
-.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
-}
-.calendar-grid div {
-  position: relative;
-  padding: 0.75rem 0;
-  background: #f7f9fb;
-  border-radius: 8px;
-  text-align: center;
-  cursor: pointer;
-  transition: background 0.2s, box-shadow 0.2s;
-}
-.calendar-grid div:hover {
-  background: #e6f0fa;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-.calendar-grid .today {
-  background: #4a90e2;
-  color: #fff;
-  font-weight: 600;
-}
-
-/* === Футер === */
-.calendar-footer {
-  padding: 1rem;
-  background: #f5f8fb;
-  display: flex;
-  justify-content: flex-end;
-}
-.btn {
-  background: #4a90e2;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 0.6rem 1.2rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
-}
-.btn:hover {
-  background: #3b7ac1;
-  transform: translateY(-2px);
-}
-.btn.secondary {
-  background: #e0e0e0;
-  color: #333;
-}
-.btn.secondary:hover {
-  background: #c8c8c8;
-}
-
-/* === Форма события === */
-.event-form {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-.form-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,0.6);
-  backdrop-filter: blur(2px);
-}
-.form-window {
-  position: relative;
+/* Контейнер */
+#manager-container {
+  width: 380px;
   background: #fff;
   border-radius: 16px;
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.12);
-  padding: 1.5rem;
-  width: 320px;
-  max-width: 90%;
-  z-index: 1001;
-  animation: fadeInUp 0.3s ease-out;
-}
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.form-window h3 {
-  margin-bottom: 1rem;
-  font-size: 1.2rem;
-  color: #444;
-}
-.form-window label {
-  display: block;
-  margin: 0.6rem 0;
-  font-size: 0.95rem;
-  color: #555;
-}
-.form-window input {
-  width: 100%;
-  padding: 0.45rem 0.6rem;
-  margin-top: 0.25rem;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-size: 0.95rem;
-  transition: border-color 0.2s;
-}
-.form-window input:focus {
-  border-color: #4a90e2;
-  outline: none;
-}
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.6rem;
-  margin-top: 1.2rem;
+  box-shadow: 0 16px 32px rgba(0,0,0,0.08);
+  overflow: hidden;
 }
 
-/* === Скрытый класс === */
-.hidden {
-  display: none !important;
+/* Вкладки */
+.tabs { display:flex; }
+.tab-btn {
+  flex:1; padding:0.75rem; text-align:center;
+  background:#e1e5eb; border:none; cursor:pointer;
+  font-weight:600; transition:background 0.2s;
+}
+.tab-btn.active { background:#4a90e2; color:#fff; }
+.tab-btn:not(.active):hover { background:#d0d5de; }
+
+/* Контент вкладок */
+.tab-content { display:none; padding:1rem; }
+.tab-content.active { display:block; }
+
+/* === Календарь === */
+/* используем стили из предыдущего ответа */
+#calendar-container { display:flex; flex-direction:column; }
+.calendar-header { display:flex; justify-content:space-between; align-items:center;
+  padding:1rem; background:linear-gradient(135deg,#4a90e2,#50a7ff); color:#fff; }
+.nav-btn { background:rgba(255,255,255,0.2); border:none; color:#fff;
+  width:2.5rem;height:2.5rem;border-radius:50%;cursor:pointer;
+  transition:background 0.2s; }
+.nav-btn:hover { background:rgba(255,255,255,0.4); }
+.calendar-body { padding:0.5rem 1rem; }
+.week-days,.calendar-grid { display:grid; grid-template-columns:repeat(7,1fr); }
+.week-days div { font-weight:600; padding:0.5rem 0; color:#666; }
+.calendar-grid { gap:4px; }
+.calendar-grid div { padding:0.75rem 0; background:#f7f9fb; border-radius:6px;
+  text-align:center; cursor:pointer; transition:background 0.2s; }
+.calendar-grid div:hover { background:#e6f0fa; }
+.calendar-grid .today { background:#4a90e2; color:#fff; font-weight:600; }
+.calendar-footer { text-align:right; padding:1rem; background:#fafafa; }
+.btn { background:#4a90e2; color:#fff; border:none; border-radius:8px;
+  padding:0.6rem 1.2rem; cursor:pointer; transition:background 0.2s; }
+.btn:hover { background:#3b7ac1; }
+.btn.secondary { background:#e0e0e0; color:#333; }
+.btn.secondary:hover { background:#c8c8c8; }
+.event-form { position:fixed; inset:0; display:flex; justify-content:center;
+  align-items:center; z-index:1000; }
+.form-backdrop { position:absolute; inset:0; background:rgba(0,0,0,0.6);
+  backdrop-filter:blur(2px); }
+.form-window { position:relative; background:#fff; border-radius:16px;
+  box-shadow:0 16px 32px rgba(0,0,0,0.12); padding:1.5rem; width:320px;
+  animation:fadeInUp 0.3s ease-out; }
+@keyframes fadeInUp { from{opacity:0;transform:translateY(20px);} to{opacity:1;} }
+.form-window h3 { margin-bottom:1rem; }
+.form-window label { display:block; margin:0.5rem 0; font-size:0.95rem; }
+.form-window input { width:100%; padding:0.4rem; border:1px solid #ccc;
+  border-radius:6px; transition:border-color 0.2s; }
+.form-window input:focus { border-color:#4a90e2; outline:none; }
+.form-actions { display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem; }
+.hidden { display:none !important; }
+
+/* === Заметки === */
+#notes-area {
+  width:100%; height:300px;
+  padding:0.75rem; border:1px solid #ccc; border-radius:8px;
+  resize:none; font-size:1rem; font-family:inherit;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+}
+
+/* === Таймер === */
+.timer-controls { display:flex; justify-content:center; gap:0.5rem; margin-bottom:1rem; }
+#timer-display {
+  text-align:center; font-size:2rem; font-weight:600;
+  background:#f7f9fb; padding:1rem; border-radius:8px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
 }
