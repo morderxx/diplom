@@ -11,38 +11,37 @@
   });
 
   // === Звук и разрешения ===
-  const audio = new Audio('/miniapps/calendar/notify.mp3');
-  audio.preload = 'auto';
+  const notifyAudio = new Audio('/miniapps/calendar/notify.mp3');
+  notifyAudio.preload = 'auto';
   document.body.addEventListener('click', () => {
-    audio.play().then(() => { audio.pause(); audio.currentTime = 0; }).catch(() => {});
+    notifyAudio.play().then(() => { notifyAudio.pause(); notifyAudio.currentTime = 0; }).catch(() => {});
   }, { once: true });
   if ('Notification' in window) {
-    Notification.requestPermission().then(p => console.log('Notification permission:', p));
+    Notification.requestPermission();
   }
 
   // === Утилиты ===
   const pad = n => String(n).padStart(2, '0');
-  function getLocalDateStr(date = new Date()) {
-    return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
+  function getLocalDateStr(d = new Date()) {
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
   }
   function toTimestamp(dateStr, hh, mm) {
-    const [year, month, day] = dateStr.split('-').map(Number);
-    return new Date(year, month - 1, day, hh, mm, 0, 0).getTime();
+    const [y, m, day] = dateStr.split('-').map(Number);
+    return new Date(y, m-1, day, hh, mm, 0).getTime();
   }
 
   // === Авторизация ===
   const token = () => localStorage.getItem('token');
 
-  // === Планирование уведомлений ===
-  const notified = new Set();
-
-  function fireEvent(description, timeStr, ts) {
-    if (notified.has(ts)) return;
-    notified.add(ts);
-    audio.play().catch(() => {});
+  // === Планирование календарных уведомлений ===
+  const fired = new Set();
+  function fireCalendarEvent(desc, timeStr, ts) {
+    if (fired.has(ts)) return;
+    fired.add(ts);
+    notifyAudio.play().catch(() => {});
     if (Notification.permission === 'granted') {
       new Notification('Напоминание', {
-        body: `${timeStr} — ${description}`,
+        body: `${timeStr} — ${desc}`,
         icon: '/miniapps/calendar/icon.png',
         tag: String(ts),
         renotify: true,
@@ -50,46 +49,35 @@
         silent: false
       });
     }
-    console.log(`🚀 Fired '${description}' at ${timeStr}`);
   }
-
-  function scheduleEvent(timeStr, description) {
+  function scheduleCalendarEvent(timeStr, desc) {
     const dateStr = getLocalDateStr();
     const [hh, mm] = timeStr.split(':').map(Number);
     const ts = toTimestamp(dateStr, hh, mm);
     const delay = ts - Date.now();
-    console.log(`Scheduling '${description}' at ${timeStr}, delay=${delay}ms`);
-    if (delay > 0) {
-      setTimeout(() => fireEvent(description, timeStr, ts), delay);
-    } else if (delay >= -1000) {
-      setTimeout(() => fireEvent(description, timeStr, ts), 0);
-    }
+    if (delay > 0) setTimeout(() => fireCalendarEvent(desc, timeStr, ts), delay);
+    else if (delay >= -1000) setTimeout(() => fireCalendarEvent(desc, timeStr, ts), 0);
   }
-
   function scheduleTodaysEvents() {
     const dateStr = getLocalDateStr();
     fetch(`/events?date=${dateStr}`, {
       headers: { 'Authorization': `Bearer ${token()}` }
     })
-    .then(res => {
-      if (!res.ok) return [];
-      return res.json();
-    })
+    .then(res => res.ok ? res.json() : [])
     .then(events => {
       events.forEach(({ time, description }) => {
-        if (time) scheduleEvent(time, description);
+        if (time) scheduleCalendarEvent(time, description);
       });
     })
-    .catch(err => console.error('Error scheduling events:', err));
+    .catch(console.error);
   }
 
   // === Рендер календаря ===
-  const today = new Date();
-  let current = new Date(today.getFullYear(), today.getMonth(), 1);
   const monthYearEl = document.getElementById('month-year');
   const grid        = document.getElementById('calendar-grid');
   const prevBtn     = document.getElementById('prev-month');
   const nextBtn     = document.getElementById('next-month');
+  let current       = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
   async function renderCalendar() {
     grid.innerHTML = '';
@@ -100,24 +88,26 @@
     const res = await fetch(`/events?year=${year}&month=${month}`, {
       headers: { 'Authorization': `Bearer ${token()}` }
     });
-    const eventDates = res.ok ? await res.json() : [];
+    const dates = res.ok ? await res.json() : [];
 
     const firstDay    = new Date(year, month-1, 1).getDay() || 7;
     const daysInMonth = new Date(year, month, 0).getDate();
 
     for (let i = 1; i < firstDay; i++) grid.appendChild(document.createElement('div'));
     for (let d = 1; d <= daysInMonth; d++) {
-      const cell = document.createElement('div');
+      const cell    = document.createElement('div');
       const dateStr = `${year}-${pad(month)}-${pad(d)}`;
       cell.textContent = d;
       if (dateStr === getLocalDateStr()) cell.classList.add('today');
-      if (eventDates.includes(dateStr))  cell.classList.add('has-event');
+      if (dates.includes(dateStr))       cell.classList.add('has-event');
       cell.onclick = () => openList(dateStr);
       grid.appendChild(cell);
     }
   }
+  prevBtn.onclick = () => { current.setMonth(current.getMonth()-1); renderCalendar(); };
+  nextBtn.onclick = () => { current.setMonth(current.getMonth()+1); renderCalendar(); };
 
-  // === Оверлей и форма ===
+  // === Оверлей и формы событий ===
   const listOverlay = document.getElementById('events-list-overlay');
   const listDateEl  = document.getElementById('list-date');
   const listEl      = document.getElementById('events-list');
@@ -130,68 +120,6 @@
   const dateInput   = document.getElementById('event-date');
   const timeInput   = document.getElementById('event-time');
   const descInput   = document.getElementById('event-desc');
-  // Bud sound
-const budAudio = new Audio('/miniapps/calendar/bud.mp3');
-
-// Селектор режима
-const modeSelect = document.getElementById('time-mode');
-const timerInput = document.getElementById('timer-input');   // может быть <input type="time"> или <input type="number">
-const startBtn   = document.getElementById('start-time');
-const stopBtn    = document.getElementById('stop-time');
-const resetBtn   = document.getElementById('reset-time');
-
-let timerId=null, countdownId=null, stopwatchInterval=null;
-let stopwatchStart=0;
-
-startBtn.onclick = () => {
-  const mode = modeSelect.value;
-  if (mode === 'stopwatch') {
-    stopwatchStart = Date.now();
-    stopwatchInterval = setInterval(() => {
-      const diff = Date.now() - stopwatchStart;
-      // формат m:s:ms
-      const ms = diff % 1000;
-      const s  = Math.floor(diff/1000)%60;
-      const m  = Math.floor(diff/60000);
-      document.getElementById('timer-display')
-              .textContent = `${pad(m)}:${pad(s)}.${String(ms).padStart(3,'0')}`;
-    }, 50);
-  }
-  else if (mode === 'countdown') {
-    const sec = Number(timerInput.value);
-    const target = Date.now() + sec*1000;
-    countdownId = setInterval(() => {
-      const rem = target - Date.now();
-      if (rem <= 0) {
-        clearInterval(countdownId);
-        budAudio.play();
-        if (Notification.permission === 'granted') new Notification('Таймер', { body: 'Обратный отсчёт завершён', silent:false });
-      } else {
-        const s = Math.floor(rem/1000);
-        document.getElementById('timer-display').textContent = `00:${pad(s)}`;
-      }
-    }, 200);
-  }
-  else if (mode === 'alarm') {
-    const [hh,mm] = timerInput.value.split(':').map(Number);
-    // используем ту же scheduleEvent
-    scheduleEvent(timerInput.value, 'Будильник', () => {
-      budAudio.play();
-      if (Notification.permission === 'granted')
-        new Notification('Будильник', { body:`Будильник на ${timerInput.value}`, silent:false });
-    });
-  }
-};
-
-stopBtn.onclick = () => {
-  clearInterval(stopwatchInterval);
-  clearInterval(countdownId);
-};
-resetBtn.onclick = () => {
-  clearInterval(stopwatchInterval);
-  clearInterval(countdownId);
-  document.getElementById('timer-display').textContent = '00:00:00';
-};
 
   async function openList(dateStr) {
     listDateEl.textContent = dateStr;
@@ -199,15 +127,20 @@ resetBtn.onclick = () => {
       headers: { 'Authorization': `Bearer ${token()}` }
     });
     const items = res.ok ? await res.json() : [];
-    listEl.innerHTML = items.length === 0
-      ? '<li>Нет событий</li>'
-      : items.map(i => `<li><span class="event-time">${i.time||'—'}</span> <span class="event-desc">${i.description}</span></li>`).join('');
+    listEl.innerHTML = items.length
+      ? items.map(i => `<li><span class="event-time">${i.time||'—'}</span> ${i.description}</li>`).join('')
+      : '<li>Нет событий</li>';
     dateInput.value = dateStr;
     listOverlay.classList.remove('hidden');
   }
-
   closeList.onclick = () => listOverlay.classList.add('hidden');
-  addNewBtn.onclick = () => { listOverlay.classList.add('hidden'); timeInput.value = ''; descInput.value = ''; formOverlay.classList.remove('hidden'); };
+  addNewBtn.onclick = () => {
+    listOverlay.classList.add('hidden');
+    timeInput.value = '';
+    descInput.value = '';
+    formOverlay.classList.remove('hidden');
+  };
+  cancelBtn.onclick = formBack.onclick = () => formOverlay.classList.add('hidden');
   saveBtn.onclick = async () => {
     try {
       const body = { date: dateInput.value, time: timeInput.value, desc: descInput.value };
@@ -219,17 +152,109 @@ resetBtn.onclick = () => {
       if (!res.ok) throw new Error(`Ошибка ${res.status}: ${await res.text()}`);
       formOverlay.classList.add('hidden');
       await renderCalendar();
-      if (dateInput.value === getLocalDateStr()) scheduleEvent(timeInput.value, descInput.value);
-    } catch (e) { console.error(e); alert(e.message); }
+      if (dateInput.value === getLocalDateStr()) scheduleCalendarEvent(timeInput.value, descInput.value);
+    } catch (e) {
+      console.error(e);
+      alert(e.message);
+    }
   };
-  cancelBtn.onclick = () => formOverlay.classList.add('hidden');
-  formBack.onclick   = () => formOverlay.classList.add('hidden');
-  prevBtn.onclick   = () => { current.setMonth(current.getMonth()-1); renderCalendar(); };
-  nextBtn.onclick   = () => { current.setMonth(current.getMonth()+1); renderCalendar(); };
+
+  // === Таймер / Секундомер / Будильник ===
+  const budAudio   = new Audio('/miniapps/calendar/bud.mp3');
+  const modeSelect = document.getElementById('time-mode');
+  const blocks     = {
+    stopwatch: document.getElementById('param-stopwatch'),
+    countdown: document.getElementById('param-countdown'),
+    alarm:     document.getElementById('param-alarm'),
+  };
+  const display    = document.getElementById('timer-display');
+  const startBtn   = document.getElementById('start-time');
+  const stopBtn    = document.getElementById('stop-time');
+  const resetBtn   = document.getElementById('reset-time');
+  let swInterval   = null;
+  let cdInterval   = null;
+  let alarmTO      = null;
+
+  function updateModeUI() {
+    const m = modeSelect.value;
+    Object.entries(blocks).forEach(([k, el]) => el.classList.toggle('hidden', k !== m));
+    display.textContent = m === 'stopwatch' ? '00:00.000' : '00:00';
+  }
+  modeSelect.addEventListener('change', updateModeUI);
+  updateModeUI();
+
+  function notify(title, body) {
+    if (Notification.permission === 'granted') {
+      new Notification(title, { body });
+    } else {
+      Notification.requestPermission().then(p => {
+        if (p === 'granted') new Notification(title, { body });
+      });
+    }
+  }
+
+  startBtn.onclick = () => {
+    const mode = modeSelect.value;
+    if (mode === 'stopwatch') {
+      clearInterval(swInterval);
+      const start = Date.now();
+      swInterval = setInterval(() => {
+        const diff = Date.now() - start;
+        const ms = diff % 1000;
+        const s  = Math.floor(diff / 1000) % 60;
+        const m  = Math.floor(diff / 60000);
+        display.textContent = `${pad(m)}:${pad(s)}.${String(ms).padStart(3,'0')}`;
+      }, 30);
+    }
+    else if (mode === 'countdown') {
+      clearInterval(cdInterval);
+      const secs = Number(document.getElementById('timer-seconds').value);
+      if (!secs || secs <= 0) return;
+      const endTs = Date.now() + secs * 1000;
+      cdInterval = setInterval(() => {
+        const rem = endTs - Date.now();
+        if (rem <= 0) {
+          clearInterval(cdInterval);
+          display.textContent = '00:00';
+          budAudio.play();
+          notify('Таймер', 'Обратный отсчёт завершён');
+        } else {
+          const s = Math.ceil(rem / 1000);
+          display.textContent = `00:${pad(s)}`;
+        }
+      }, 200);
+    }
+    else if (mode === 'alarm') {
+      clearTimeout(alarmTO);
+      const timeStr = document.getElementById('alarm-time').value;
+      if (!timeStr) return;
+      const [hh, mm] = timeStr.split(':').map(Number);
+      const now = new Date();
+      let ts = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm).getTime();
+      if (ts <= Date.now()) ts += 24*60*60*1000;
+      alarmTO = setTimeout(() => {
+        budAudio.play();
+        notify('Будильник', `Время: ${timeStr}`);
+      }, ts - Date.now());
+    }
+  };
+
+  stopBtn.onclick = () => {
+    clearInterval(swInterval);
+    clearInterval(cdInterval);
+    clearTimeout(alarmTO);
+  };
+  resetBtn.onclick = () => {
+    clearInterval(swInterval);
+    clearInterval(cdInterval);
+    clearTimeout(alarmTO);
+    updateModeUI();
+  };
 
   // === Инициализация ===
   (async () => {
     await renderCalendar();
     scheduleTodaysEvents();
   })();
+
 })();
