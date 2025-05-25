@@ -185,28 +185,81 @@
   // === Обработчики времени: будильник / таймер / секундомер ===
   // Будильник
   let alarmTimeout;
-  document.getElementById('set-alarm').onclick = () => {
-    const time = document.getElementById('alarm-time').value;
-    const [hh, mm] = time.split(':').map(Number);
-    const now = new Date();
-    const alarmTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
-    const delay = alarmTime.getTime() - now.getTime();
-    if (delay > 0) {
-      clearTimeout(alarmTimeout);
-      alarmTimeout = setTimeout(() => { budAudio.play(); alert('⏰ Будильник!'); }, delay);
-      document.getElementById('alarm-status').textContent = `Будильник установлен на ${time}`;
-    } else alert('Указанное время уже прошло');
-  };
+// === Будильник ===
+document.getElementById('set-alarm').onclick = () => {
+  const time = document.getElementById('alarm-time').value;
+  const [hh, mm] = time.split(':').map(Number);
+  const now = new Date();
+  const alarmTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
+  const delay = alarmTime.getTime() - now.getTime();
+
+  if (delay > 0) {
+    clearTimeout(alarmTimeout);
+    alarmTimeout = setTimeout(() => {
+      budAudio.play();
+      alert('⏰ Будильник!');
+    }, delay);
+    document.getElementById('alarm-status').textContent = `Будильник установлен на ${time}`;
+
+    // Сохраняем в БД
+    fetch('/timers', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token()}`,
+        'Content-Type':  'application/json'
+      },
+      body: JSON.stringify({
+        type: 'alarm',
+        time: alarmTime.toISOString()
+      })
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Не удалось сохранить будильник');
+      document.getElementById('alarm-status').textContent += ' (сохранено)';
+    })
+    .catch(err => alert(err.message));
+
+  } else {
+    alert('Указанное время уже прошло');
+  }
+};
+
   // Таймер
   let timerTimeout;
-  document.getElementById('start-timer').onclick = () => {
-    const mins = parseInt(document.getElementById('timer-minutes').value, 10);
-    if (isNaN(mins) || mins <= 0) return alert('Введите корректное количество минут');
-    const delay = mins * 60 * 1000;
-    clearTimeout(timerTimeout);
-    timerTimeout = setTimeout(() => { budAudio.play(); alert('⏳ Таймер завершён!'); }, delay);
-    document.getElementById('timer-status').textContent = `Таймер запущен на ${mins} минут`;
-  };
+// === Таймер ===
+document.getElementById('start-timer').onclick = () => {
+  const mins = parseInt(document.getElementById('timer-minutes').value, 10);
+  if (isNaN(mins) || mins <= 0) {
+    return alert('Введите корректное количество минут');
+  }
+  const delay = mins * 60 * 1000;
+  clearTimeout(timerTimeout);
+  timerTimeout = setTimeout(() => {
+    budAudio.play();
+    alert('⏳ Таймер завершён!');
+  }, delay);
+  document.getElementById('timer-status').textContent = `Таймер запущен на ${mins} минут`;
+
+  // Сохраняем в БД
+  const fireTime = new Date(Date.now() + delay).toISOString();
+  fetch('/timers', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token()}`,
+      'Content-Type':  'application/json'
+    },
+    body: JSON.stringify({
+      type: 'timer',
+      time: fireTime
+    })
+  })
+  .then(res => {
+    if (!res.ok) throw new Error('Не удалось сохранить таймер');
+    document.getElementById('timer-status').textContent += ' (сохранено)';
+  })
+  .catch(err => alert(err.message));
+};
+
   // Секундомер
   let stopwatchInterval, stopwatchTime = 0;
   const display = document.getElementById('stopwatch-display');
