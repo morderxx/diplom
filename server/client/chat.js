@@ -1249,9 +1249,14 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
   
 // Функция открытия мини-приложения  
 function openMiniapp(path) {
+  // Если уже открыт другой путь — можно очистить
+  if (frame.src && !frame.src.endsWith(path)) {
+    frame.src = '';            // выгружаем предыдущий
+  }
   frame.src = path;
   modal.style.display = 'flex';
 }
+
 
 // Привязываем кнопки  
 document.getElementById('btn-weather')
@@ -1263,7 +1268,7 @@ document.getElementById('btn-calendar')
 // Закрытие модалки  
 closeBtn.addEventListener('click', () => {
   modal.style.display = 'none';
-  frame.src = '';   // сброс iframe
+  // НЕ трогаем frame.src — iframe остаётся загруженным, и код календаря продолжает работать
 });
 
   // Initialization
