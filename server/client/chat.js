@@ -1247,56 +1247,103 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
     }
   });
 
-  // === Планировщик уведомлений календаря ===
-  const pad = n => String(n).padStart(2, '0');
-  function getLocalDateStr(d = new Date()) {
-    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-  }
-  function toTimestamp(dateStr, hh, mm) {
-    const [y, m, day] = dateStr.split('-').map(Number);
-    return new Date(y, m-1, day, hh, mm, 0, 0).getTime();
-  }
-  const calendarToken = () => localStorage.getItem('token');
+ // ==== календарь ====
+const pad = n => String(n).padStart(2, '0');
+function getLocalDateStr(d = new Date()) {
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function toTimestamp(dateStr, hh, mm) {
+  const [y, m, day] = dateStr.split('-').map(Number);
+  return new Date(y, m-1, day, hh, mm, 0, 0).getTime();
+}
+const calendarToken = () => localStorage.getItem('token');
 
-  if ('Notification' in window) {
-    Notification.requestPermission();
-  }
+if ('Notification' in window) {
+  Notification.requestPermission();
+}
 
-  function scheduleTodaysEvents() {
-    const dateStr = getLocalDateStr();
-    fetch(`/events?date=${dateStr}`, {
-      headers: { 'Authorization': `Bearer ${calendarToken()}` }
-    })
-    .then(res => res.ok ? res.json() : [])
-    .then(events => {
-      events.forEach(({ time, description }) => {
-        if (!time) return;
-        const [hh, mm] = time.split(':').map(Number);
-        const ts = toTimestamp(dateStr, hh, mm);
-        const delay = ts - Date.now();
-        if (delay >= 0) {
-          setTimeout(() => {
-            new Audio('/miniapps/calendar/notify.mp3').play().catch(()=>{});
-            if (Notification.permission === 'granted') {
-              new Notification('Напоминание', {
-                body: `${time} — ${description}`,
-                icon: '/miniapps/calendar/icon.png',
-                tag: `${ts}`,
-                renotify: true,
-                requireInteraction: true,
-                silent: false
-              });
-            }
-          }, delay);
-        }
-      });
-    })
-    .catch(console.error);
-  }
+function scheduleTodaysEvents() {
+  const dateStr = getLocalDateStr();
+  fetch(`/events?date=${dateStr}`, {
+    headers: { 'Authorization': `Bearer ${calendarToken()}` }
+  })
+  .then(res => res.ok ? res.json() : [])
+  .then(events => {
+    events.forEach(({ time, description }) => {
+      if (!time) return;
+      const [hh, mm] = time.split(':').map(Number);
+      const ts = toTimestamp(dateStr, hh, mm);
+      const delay = ts - Date.now();
+      if (delay >= 0) {
+        setTimeout(() => {
+          new Audio('/miniapps/calendar/notify.mp3').play().catch(()=>{});
+          if (Notification.permission === 'granted') {
+            new Notification('Напоминание', {
+              body: `${time} — ${description}`,
+              icon: '/miniapps/calendar/icon.png',
+              tag: `${ts}`,
+              renotify: true,
+              requireInteraction: true,
+              silent: false
+            });
+          }
+        }, delay);
+      }
+    });
+  })
+  .catch(console.error);
+}
 
-  // Запускаем сразу и каждые 60 сек
-  scheduleTodaysEvents();
-  setInterval(scheduleTodaysEvents, 60000);
+// Запускаем сразу и каждые 60 сек
+scheduleTodaysEvents();
+setInterval(scheduleTodaysEvents, 60000);
+
+
+
+// ==== будильники из вкладки «Время» ====
+
+/**
+ * Храним в localStorage под ключом "alarms" JSON-массив строк "HH:MM"
+ * Добавляйте туда новые будильники из вашего timer-скрипта:
+ *   let a = JSON.parse(localStorage.getItem('alarms')||'[]');
+ *   a.push('07:30');
+ *   localStorage.setItem('alarms', JSON.stringify(a));
+ */
+
+function getSavedAlarms() {
+  try {
+    return JSON.parse(localStorage.getItem('alarms')) || [];
+  } catch {
+    return [];
+  }
+}
+
+function scheduleAlarms() {
+  const now       = new Date();
+  const todayStr  = getLocalDateStr(now);
+  const alarms    = getSavedAlarms();
+  alarms.forEach(timeStr => {
+    const [hh, mm] = timeStr.split(':').map(Number);
+    let ts = toTimestamp(todayStr, hh, mm);
+    // если время уже прошло — запланировать на завтра
+    if (ts <= Date.now()) ts += 24 * 60 * 60 * 1000;
+    const delay = ts - Date.now();
+    setTimeout(() => {
+      new Audio('/miniapps/calendar/bud.mp3').play().catch(()=>{});
+      if (Notification.permission === 'granted') {
+        new Notification('Будильник', {
+          body: `Сработал будильник: ${timeStr}`,
+          silent: false
+        });
+      }
+    }, delay);
+  });
+}
+
+// Запускаем сразу и обновляем каждую минуту
+scheduleAlarms();
+setInterval(scheduleAlarms, 60000);
+
 
 // Функция открытия мини-приложения  
 function openMiniapp(path) {
