@@ -1293,10 +1293,48 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
     })
     .catch(console.error);
   }
+  // === Планировщик таймеров и будильников из БД ===
+function scheduleUserTimers() {
+  fetch('/timers', {
+    headers: { 'Authorization': `Bearer ${calendarToken()}` }
+  })
+  .then(res => res.ok ? res.json() : [])
+  .then(items => {
+    const now = Date.now();
+    items.forEach(({ id, type, time }) => {
+      const ts = new Date(time).getTime();
+      const delay = ts - now;
+      if (delay >= 0) {
+        setTimeout(() => {
+          // звук
+          new Audio('/miniapps/calendar/bud.mp3').play().catch(() => {});
+          // пуш-уведомление
+          if (Notification.permission === 'granted') {
+            new Notification(
+              type === 'alarm' ? '⏰ Будильник' : '⏳ Таймер',
+              {
+                body: type === 'alarm'
+                  ? `Будильник сработал в ${new Date(time).toLocaleTimeString()}`
+                  : `Таймер завершён`,
+                tag: `timer-${id}`,
+                renotify: true,
+                requireInteraction: true,
+                silent: false
+              }
+            );
+          }
+        }, delay);
+      }
+    });
+  })
+  .catch(console.error);
+}
 
-  // Запускаем сразу и каждые 60 сек
-  scheduleTodaysEvents();
-  setInterval(scheduleTodaysEvents, 60000);
+// Запускаем сразу и каждые 60 сек
+scheduleTodaysEvents();
+scheduleUserTimers();
+setInterval(scheduleTodaysEvents, 60000);
+setInterval(scheduleUserTimers, 60000);
 
 // Функция открытия мини-приложения  
 function openMiniapp(path) {
