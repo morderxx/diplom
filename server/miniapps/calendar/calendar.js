@@ -170,4 +170,75 @@
     await renderCalendar();
     scheduleTodaysEvents();
   })();
+  // === Навигация по режимам Время ===
+document.querySelectorAll('.time-switch').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.time-switch').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.time-mode').forEach(m => m.classList.add('hidden'));
+    btn.classList.add('active');
+    document.getElementById(`${btn.dataset.mode}-mode`).classList.remove('hidden');
+  };
+});
+
+// === Аудио для будильника и таймера ===
+const budAudio = new Audio('/miniapps/calendar/bud.mp3');
+
+// === Будильник ===
+let alarmTimeout;
+document.getElementById('set-alarm').onclick = () => {
+  const time = document.getElementById('alarm-time').value;
+  const [hh, mm] = time.split(':').map(Number);
+  const now = new Date();
+  const alarmTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
+  const delay = alarmTime.getTime() - now.getTime();
+
+  if (delay > 0) {
+    clearTimeout(alarmTimeout);
+    alarmTimeout = setTimeout(() => {
+      budAudio.play();
+      alert('⏰ Будильник!');
+    }, delay);
+    document.getElementById('alarm-status').textContent = `Будильник установлен на ${time}`;
+  } else {
+    alert('Указанное время уже прошло');
+  }
+};
+
+// === Таймер ===
+let timerTimeout;
+document.getElementById('start-timer').onclick = () => {
+  const mins = parseInt(document.getElementById('timer-minutes').value, 10);
+  if (isNaN(mins) || mins <= 0) {
+    alert('Введите корректное количество минут');
+    return;
+  }
+  const delay = mins * 60 * 1000;
+  clearTimeout(timerTimeout);
+  timerTimeout = setTimeout(() => {
+    budAudio.play();
+    alert('⏳ Таймер завершён!');
+  }, delay);
+  document.getElementById('timer-status').textContent = `Таймер запущен на ${mins} минут`;
+};
+
+// === Секундомер ===
+let stopwatchInterval, stopwatchTime = 0;
+const display = document.getElementById('stopwatch-display');
+document.getElementById('start-stopwatch').onclick = () => {
+  if (stopwatchInterval) return;
+  stopwatchInterval = setInterval(() => {
+    stopwatchTime += 1000;
+    const h = Math.floor(stopwatchTime / 3600000);
+    const m = Math.floor((stopwatchTime % 3600000) / 60000);
+    const s = Math.floor((stopwatchTime % 60000) / 1000);
+    display.textContent = `${pad(h)}:${pad(m)}:${pad(s)}`;
+  }, 1000);
+};
+document.getElementById('reset-stopwatch').onclick = () => {
+  clearInterval(stopwatchInterval);
+  stopwatchInterval = null;
+  stopwatchTime = 0;
+  display.textContent = `00:00:00`;
+};
+
 })();
