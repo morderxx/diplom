@@ -88,7 +88,8 @@
   <!-- Таймер -->
   <div class="time-mode hidden" id="timer-mode">
     <!-- Позволяем вводить секунды -->
-    <input type="number" min="0" id="timer-seconds" placeholder="Секунд" />
+    <input type="number" min="0" id="timer-minutes" placeholder="Минуты" style="width: 60px;"/>
+    <input type="number" min="0" max="59" id="timer-seconds" placeholder="Секунды" style="width: 60px;"/>
     <button class="btn" id="start-timer">Запустить таймер</button>
     <div id="timer-status"></div>
   
