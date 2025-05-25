@@ -23,6 +23,65 @@ document.addEventListener('DOMContentLoaded', () => {
   let incomingCall = false;
   let answerTimeout  = null;
   let answeredCall = false;
+
+  // ─── Планировщик уведомлений календаря (весь в главном контексте!) ───
+(function(){
+  const pad = n => String(n).padStart(2,'0');
+  function getLocalDateStr(d=new Date()){
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  }
+  function toTimestamp(dateStr, hh, mm){
+    const [y,m,day] = dateStr.split('-').map(Number);
+    return new Date(y, m-1, day, hh, mm, 0, 0).getTime();
+  }
+  const token = () => localStorage.getItem('token');
+  // разблокировка звука + запрос Perm для главного окна
+  const notifAudio = new Audio('/miniapps/calendar/notify.mp3');
+  notifAudio.preload='auto';
+  document.body.addEventListener('click', ()=> {
+    notifAudio.play().then(_=>{notifAudio.pause();notifAudio.currentTime=0;}).catch(()=>{});
+  }, { once:true });
+  if('Notification' in window) Notification.requestPermission();
+
+  function checkAndSchedule(){
+    const dateStr = getLocalDateStr();
+    fetch(`/events?date=${dateStr}`, {
+      headers:{ 'Authorization': `Bearer ${token()}` }
+    })
+    .then(r=>r.ok? r.json(): [])
+    .then(events=>{
+      const now = Date.now();
+      events.forEach(({ time, description })=>{
+        if(!time) return;
+        const [hh,mm] = time.split(':').map(Number);
+        const ts = toTimestamp(dateStr, hh, mm);
+        const delay = ts - now;
+        if(delay >= 0){
+          setTimeout(()=>{
+            notifAudio.play().catch(()=>{});
+            if(Notification.permission==='granted'){
+              new Notification('Напоминание', {
+                body: `${time} — ${description}`,
+                icon: '/miniapps/calendar/icon.png',
+                tag: String(ts),
+                renotify: true,
+                requireInteraction: true,
+                silent: false
+              });
+            }
+            console.log(`🔔 "${description}" @${time}`);
+          }, delay);
+        }
+      });
+    })
+    .catch(console.error);
+  }
+
+  // стартуем на загрузке и каждые 60 секунд
+  document.addEventListener('DOMContentLoaded', checkAndSchedule);
+  setInterval(checkAndSchedule, 60_000);
+})();
+
   // Хелпер для формирования текста «системного» сообщения по звонку
 function formatCallText({ initiator, recipient, status, duration, time }) {
   const displayTime = new Date(time)
@@ -1246,57 +1305,6 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
       sendMessage();
     }
   });
-
-  // === Планировщик уведомлений календаря ===
-  const pad = n => String(n).padStart(2, '0');
-  function getLocalDateStr(d = new Date()) {
-    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-  }
-  function toTimestamp(dateStr, hh, mm) {
-    const [y, m, day] = dateStr.split('-').map(Number);
-    return new Date(y, m-1, day, hh, mm, 0, 0).getTime();
-  }
-  const calendarToken = () => localStorage.getItem('token');
-
-  if ('Notification' in window) {
-    Notification.requestPermission();
-  }
-
-  function scheduleTodaysEvents() {
-    const dateStr = getLocalDateStr();
-    fetch(`/events?date=${dateStr}`, {
-      headers: { 'Authorization': `Bearer ${calendarToken()}` }
-    })
-    .then(res => res.ok ? res.json() : [])
-    .then(events => {
-      events.forEach(({ time, description }) => {
-        if (!time) return;
-        const [hh, mm] = time.split(':').map(Number);
-        const ts = toTimestamp(dateStr, hh, mm);
-        const delay = ts - Date.now();
-        if (delay >= 0) {
-          setTimeout(() => {
-            new Audio('/miniapps/calendar/notify.mp3').play().catch(()=>{});
-            if (Notification.permission === 'granted') {
-              new Notification('Напоминание', {
-                body: `${time} — ${description}`,
-                icon: '/miniapps/calendar/icon.png',
-                tag: `${ts}`,
-                renotify: true,
-                requireInteraction: true,
-                silent: false
-              });
-            }
-          }, delay);
-        }
-      });
-    })
-    .catch(console.error);
-  }
-
-  // Запускаем сразу и каждые 60 сек
-  scheduleTodaysEvents();
-  setInterval(scheduleTodaysEvents, 60000);
 
 // Функция открытия мини-приложения  
 function openMiniapp(path) {
