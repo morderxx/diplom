@@ -1246,7 +1246,58 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
       sendMessage();
     }
   });
-  
+
+  // === Планировщик уведомлений календаря ===
+  const pad = n => String(n).padStart(2, '0');
+  function getLocalDateStr(d = new Date()) {
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  }
+  function toTimestamp(dateStr, hh, mm) {
+    const [y, m, day] = dateStr.split('-').map(Number);
+    return new Date(y, m-1, day, hh, mm, 0, 0).getTime();
+  }
+  const calendarToken = () => localStorage.getItem('token');
+
+  if ('Notification' in window) {
+    Notification.requestPermission();
+  }
+
+  function scheduleTodaysEvents() {
+    const dateStr = getLocalDateStr();
+    fetch(`/events?date=${dateStr}`, {
+      headers: { 'Authorization': `Bearer ${calendarToken()}` }
+    })
+    .then(res => res.ok ? res.json() : [])
+    .then(events => {
+      events.forEach(({ time, description }) => {
+        if (!time) return;
+        const [hh, mm] = time.split(':').map(Number);
+        const ts = toTimestamp(dateStr, hh, mm);
+        const delay = ts - Date.now();
+        if (delay >= 0) {
+          setTimeout(() => {
+            new Audio('/miniapps/calendar/notify.mp3').play().catch(()=>{});
+            if (Notification.permission === 'granted') {
+              new Notification('Напоминание', {
+                body: `${time} — ${description}`,
+                icon: '/miniapps/calendar/icon.png',
+                tag: `${ts}`,
+                renotify: true,
+                requireInteraction: true,
+                silent: false
+              });
+            }
+          }, delay);
+        }
+      });
+    })
+    .catch(console.error);
+  }
+
+  // Запускаем сразу и каждые 60 сек
+  scheduleTodaysEvents();
+  setInterval(scheduleTodaysEvents, 60000);
+
 // Функция открытия мини-приложения  
 function openMiniapp(path) {
   // Если уже открыт другой путь — можно очистить
