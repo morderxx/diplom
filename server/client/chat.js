@@ -1297,39 +1297,61 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
   // Запускаем сразу и каждые 60 сек
   scheduleTodaysEvents();
   setInterval(scheduleTodaysEvents, 60000);
-// === Как и календарь, планируем будильник и таймер при загрузке ===
-  if ('Notification' in window) Notification.requestPermission();
-  const audio = new Audio('/miniapps/calendar/notify.mp3');
-  audio.preload = 'auto';
-  document.body.addEventListener('click', () => {
-    audio.play().then(()=>{ audio.pause(); audio.currentTime = 0; }).catch(()=>{});
-  }, { once: true });
+// === Уведомления ===
+if ('Notification' in window) Notification.requestPermission();
 
-  function scheduleAlarmFromStorage() {
-    const ts = parseInt(localStorage.getItem('alarmTs'), 10);
-    if (ts && ts > Date.now()) {
-      setTimeout(() => {
-        audio.play().catch(()=>{});
-        new Notification('Будильник', { body: 'Пора проснуться!', requireInteraction:true });
-        localStorage.removeItem('alarmTs');
-      }, ts - Date.now());
-    }
+// — аудио для календаря (если дальше где-то нужно)
+const audioCal = new Audio('/miniapps/calendar/notify.mp3');
+audioCal.preload = 'auto';
+
+// — аудио для будильника и таймера
+const audioTime = new Audio('/miniapps/calendar/bud.mp3');
+audioTime.preload = 'auto';
+
+// «разблокируем» звук одним кликом
+document.body.addEventListener('click', () => {
+  audioCal.play().then(()=>{ audioCal.pause(); audioCal.currentTime = 0; }).catch(()=>{});
+  audioTime.play().then(()=>{ audioTime.pause(); audioTime.currentTime = 0; }).catch(()=>{});
+}, { once: true });
+
+function scheduleAlarmFromStorage() {
+  const ts = parseInt(localStorage.getItem('alarmTs'), 10);
+  if (ts && ts > Date.now()) {
+    setTimeout(() => {
+      // именно этот звук
+      audioTime.play().catch(()=>{});
+      if (Notification.permission === 'granted') {
+        new Notification('Будильник', {
+          body: 'Пора проснуться!',
+          requireInteraction: true
+        });
+      }
+      localStorage.removeItem('alarmTs');
+    }, ts - Date.now());
   }
+}
 
-  function scheduleTimerFromStorage() {
-    const ts = parseInt(localStorage.getItem('timerEndTs'), 10);
-    if (ts && ts > Date.now()) {
-      setTimeout(() => {
-        audio.play().catch(()=>{});
-        new Notification('Таймер', { body: 'Отсчёт завершён', requireInteraction:true });
-        localStorage.removeItem('timerEndTs');
-      }, ts - Date.now());
-    }
+function scheduleTimerFromStorage() {
+  const ts = parseInt(localStorage.getItem('timerEndTs'), 10);
+  if (ts && ts > Date.now()) {
+    setTimeout(() => {
+      // и здесь тоже
+      audioTime.play().catch(()=>{});
+      if (Notification.permission === 'granted') {
+        new Notification('Таймер', {
+          body: 'Отсчёт завершён',
+          requireInteraction: true
+        });
+      }
+      localStorage.removeItem('timerEndTs');
+    }, ts - Date.now());
   }
+}
 
-  // запуск при старте страницы
-  scheduleAlarmFromStorage();
-  scheduleTimerFromStorage();
+// запуск при старте страницы
+scheduleAlarmFromStorage();
+scheduleTimerFromStorage();
+
 // Функция открытия мини-приложения  
 function openMiniapp(path) {
   // Если уже открыт другой путь — можно очистить
