@@ -233,28 +233,48 @@
     }).catch(e=>alert(e.message));
   };
 
-  // === Таймер (секунды) ===
-  let timerTimeout;
-  document.getElementById('start-timer').onclick = () => {
-    const secs = parseInt(document.getElementById('timer-seconds').value,10);
-    if(isNaN(secs)||secs<=0) return alert('Введите секунды');
-    clearTimeout(timerTimeout);
-    timerTimeout = setTimeout(()=>{
-      budAudio.play(); alert('⏳ Таймер!');
-    }, secs*1000);
-    document.getElementById('timer-status').textContent=`Таймер: ${secs} сек.`;
-    // сохранить и обновить
-    const fireTime = new Date(Date.now()+secs*1000).toISOString();
-    fetch('/timers',{
-      method:'POST',
-      headers:{ 'Authorization':`Bearer ${token()}`, 'Content-Type':'application/json' },
-      body:JSON.stringify({ type:'timer', time: fireTime })
+// === Таймер (минуты + секунды) ===
+let timerTimeout;
+document.getElementById('start-timer').onclick = () => {
+  const mins = parseInt(document.getElementById('timer-minutes').value, 10) || 0;
+  const secs = parseInt(document.getElementById('timer-seconds').value, 10) || 0;
+  if (mins < 0 || secs < 0 || secs > 59) {
+    return alert('Введите корректные минуты и секунды (0–59).');
+  }
+  const totalMs = (mins * 60 + secs) * 1000;
+  if (totalMs <= 0) {
+    return alert('Нужно ввести хотя бы 1 секунду');
+  }
+
+  clearTimeout(timerTimeout);
+  timerTimeout = setTimeout(() => {
+    budAudio.play();
+    alert('⏳ Таймер завершён!');
+  }, totalMs);
+
+  document.getElementById('timer-status').textContent =
+    `Таймер: ${mins} мин ${secs} сек`;
+  
+  // Сохраняем в БД
+  const fireTime = new Date(Date.now() + totalMs).toISOString();
+  fetch('/timers', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token()}`,
+      'Content-Type':  'application/json'
+    },
+    body: JSON.stringify({
+      type: 'timer',
+      time: fireTime
     })
-    .then(r=>{
-      if(!r.ok) throw new Error('Ошибка');
-      scheduleUserTimers();
-    }).catch(e=>alert(e.message));
-  };
+  })
+  .then(res => {
+    if (!res.ok) throw new Error('Не удалось сохранить таймер');
+    scheduleUserTimers(); // обновляем список
+  })
+  .catch(err => alert(err.message));
+};
+
 
   // === Секундомер с миллисекундами ===
   let swInterval, swStart, swElapsed=0;
