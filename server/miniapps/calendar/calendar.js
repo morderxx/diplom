@@ -1,4 +1,3 @@
-// server/miniapps/calendar/calendar.js
 (() => {
   // === Таб-навигатор ===
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -10,78 +9,14 @@
     };
   });
 
-  // === Звук и разрешения ===
-  const audio = new Audio('/miniapps/calendar/notify.mp3');
-  audio.preload = 'auto';
-  document.body.addEventListener('click', () => {
-    audio.play().then(() => { audio.pause(); audio.currentTime = 0; }).catch(() => {});
-  }, { once: true });
-  if ('Notification' in window) {
-    Notification.requestPermission().then(p => console.log('Notification permission:', p));
-  }
-
   // === Утилиты ===
   const pad = n => String(n).padStart(2, '0');
   function getLocalDateStr(date = new Date()) {
     return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
   }
-  function toTimestamp(dateStr, hh, mm) {
-    const [year, month, day] = dateStr.split('-').map(Number);
-    return new Date(year, month - 1, day, hh, mm, 0, 0).getTime();
-  }
 
   // === Авторизация ===
   const token = () => localStorage.getItem('token');
-
-  // === Планирование уведомлений ===
-  const notified = new Set();
-
-  function fireEvent(description, timeStr, ts) {
-    if (notified.has(ts)) return;
-    notified.add(ts);
-    audio.play().catch(() => {});
-    if (Notification.permission === 'granted') {
-      new Notification('Напоминание', {
-        body: `${timeStr} — ${description}`,
-        icon: '/miniapps/calendar/icon.png',
-        tag: String(ts),
-        renotify: true,
-        requireInteraction: true,
-        silent: false
-      });
-    }
-    console.log(`🚀 Fired '${description}' at ${timeStr}`);
-  }
-
-  function scheduleEvent(timeStr, description) {
-    const dateStr = getLocalDateStr();
-    const [hh, mm] = timeStr.split(':').map(Number);
-    const ts = toTimestamp(dateStr, hh, mm);
-    const delay = ts - Date.now();
-    console.log(`Scheduling '${description}' at ${timeStr}, delay=${delay}ms`);
-    if (delay > 0) {
-      setTimeout(() => fireEvent(description, timeStr, ts), delay);
-    } else if (delay >= -1000) {
-      setTimeout(() => fireEvent(description, timeStr, ts), 0);
-    }
-  }
-
-  function scheduleTodaysEvents() {
-    const dateStr = getLocalDateStr();
-    fetch(`/events?date=${dateStr}`, {
-      headers: { 'Authorization': `Bearer ${token()}` }
-    })
-    .then(res => {
-      if (!res.ok) return [];
-      return res.json();
-    })
-    .then(events => {
-      events.forEach(({ time, description }) => {
-        if (time) scheduleEvent(time, description);
-      });
-    })
-    .catch(err => console.error('Error scheduling events:', err));
-  }
 
   // === Рендер календаря ===
   const today = new Date();
@@ -145,21 +80,33 @@
   }
 
   closeList.onclick = () => listOverlay.classList.add('hidden');
-  addNewBtn.onclick = () => { listOverlay.classList.add('hidden'); timeInput.value = ''; descInput.value = ''; formOverlay.classList.remove('hidden'); };
+  addNewBtn.onclick = () => {
+    listOverlay.classList.add('hidden');
+    timeInput.value = '';
+    descInput.value = '';
+    formOverlay.classList.remove('hidden');
+  };
+
   saveBtn.onclick = async () => {
     try {
       const body = { date: dateInput.value, time: timeInput.value, desc: descInput.value };
       const res = await fetch('/events', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token()}`, 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': `Bearer ${token()}`,
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify(body)
       });
       if (!res.ok) throw new Error(`Ошибка ${res.status}: ${await res.text()}`);
       formOverlay.classList.add('hidden');
       await renderCalendar();
-      if (dateInput.value === getLocalDateStr()) scheduleEvent(timeInput.value, descInput.value);
-    } catch (e) { console.error(e); alert(e.message); }
+    } catch (e) {
+      console.error(e);
+      alert(e.message);
+    }
   };
+
   cancelBtn.onclick = () => formOverlay.classList.add('hidden');
   formBack.onclick   = () => formOverlay.classList.add('hidden');
   prevBtn.onclick   = () => { current.setMonth(current.getMonth()-1); renderCalendar(); };
@@ -168,6 +115,5 @@
   // === Инициализация ===
   (async () => {
     await renderCalendar();
-    scheduleTodaysEvents();
   })();
 })();
