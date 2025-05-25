@@ -39,19 +39,15 @@
   function fireEvent(description, timeStr, ts) {
     if (notified.has(ts)) return;
     notified.add(ts);
-
-    // звук уведомления
     audio.play().catch(() => {});
-
-    // системное уведомление
     if (Notification.permission === 'granted') {
       new Notification('Напоминание', {
         body: `${timeStr} — ${description}`,
         icon: '/miniapps/calendar/icon.png',
-        tag: String(ts),          // уникальный ID
-        renotify: true,           // повторно уведомлять
-        requireInteraction: true, // держать баннер
-        silent: false             // включить системный звук
+        tag: String(ts),
+        renotify: true,
+        requireInteraction: true,
+        silent: false
       });
     }
     console.log(`🚀 Fired '${description}' at ${timeStr}`);
@@ -61,8 +57,7 @@
     const dateStr = getLocalDateStr();
     const [hh, mm] = timeStr.split(':').map(Number);
     const ts = toTimestamp(dateStr, hh, mm);
-    const now = Date.now();
-    const delay = ts - now;
+    const delay = ts - Date.now();
     console.log(`Scheduling '${description}' at ${timeStr}, delay=${delay}ms`);
     if (delay > 0) {
       setTimeout(() => fireEvent(description, timeStr, ts), delay);
@@ -76,7 +71,10 @@
     fetch(`/events?date=${dateStr}`, {
       headers: { 'Authorization': `Bearer ${token()}` }
     })
-    .then(res => res.ok ? res.json() : [])
+    .then(res => {
+      if (!res.ok) return [];
+      return res.json();
+    })
     .then(events => {
       events.forEach(({ time, description }) => {
         if (time) scheduleEvent(time, description);
@@ -119,7 +117,7 @@
     }
   }
 
-  // === Оверлей списка событий и форма ===
+  // === Оверлей и форма ===
   const listOverlay = document.getElementById('events-list-overlay');
   const listDateEl  = document.getElementById('list-date');
   const listEl      = document.getElementById('events-list');
@@ -141,7 +139,7 @@
     const items = res.ok ? await res.json() : [];
     listEl.innerHTML = items.length === 0
       ? '<li>Нет событий</li>'
-      : items.map(i => `<li><span class=\"event-time\">${i.time||'—'}</span> <span class=\"event-desc\">${i.description}</span></li>`).join('');
+      : items.map(i => `<li><span class="event-time">${i.time||'—'}</span> <span class="event-desc">${i.description}</span></li>`).join('');
     dateInput.value = dateStr;
     listOverlay.classList.remove('hidden');
   }
@@ -153,21 +151,15 @@
       const body = { date: dateInput.value, time: timeInput.value, desc: descInput.value };
       const res = await fetch('/events', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token()}`,
-          'Content-Type':  'application/json'
-        },
+        headers: { 'Authorization': `Bearer ${token()}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
       if (!res.ok) throw new Error(`Ошибка ${res.status}: ${await res.text()}`);
       formOverlay.classList.add('hidden');
       await renderCalendar();
       if (dateInput.value === getLocalDateStr()) scheduleEvent(timeInput.value, descInput.value);
-    } catch (e) {
-      console.error(e); alert(e.message);
-    }
+    } catch (e) { console.error(e); alert(e.message); }
   };
-
   cancelBtn.onclick = () => formOverlay.classList.add('hidden');
   formBack.onclick   = () => formOverlay.classList.add('hidden');
   prevBtn.onclick   = () => { current.setMonth(current.getMonth()-1); renderCalendar(); };
