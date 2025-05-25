@@ -65,48 +65,53 @@
     </div>
 
     <!-- Вкладка «Время» -->
-    <div class="tab-content" id="timer">
-      <nav class="sub-tabs">
-        <button data-subtab="alarm"     class="subtab-btn active">Будильник</button>
-        <button data-subtab="countdown" class="subtab-btn">Таймер</button>
-        <button data-subtab="stopwatch" class="subtab-btn">Секундомер</button>
-      </nav>
+  <!-- Вкладка «Время» -->
+<div class="tab-content" id="timer">
+  <div class="time-container">
+    <div class="time-nav">
+      <button class="time-tab-btn active" data-tab="alarm">Будильник</button>
+      <button class="time-tab-btn"       data-tab="timer">Таймер</button>
+      <button class="time-tab-btn"       data-tab="stopwatch">Секундомер</button>
+    </div>
 
-      <!-- Будильник -->
-      <div class="subtab-content active" id="alarm">
-        <label>Время будильника:
-          <input type="time" id="alarm-time" />
-        </label>
-        <div class="form-actions">
-          <button id="set-alarm"   class="btn">Установить</button>
-          <button id="clear-alarm" class="btn secondary">Сбросить</button>
-        </div>
+    <!-- Будильник -->
+    <div class="time-pane active" id="alarm">
+      <div class="form-row">
+        <label for="alarm-time">Время будильника</label>
+        <input type="time" id="alarm-time">
       </div>
-
-      <!-- Таймер -->
-      <div class="subtab-content" id="countdown">
-        <label>Минуты:
-          <input type="number" id="timer-minutes" min="0" placeholder="0" />
-        </label>
-        <div class="timer-controls">
-          <button id="start-timer" class="btn">Старт</button>
-          <button id="stop-timer"  class="btn secondary">Стоп</button>
-          <button id="reset-timer" class="btn secondary">Сброс</button>
-        </div>
-        <div id="timer-display">00:00:00</div>
+      <div class="form-row">
+        <button id="set-alarm"   class="btn">Установить</button>
+        <button id="clear-alarm" class="btn secondary">Сбросить</button>
       </div>
+    </div>
 
-      <!-- Секундомер -->
-      <div class="subtab-content" id="stopwatch">
-        <div class="timer-controls">
-          <button id="start-sw" class="btn">Старт</button>
-          <button id="stop-sw"  class="btn secondary">Стоп</button>
-          <button id="reset-sw" class="btn secondary">Сброс</button>
-        </div>
-        <div id="sw-display">00:00:00</div>
+    <!-- Таймер -->
+    <div class="time-pane" id="timer-countdown">
+      <div class="form-row">
+        <label for="timer-minutes">Минуты</label>
+        <input type="number" id="timer-minutes" min="0" value="0">
+      </div>
+      <div class="timer-display" id="timer-display">00:00:00</div>
+      <div class="form-row form-row--center">
+        <button id="start-timer" class="btn">Старт</button>
+        <button id="stop-timer"  class="btn secondary">Стоп</button>
+        <button id="reset-timer" class="btn secondary">Сброс</button>
+      </div>
+    </div>
+
+    <!-- Секундомер -->
+    <div class="time-pane" id="stopwatch">
+      <div class="timer-display" id="sw-display">00:00:00</div>
+      <div class="form-row form-row--center">
+        <button id="start-sw" class="btn">Старт</button>
+        <button id="stop-sw"  class="btn secondary">Стоп</button>
+        <button id="reset-sw" class="btn secondary">Сброс</button>
       </div>
     </div>
   </div>
+</div>
+
 
   <script src="calendar.js"></script>
 </body>
