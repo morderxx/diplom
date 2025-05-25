@@ -12,7 +12,7 @@
     <nav class="tabs">
       <button data-tab="calendar" class="tab-btn active">Календарь</button>
       <button data-tab="notes"    class="tab-btn">Заметки</button>
-      <button data-tab="timer"    class="tab-btn">Таймер</button>
+      <button data-tab="time" class="tab-btn">Время</button>
     </nav>
 
     <!-- Содержимое вкладок -->
@@ -67,16 +67,36 @@
       <textarea id="notes-area" placeholder="Ваши заметки..." autofocus></textarea>
     </div>
 
-    <!-- Таймер -->
-    <div class="tab-content" id="timer">
-      <div class="timer-controls">
-        <button id="start-timer" class="btn">Старт</button>
-        <button id="stop-timer"  class="btn secondary">Стоп</button>
-        <button id="reset-timer" class="btn secondary">Сброс</button>
-      </div>
-      <div id="timer-display">00:00:00</div>
-    </div>
+<!-- Новая вкладка "Время" -->
+<div class="tab-content" id="time">
+  <div class="time-nav">
+    <button class="time-switch active" data-mode="alarm">Будильник</button>
+    <button class="time-switch" data-mode="timer">Таймер</button>
+    <button class="time-switch" data-mode="stopwatch">Секундомер</button>
   </div>
+
+  <!-- Будильник -->
+  <div class="time-mode" id="alarm-mode">
+    <input type="time" id="alarm-time" />
+    <button class="btn" id="set-alarm">Установить будильник</button>
+    <div id="alarm-status"></div>
+  </div>
+
+  <!-- Таймер -->
+  <div class="time-mode hidden" id="timer-mode">
+    <input type="number" min="1" id="timer-minutes" placeholder="Минуты" />
+    <button class="btn" id="start-timer">Запустить таймер</button>
+    <div id="timer-status"></div>
+  </div>
+
+  <!-- Секундомер -->
+  <div class="time-mode hidden" id="stopwatch-mode">
+    <div id="stopwatch-display">00:00:00</div>
+    <button class="btn" id="start-stopwatch">Старт</button>
+    <button class="btn secondary" id="reset-stopwatch">Сброс</button>
+  </div>
+</div>
+
 
   <script src="calendar.js"></script>
 </body>
