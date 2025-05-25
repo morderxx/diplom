@@ -22,6 +22,17 @@
       document.getElementById(btn.dataset.subtab).classList.add('active');
     };
   });
+// Переключение под-вкладок «Время»
+document.querySelectorAll('.time-tab-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.time-tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.time-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    // по data-tab подставляем id
+    const id = btn.dataset.tab === 'timer' ? 'timer-countdown' : btn.dataset.tab;
+    document.getElementById(id).classList.add('active');
+  };
+});
 
   // === Звук и разрешение уведомлений ===
   const audio = new Audio('/miniapps/calendar/notify.mp3');
