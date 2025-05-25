@@ -80,13 +80,20 @@
     <input type="time" id="alarm-time" />
     <button class="btn" id="set-alarm">Установить будильник</button>
     <div id="alarm-status"></div>
+  
+    <!-- Новый: список будильников -->
+    <ul id="alarms-list" class="time-list"></ul>
   </div>
-
+  
   <!-- Таймер -->
   <div class="time-mode hidden" id="timer-mode">
-    <input type="number" min="1" id="timer-minutes" placeholder="Минуты" />
+    <!-- Позволяем вводить секунды -->
+    <input type="number" min="0" id="timer-seconds" placeholder="Секунд" />
     <button class="btn" id="start-timer">Запустить таймер</button>
     <div id="timer-status"></div>
+  
+    <!-- Новый: список таймеров -->
+    <ul id="timers-list" class="time-list"></ul>
   </div>
 
   <!-- Секундомер -->
