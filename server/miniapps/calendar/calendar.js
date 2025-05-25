@@ -82,6 +82,37 @@
     })
     .catch(err => console.error('Error scheduling events:', err));
   }
+    /**
+   * Загружает из БД все активные таймеры и будильники
+   * и ставит их на setTimeout
+   */
+  function scheduleUserTimers() {
+    fetch('/timers', {
+      headers: { 'Authorization': `Bearer ${token()}` }
+    })
+    .then(res => res.ok ? res.json() : [])
+    .then(items => {
+      const now = Date.now();
+      items.forEach(({ id, type, time }) => {
+        const ts = new Date(time).getTime();
+        const delay = ts - now;
+        if (delay > 0) {
+          setTimeout(() => {
+            // проигрываем звук
+            budAudio.play().catch(()=>{});
+            // пуш-уведомление
+            if (Notification.permission === 'granted') {
+              new Notification(
+                type === 'alarm' ? '⏰ Будильник' : '⏳ Таймер',
+                { body: `Сработал ваш ${type}`, tag: `timer-${id}`, renotify: true }
+              );
+            }
+          }, delay);
+        }
+      });
+    })
+    .catch(console.error);
+  }
 
   // === Рендер календаря ===
   const today = new Date();
@@ -165,11 +196,6 @@
   prevBtn.onclick   = () => { current.setMonth(current.getMonth()-1); renderCalendar(); };
   nextBtn.onclick   = () => { current.setMonth(current.getMonth()+1); renderCalendar(); };
 
-  // === Инициализация ===
-  (async () => {
-    await renderCalendar();
-    scheduleTodaysEvents();
-  })();
   // === Навигация по режимам Время ===
 document.querySelectorAll('.time-switch').forEach(btn => {
   btn.onclick = () => {
@@ -240,5 +266,9 @@ document.getElementById('reset-stopwatch').onclick = () => {
   stopwatchTime = 0;
   display.textContent = `00:00:00`;
 };
-
+  (async () => {
+    await renderCalendar();
+    scheduleTodaysEvents();
+    scheduleUserTimers();          // ← добавили сюда
+  })();
 })();
