@@ -136,4 +136,37 @@ body {
   margin-right: auto;
 }
 
+.time-nav {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 1rem;
+}
+.time-switch {
+  flex: 1;
+  padding: 0.5rem;
+  background: #e0e0e0;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+}
+.time-switch.active {
+  background: #4a90e2;
+  color: #fff;
+}
+.time-mode {
+  text-align: center;
+}
+.time-mode input {
+  margin: 0.5rem 0;
+  padding: 0.4rem;
+  width: 80%;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+#alarm-status, #timer-status {
+  margin-top: 0.5rem;
+  color: #4a90e2;
+  font-weight: bold;
+}
+
 /* Остальные стили (has-event и пр.) — без изменений */
