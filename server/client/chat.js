@@ -25,9 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let answeredCall = false;
 
 // ─── Планировщик уведомлений календаря ───────────────────────────
-(function(){
+;(function(){
   const pad = n => String(n).padStart(2,'0');
-  function getLocalDateStr(d=new Date()){
+  function getLocalDateStr(d = new Date()){
     return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
   }
   function toTimestamp(dateStr, hh, mm){
@@ -36,54 +36,63 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   const calendarToken = () => localStorage.getItem('token');
 
+  // разблокировка звука + запрос разрешения на уведомления
   const notifAudio = new Audio('/miniapps/calendar/notify.mp3');
   notifAudio.preload = 'auto';
   document.body.addEventListener('click', () => {
-    notifAudio.play().then(()=>{ notifAudio.pause(); notifAudio.currentTime = 0; }).catch(()=>{});
+    notifAudio.play().then(()=>{
+      notifAudio.pause();
+      notifAudio.currentTime = 0;
+    }).catch(()=>{});
   }, { once: true });
 
   if ('Notification' in window) {
     Notification.requestPermission();
   }
 
-  function checkAndSchedule(){
+  async function checkAndSchedule(){
     const dateStr = getLocalDateStr();
-    fetch(`/events?date=${dateStr}`, {
-      headers: { 'Authorization': `Bearer ${calendarToken()}` }
-    })
-    .then(r => r.ok ? r.json() : [])
-    .then(events => {
-      const now = Date.now();
-      events.forEach(({ time, description }) => {
-        if (!time) return;
-        const [hh, mm] = time.split(':').map(Number);
-        const ts = toTimestamp(dateStr, hh, mm);
-        const delay = ts - now;
-        if (delay >= 0) {
-          setTimeout(() => {
-            notifAudio.play().catch(()=>{});
-            if (Notification.permission === 'granted') {
-              new Notification('Напоминание', {
-                body: `${time} — ${description}`,
-                icon: '/miniapps/calendar/icon.png',
-                tag: String(ts),
-                renotify: true,
-                requireInteraction: true,
-                silent: false
-              });
-            }
-            console.log(`🔔 "${description}" @${time}`);
-          }, delay);
-        }
+    let events = [];
+    try {
+      const r = await fetch(`/events?date=${dateStr}`, {
+        headers: { 'Authorization': `Bearer ${calendarToken()}` }
       });
-    })
-    .catch(console.error);
+      events = r.ok ? await r.json() : [];
+    } catch(e) {
+      console.error('Ошибка при загрузке событий:', e);
+      return;
+    }
+
+    const now = Date.now();
+    for (const { time, description } of events) {
+      if (!time) continue;
+      const [hh, mm] = time.split(':').map(Number);
+      const ts       = toTimestamp(dateStr, hh, mm);
+      const delay    = ts - now;
+      if (delay >= 0) {
+        setTimeout(() => {
+          notifAudio.play().catch(()=>{});
+          if (Notification.permission === 'granted') {
+            new Notification('Напоминание', {
+              body: `${time} — ${description}`,
+              icon: '/miniapps/calendar/icon.png',
+              tag: String(ts),
+              renotify: true,
+              requireInteraction: true,
+              silent: false
+            });
+          }
+          console.log(`🔔 "${description}" @ ${time}`);
+        }, delay);
+      }
+    }
   }
 
-  // сразу и затем каждые 60 секунд
+  // Запускаем сразу и затем каждые 60 секунд
   checkAndSchedule();
   setInterval(checkAndSchedule, 60_000);
 })();
+
 
   // Хелпер для формирования текста «системного» сообщения по звонку
 function formatCallText({ initiator, recipient, status, duration, time }) {
