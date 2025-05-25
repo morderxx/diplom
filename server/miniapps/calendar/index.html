@@ -12,7 +12,7 @@
     <nav class="tabs">
       <button data-tab="calendar" class="tab-btn active">Календарь</button>
       <button data-tab="notes"    class="tab-btn">Заметки</button>
-      <button data-tab="timer"    class="tab-btn">Таймер</button>
+      <button data-tab="timer"    class="tab-btn">Время</button>
     </nav>
 
     <!-- Содержимое вкладок -->
@@ -67,14 +67,35 @@
       <textarea id="notes-area" placeholder="Ваши заметки..." autofocus></textarea>
     </div>
 
-    <!-- Таймер -->
+    <!-- Время -->
     <div class="tab-content" id="timer">
-      <div class="timer-controls">
-        <button id="start-timer" class="btn">Старт</button>
-        <button id="stop-timer"  class="btn secondary">Стоп</button>
-        <button id="reset-timer" class="btn secondary">Сброс</button>
+      <label for="time-mode">Режим:</label>
+      <select id="time-mode">
+        <option value="stopwatch">Секундомер</option>
+        <option value="countdown">Обратный отсчёт</option>
+        <option value="alarm">Будильник</option>
+      </select>
+
+      <div id="param-stopwatch" class="param-block">
+        <p>Нажмите «Старт», чтобы запустить секундомер до миллисекунд.</p>
       </div>
-      <div id="timer-display">00:00:00</div>
+      <div id="param-countdown" class="param-block hidden">
+        <label>Секунд:
+          <input type="number" id="timer-seconds" min="1" />
+        </label>
+      </div>
+      <div id="param-alarm" class="param-block hidden">
+        <label>Время будильника:
+          <input type="time" id="alarm-time" />
+        </label>
+      </div>
+
+      <div class="timer-controls">
+        <button id="start-time" class="btn">Старт</button>
+        <button id="stop-time"  class="btn secondary">Стоп</button>
+        <button id="reset-time" class="btn secondary">Сброс</button>
+      </div>
+      <div id="timer-display">00:00.000</div>
     </div>
   </div>
 
