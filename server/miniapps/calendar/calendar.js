@@ -11,7 +11,14 @@
   });
 
   // === Звук и разрешения ===
-  const audio = new Audio('notify.mp3');
+  const audio = new Notification('Напоминание', {
+        body: `${time} — ${description}`,
+        icon: 'icon.png',
+        tag: String(ts),
+        renotify: true,
+        requireInteraction: true,
+        silent: false  // явно включаем звук, чтобы ОС проигрывала звук уведомления
+      });;
   audio.preload = 'auto';
   document.body.addEventListener('click', () => {
     audio.play().then(() => { audio.pause(); audio.currentTime = 0; }).catch(() => {});
