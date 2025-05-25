@@ -1247,21 +1247,20 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
     }
   });
   
-// Открыть мини-приложение в модалке
+// Функция открытия мини-приложения  
 function openMiniapp(path) {
   frame.src = path;
-  modal.style.display = 'flex';      // или 'block', в зависимости от стилей
+  modal.style.display = 'flex';
 }
 
-// Погода
+// Привязываем кнопки  
 document.getElementById('btn-weather')
   .addEventListener('click', () => openMiniapp('/miniapps/weather/index.html'));
 
-// Календарь
 document.getElementById('btn-calendar')
   .addEventListener('click', () => openMiniapp('/miniapps/calendar/index.html'));
 
-// Закрыть модалку
+// Закрытие модалки  
 closeBtn.addEventListener('click', () => {
   modal.style.display = 'none';
   frame.src = '';   // сброс iframe
