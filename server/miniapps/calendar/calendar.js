@@ -31,6 +31,14 @@
   }, { once: true });
   if ('Notification' in window) Notification.requestPermission();
 
+  // рядом с audio и Notification.requestPermission()
+  const storage = {
+    setAlarm(ts)    { localStorage.setItem('alarmTs', ts) },
+    clearAlarm()    { localStorage.removeItem('alarmTs') },
+    setTimer(ts)    { localStorage.setItem('timerEndTs', ts) },
+    clearTimer()    { localStorage.removeItem('timerEndTs') }
+  };
+
   // === Утилиты ===
   const pad = n => String(n).padStart(2, '0');
   function getLocalDateStr(date = new Date()) {
@@ -61,9 +69,11 @@
     let alarm = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0);
     if (alarm.getTime() <= now.getTime()) alarm.setDate(alarm.getDate() + 1);
     scheduleNotification(alarm.getTime(), 'Будильник', `Сейчас ${pad(hh)}:${pad(mm)}`);
+    storage.setAlarm(alarmTs);
     alert('Будильник установлен');
   };
   document.getElementById('clear-alarm').onclick = () => {
+    storage.clearAlarm();
     alert('Будильник снят');
   };
 
@@ -76,10 +86,12 @@
     timerEnd = Date.now() + mins * 60 * 1000;
     clearTimeout(timerId);
     scheduleNotification(timerEnd, 'Таймер', 'Время вышло');
+    storage.setTimer(timerEnd);
     updateTimer();
   };
   document.getElementById('stop-timer').onclick = () => clearTimeout(timerId);
   document.getElementById('reset-timer').onclick = () => {
+    storage.clearTimer();
     clearTimeout(timerId);
     timerDisplay.textContent = '00:00:00';
   };
