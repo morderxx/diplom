@@ -13,28 +13,16 @@
   // === Звук и разрешения ===
   const audio = new Audio('notify.mp3');
   audio.preload = 'auto';
-
-  // Разблокировка автоплея при клике
   document.body.addEventListener('click', () => {
-    audio.play()
-      .then(() => { audio.pause(); audio.currentTime = 0; })
-      .catch(() => {});
+    audio.play().then(() => { audio.pause(); audio.currentTime = 0; }).catch(() => {});
   }, { once: true });
-
-  // Запрос разрешения Web Notifications сразу
-  if ('Notification' in window) {
-    Notification.requestPermission().then(p => console.log('Notification permission:', p));
-  }
+  if ('Notification' in window) Notification.requestPermission().then(p => console.log('Notification permission:', p));
 
   // === Утилиты ===
   const pad = n => String(n).padStart(2, '0');
-
-  // Возвращает строку YYYY-MM-DD в локальной временной зоне
   function getLocalDateStr(date = new Date()) {
     return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
   }
-
-  // Конвертирует YYYY-MM-DD + hh:mm → timestamp локально
   function toTimestamp(dateStr, hh, mm) {
     const [year, month, day] = dateStr.split('-').map(Number);
     return new Date(year, month - 1, day, hh, mm, 0, 0).getTime();
@@ -43,68 +31,44 @@
   // === Авторизация ===
   const token = () => localStorage.getItem('token');
 
-  // === Уведомления ===
+  // === Планирование уведомлений ===
   const notified = new Set();
-
-  function fireNotification(time, description, ts) {
+  function scheduleEvent(time, description) {
+    const dateStr = getLocalDateStr();
+    const [hh, mm] = time.split(':').map(Number);
+    const ts = toTimestamp(dateStr, hh, mm);
+    const now = Date.now();
+    const delay = ts - now;
+    console.log(`Scheduling '${description}' at ${time}, delay=${delay}ms`);
+    if (delay > 0) {
+      setTimeout(() => fireEvent(description, time, ts), delay);
+    } else if (delay >= -1000) {
+      // если событие уже почти наступило
+      setTimeout(() => fireEvent(description, time, ts), 0);
+    }
+  }
+  function fireEvent(description, time, ts) {
     if (notified.has(ts)) return;
     notified.add(ts);
-
-    // звук
     audio.play().catch(() => {});
-
-    // системное уведомление
     if (Notification.permission === 'granted') {
       new Notification('Напоминание', {
-        body: `За минуту: ${time} — ${description}`,
+        body: `${time} — ${description}`,
         icon: 'icon.png',
-        tag: String(ts),           // однозначный ID
-        renotify: true,            // показывать даже если уже было с тем же tag
-        requireInteraction: true   // держать уведомление на экране, пока пользователь не закроет
+        tag: String(ts),
+        renotify: true,
+        requireInteraction: true
       });
     }
-    console.log(`🚀 Fired notification for "${description}" at ${time} (ts=${ts})`);
+    console.log(`🚀 Fired '${description}' at ${time}`);
   }
-
-  // Проверяет каждую секунду события на “за минуту”
-  async function checkNotifications() {
-    const now = Date.now();
+  function scheduleTodaysEvents() {
     const dateStr = getLocalDateStr();
-    console.log(`Checking notifications for ${dateStr} at ${new Date(now).toLocaleTimeString()}`);
-
-    try {
-      const res = await fetch(`/events?date=${dateStr}`, {
-        headers: { 'Authorization': `Bearer ${token()}` }
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        console.error(`Fetch /events?date=${dateStr} failed:`, res.status, text);
-        return;
-      }
-
-      const events = await res.json();
-      for (const { time, description } of events) {
-        if (!time) continue;
-        const [hh, mm] = time.split(':').map(Number);
-        const ts = toTimestamp(dateStr, hh, mm);
-        const diff = ts - now;
-        console.log(`Event "${description}" at ${time}: diff=${diff}ms`);
-        // если событие через 1..60 секунд
-        if (diff >= 0 && diff < 1000) {
-          fireNotification(time, description, ts);
-        }
-
-      }
-    } catch (err) {
-      console.error('checkNotifications error:', err);
-    }
+    fetch(`/events?date=${dateStr}`, { headers: { 'Authorization': `Bearer ${token()}` } })
+      .then(res => res.ok ? res.json() : [])
+      .then(events => events.forEach(e => { if (e.time) scheduleEvent(e.time, e.description); }))
+      .catch(err => console.error('Error scheduling events:', err));
   }
-
-  // Запускаем проверку каждую секунду
-  setInterval(checkNotifications, 1000);
-  // И сразу при старте
-  checkNotifications();
 
   // === Рендер календаря ===
   const today = new Date();
@@ -120,7 +84,6 @@
     const month = current.getMonth() + 1;
     monthYearEl.textContent = current.toLocaleString('ru', { month: 'long', year: 'numeric' });
 
-    // Подсветить даты с событиями
     const res = await fetch(`/events?year=${year}&month=${month}`, {
       headers: { 'Authorization': `Bearer ${token()}` }
     });
@@ -129,14 +92,9 @@
     const firstDay    = new Date(year, month-1, 1).getDay() || 7;
     const daysInMonth = new Date(year, month, 0).getDate();
 
-    // Пустые ячейки до первого дня недели
-    for (let i = 1; i < firstDay; i++) {
-      grid.appendChild(document.createElement('div'));
-    }
-
-    // Дни месяца
+    for (let i = 1; i < firstDay; i++) grid.appendChild(document.createElement('div'));
     for (let d = 1; d <= daysInMonth; d++) {
-      const cell    = document.createElement('div');
+      const cell = document.createElement('div');
       const dateStr = `${year}-${pad(month)}-${pad(d)}`;
       cell.textContent = d;
       if (dateStr === getLocalDateStr()) cell.classList.add('today');
@@ -146,13 +104,12 @@
     }
   }
 
-  // === Оверлей со списком событий и форма ===
+  // === Оверлей списка и форма ===
   const listOverlay = document.getElementById('events-list-overlay');
   const listDateEl  = document.getElementById('list-date');
   const listEl      = document.getElementById('events-list');
   const addNewBtn   = document.getElementById('add-new-event');
   const closeList   = document.getElementById('close-list');
-
   const formOverlay = document.getElementById('event-form');
   const formBack    = formOverlay.querySelector('.form-backdrop');
   const cancelBtn   = document.getElementById('cancel-event');
@@ -167,24 +124,14 @@
       headers: { 'Authorization': `Bearer ${token()}` }
     });
     const items = res.ok ? await res.json() : [];
-    if (items.length === 0) {
-      listEl.innerHTML = '<li>Нет событий</li>';
-    } else {
-      listEl.innerHTML = items.map(i =>
-        `<li><span class="event-time">${i.time||'—'}</span> <span class="event-desc">${i.description}</span></li>`
-      ).join('');
-    }
+    listEl.innerHTML = items.length === 0
+      ? '<li>Нет событий</li>'
+      : items.map(i => `<li><span class=\"event-time\">${i.time||'—'}</span> <span class=\"event-desc\">${i.description}</span></li>`).join('');
     dateInput.value = dateStr;
     listOverlay.classList.remove('hidden');
   }
-
   closeList.onclick = () => listOverlay.classList.add('hidden');
-  addNewBtn.onclick = () => {
-    listOverlay.classList.add('hidden');
-    timeInput.value = '';
-    descInput.value = '';
-    formOverlay.classList.remove('hidden');
-  };
+  addNewBtn.onclick = () => { listOverlay.classList.add('hidden'); timeInput.value = ''; descInput.value = ''; formOverlay.classList.remove('hidden'); };
 
   saveBtn.onclick = async () => {
     try {
@@ -197,26 +144,23 @@
         },
         body: JSON.stringify(body)
       });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Ошибка ${res.status}: ${text}`);
-      }
+      if (!res.ok) throw new Error(`Ошибка ${res.status}: ${await res.text()}`);
       formOverlay.classList.add('hidden');
       await renderCalendar();
+      // при добавлении события на сегодня — сразу расписать уведомление
+      if (dateInput.value === getLocalDateStr()) scheduleEvent(timeInput.value, descInput.value);
     } catch (e) {
-      console.error(e);
-      alert(e.message);
+      console.error(e); alert(e.message);
     }
   };
-
   cancelBtn.onclick = () => formOverlay.classList.add('hidden');
   formBack.onclick   = () => formOverlay.classList.add('hidden');
   prevBtn.onclick   = () => { current.setMonth(current.getMonth()-1); renderCalendar(); };
   nextBtn.onclick   = () => { current.setMonth(current.getMonth()+1); renderCalendar(); };
 
-  // Первичный рендер
+  // Первичный запуск
   (async () => {
     await renderCalendar();
+    scheduleTodaysEvents();
   })();
-
 })();
