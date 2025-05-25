@@ -82,7 +82,7 @@ app.use(
   express.static(path.join(__dirname, 'miniapps'))
 );
 app.use('/events', eventsRouter);
-app.use('/api/timers', authenticate, timersRouter);
+app.use('/api/timers', timersRouter);
 // 3) Статика клиентской части
 app.use(express.static(path.join(__dirname, 'client')));
 
