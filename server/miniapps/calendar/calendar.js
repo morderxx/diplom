@@ -91,9 +91,10 @@
         const diff = ts - now;
         console.log(`Event "${description}" at ${time}: diff=${diff}ms`);
         // если событие через 1..60 секунд
-        if (diff > 0 && diff <= 60000) {
+        if (diff >= 0 && diff < 1000) {
           fireNotification(time, description, ts);
         }
+
       }
     } catch (err) {
       console.error('checkNotifications error:', err);
