@@ -12,7 +12,7 @@ const callsRouter    = require('./routes/calls');
 const roomsRoutes    = require('./routes/rooms');
 const filesRoutes    = require('./routes/files');
 const eventsRouter = require('./routes/events');
-
+const timersRouter = require('./routes/timers');
 const { setupWebSocket } = require('./chat');
 
 const app    = express();
@@ -82,6 +82,7 @@ app.use(
   express.static(path.join(__dirname, 'miniapps'))
 );
 app.use('/events', eventsRouter);
+app.use('/timers', timersRouter);
 // 3) Статика клиентской части
 app.use(express.static(path.join(__dirname, 'client')));
 
