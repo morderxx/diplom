@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let answerTimeout  = null;
   let answeredCall = false;
 
-  // ─── Планировщик уведомлений календаря (весь в главном контексте!) ───
+// ─── Планировщик уведомлений календаря ───────────────────────────
 (function(){
   const pad = n => String(n).padStart(2,'0');
   function getLocalDateStr(d=new Date()){
@@ -34,32 +34,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const [y,m,day] = dateStr.split('-').map(Number);
     return new Date(y, m-1, day, hh, mm, 0, 0).getTime();
   }
-  const token = () => localStorage.getItem('token');
-  // разблокировка звука + запрос Perm для главного окна
+  const calendarToken = () => localStorage.getItem('token');
+
   const notifAudio = new Audio('/miniapps/calendar/notify.mp3');
-  notifAudio.preload='auto';
-  document.body.addEventListener('click', ()=> {
-    notifAudio.play().then(_=>{notifAudio.pause();notifAudio.currentTime=0;}).catch(()=>{});
-  }, { once:true });
-  if('Notification' in window) Notification.requestPermission();
+  notifAudio.preload = 'auto';
+  document.body.addEventListener('click', () => {
+    notifAudio.play().then(()=>{ notifAudio.pause(); notifAudio.currentTime = 0; }).catch(()=>{});
+  }, { once: true });
+
+  if ('Notification' in window) {
+    Notification.requestPermission();
+  }
 
   function checkAndSchedule(){
     const dateStr = getLocalDateStr();
     fetch(`/events?date=${dateStr}`, {
-      headers:{ 'Authorization': `Bearer ${token()}` }
+      headers: { 'Authorization': `Bearer ${calendarToken()}` }
     })
-    .then(r=>r.ok? r.json(): [])
-    .then(events=>{
+    .then(r => r.ok ? r.json() : [])
+    .then(events => {
       const now = Date.now();
-      events.forEach(({ time, description })=>{
-        if(!time) return;
-        const [hh,mm] = time.split(':').map(Number);
+      events.forEach(({ time, description }) => {
+        if (!time) return;
+        const [hh, mm] = time.split(':').map(Number);
         const ts = toTimestamp(dateStr, hh, mm);
         const delay = ts - now;
-        if(delay >= 0){
-          setTimeout(()=>{
+        if (delay >= 0) {
+          setTimeout(() => {
             notifAudio.play().catch(()=>{});
-            if(Notification.permission==='granted'){
+            if (Notification.permission === 'granted') {
               new Notification('Напоминание', {
                 body: `${time} — ${description}`,
                 icon: '/miniapps/calendar/icon.png',
@@ -77,8 +80,8 @@ document.addEventListener('DOMContentLoaded', () => {
     .catch(console.error);
   }
 
-  // стартуем на загрузке и каждые 60 секунд
-  document.addEventListener('DOMContentLoaded', checkAndSchedule);
+  // сразу и затем каждые 60 секунд
+  checkAndSchedule();
   setInterval(checkAndSchedule, 60_000);
 })();
 
