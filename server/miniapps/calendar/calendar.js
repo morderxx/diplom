@@ -130,6 +130,68 @@
   const dateInput   = document.getElementById('event-date');
   const timeInput   = document.getElementById('event-time');
   const descInput   = document.getElementById('event-desc');
+  // Bud sound
+const budAudio = new Audio('/miniapps/calendar/bud.mp3');
+
+// Селектор режима
+const modeSelect = document.getElementById('time-mode');
+const timerInput = document.getElementById('timer-input');   // может быть <input type="time"> или <input type="number">
+const startBtn   = document.getElementById('start-time');
+const stopBtn    = document.getElementById('stop-time');
+const resetBtn   = document.getElementById('reset-time');
+
+let timerId=null, countdownId=null, stopwatchInterval=null;
+let stopwatchStart=0;
+
+startBtn.onclick = () => {
+  const mode = modeSelect.value;
+  if (mode === 'stopwatch') {
+    stopwatchStart = Date.now();
+    stopwatchInterval = setInterval(() => {
+      const diff = Date.now() - stopwatchStart;
+      // формат m:s:ms
+      const ms = diff % 1000;
+      const s  = Math.floor(diff/1000)%60;
+      const m  = Math.floor(diff/60000);
+      document.getElementById('timer-display')
+              .textContent = `${pad(m)}:${pad(s)}.${String(ms).padStart(3,'0')}`;
+    }, 50);
+  }
+  else if (mode === 'countdown') {
+    const sec = Number(timerInput.value);
+    const target = Date.now() + sec*1000;
+    countdownId = setInterval(() => {
+      const rem = target - Date.now();
+      if (rem <= 0) {
+        clearInterval(countdownId);
+        budAudio.play();
+        if (Notification.permission === 'granted') new Notification('Таймер', { body: 'Обратный отсчёт завершён', silent:false });
+      } else {
+        const s = Math.floor(rem/1000);
+        document.getElementById('timer-display').textContent = `00:${pad(s)}`;
+      }
+    }, 200);
+  }
+  else if (mode === 'alarm') {
+    const [hh,mm] = timerInput.value.split(':').map(Number);
+    // используем ту же scheduleEvent
+    scheduleEvent(timerInput.value, 'Будильник', () => {
+      budAudio.play();
+      if (Notification.permission === 'granted')
+        new Notification('Будильник', { body:`Будильник на ${timerInput.value}`, silent:false });
+    });
+  }
+};
+
+stopBtn.onclick = () => {
+  clearInterval(stopwatchInterval);
+  clearInterval(countdownId);
+};
+resetBtn.onclick = () => {
+  clearInterval(stopwatchInterval);
+  clearInterval(countdownId);
+  document.getElementById('timer-display').textContent = '00:00:00';
+};
 
   async function openList(dateStr) {
     listDateEl.textContent = dateStr;
