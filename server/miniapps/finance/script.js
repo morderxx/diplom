@@ -7,6 +7,7 @@ buttons.forEach(btn => {
     btn.classList.add('active');
 
     const tab = btn.dataset.tab;
+    content.classList.add('active'); // делаем контент видимым
     if (tab === 'exchange') {
       showExchange();
     } else if (tab === 'wallet') {
@@ -99,4 +100,4 @@ function showExchange() {
   });
 }
 
-showExchange(); // запускаем при загрузке
+showExchange(); // загрузка по умолчанию
