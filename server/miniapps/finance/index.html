@@ -19,23 +19,5 @@
     <p>Здесь будет самый красивый и удобный обменник.</p>
   </div>
   <script src="script.js"></script>
-
-  <script>
-    const content = document.getElementById('finance-content');
-    document.querySelectorAll('.finance-nav button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.finance-nav button').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const tab = btn.dataset.tab;
-        if (tab === 'exchange') {
-          content.innerHTML = '<h3>Обменник валют и крипты</h3><p>Здесь будет самый красивый и удобный обменник.</p>';
-        } else if (tab === 'wallet') {
-          content.innerHTML = '<h3>Кошелёк</h3><p>Здесь будет информация о вашем балансе и транзакциях.</p>';
-        } else if (tab === 'stats') {
-          content.innerHTML = '<h3>Статистика</h3><p>Графики и аналитика по вашим финансам.</p>';
-        }
-      });
-    });
-  </script>
 </body>
 </html>
