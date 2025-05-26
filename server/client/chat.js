@@ -178,7 +178,12 @@ const addConfirmBtn        = document.getElementById('add-confirm-btn');
 const modal      = document.getElementById('modal');
 const frame      = document.getElementById('modal-frame');
 const closeBtn   = document.getElementById('modal-close');
-
+// Finance modal
+const financeBtn    = document.getElementById('btn-finance');
+const financeModal  = document.getElementById('finance-modal');
+const financeClose  = document.getElementById('finance-close');
+const financeNavBtns= financeModal.querySelectorAll('.finance-nav button');
+const financeContent= document.getElementById('finance-content');
 // Храним полный список пользователей (никнеймы) и выбранных
 let allUsers = [];
 const selectedUsers = new Set();
@@ -1340,6 +1345,16 @@ document.getElementById('btn-calendar')
 closeBtn.addEventListener('click', () => {
   modal.style.display = 'none';
   // НЕ трогаем frame.src — iframe остаётся загруженным, и код календаря продолжает работать
+});
+
+  // Открыть Finance
+financeBtn.addEventListener('click', () => {
+  financeModal.classList.remove('hidden');
+});
+
+// Закрыть Finance
+financeClose.addEventListener('click', () => {
+  financeModal.classList.add('hidden');
 });
 
   // Initialization
