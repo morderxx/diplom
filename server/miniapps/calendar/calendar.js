@@ -1,9 +1,11 @@
 // server/miniapps/calendar/calendar.js
-document.addEventListener('DOMContentLoaded', async () => {
+// Обёртка в async IIFE для возможности await
+(async () => {
+  // === Notes (SimpleMDE) ===
   const token = () => localStorage.getItem('token');
   const NOTES_API = '/notes';
 
-  // === 1) Notes: загрузить из БД и инициализировать SimpleMDE ===
+  // 1) Загрузка заметок из БД
   let initialNotes = '';
   try {
     const res = await fetch(NOTES_API, {
@@ -17,22 +19,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error('Не удалось загрузить заметки:', err);
   }
 
-  // SimpleMDE
+  // 2) Инициализация SimpleMDE
   const simplemde = new SimpleMDE({
     element: document.getElementById('notes-area'),
     initialValue: initialNotes,
     toolbar: ['bold','italic','heading','|','quote','unordered-list','ordered-list','|','link','image'],
     autosave: {
-      enabled:   true,
-      delay:     1000,
-      uniqueId:  `notes-${localStorage.getItem('nickname')}`,  // привязка к пользователю
+      enabled: true,
+      delay: 1000,
+      uniqueId: `notes-${localStorage.getItem('nickname')}`,
       saveFunction: async (plainText, onSuccess, onError) => {
         try {
           const r = await fetch(NOTES_API, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token()}`,
-              'Content-Type':  'application/json'
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify({ content: plainText })
           });
@@ -46,7 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // === 2) Таб-навигатор ===
+  // === Таб-навигатор ===
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -56,7 +58,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  // === 3) Календарь ===
+  // === Календарь ===
   const pad = n => String(n).padStart(2, '0');
   const getLocalDateStr = (d = new Date()) =>
     `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
@@ -93,7 +95,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // === Overlay для списка и формы событий ===
+  // Overlay: список событий и форма
   const listOverlay = document.getElementById('events-list-overlay');
   const listDateEl  = document.getElementById('list-date');
   const listEl      = document.getElementById('events-list');
@@ -116,31 +118,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     listEl.innerHTML = items.length === 0
       ? '<li>Нет событий</li>'
       : items.map(i =>
-          `<li><span class="event-time">${i.time||'—'}</span>
-               <span class="event-desc">${i.description}</span></li>`
+          `<li><span class="event-time">${i.time||'—'}</span>` +
+          `<span class="event-desc">${i.description}</span></li>`
         ).join('');
     dateInput.value = dateStr;
     listOverlay.classList.remove('hidden');
   }
-  closeList.onclick  = () => listOverlay.classList.add('hidden');
-  addNewBtn.onclick  = () => {
+
+  closeList.onclick = () => listOverlay.classList.add('hidden');
+  addNewBtn.onclick = () => {
     listOverlay.classList.add('hidden');
     timeInput.value = '';
     descInput.value = '';
     formOverlay.classList.remove('hidden');
   };
-  cancelBtn.onclick  = () => formOverlay.classList.add('hidden');
-  formBack.onclick   = () => formOverlay.classList.add('hidden');
-  prevBtn.onclick    = () => { current.setMonth(current.getMonth()-1); renderCalendar(); };
-  nextBtn.onclick    = () => { current.setMonth(current.getMonth()+1); renderCalendar(); };
-  saveBtn.onclick    = async () => {
+  cancelBtn.onclick = () => formOverlay.classList.add('hidden');
+  formBack.onclick  = () => formOverlay.classList.add('hidden');
+  prevBtn.onclick  = () => { current.setMonth(current.getMonth()-1); renderCalendar(); };
+  nextBtn.onclick  = () => { current.setMonth(current.getMonth()+1); renderCalendar(); };
+  saveBtn.onclick  = async () => {
     try {
       const body = { date: dateInput.value, time: timeInput.value, desc: descInput.value };
       const r = await fetch('/events', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token()}`,
-          'Content-Type':  'application/json'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(body)
       });
@@ -153,6 +156,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
-  // Финальная инициализация
+  // Инициализация
   await renderCalendar();
-});
+})();
