@@ -116,6 +116,17 @@
 fetch('/notes', { headers: { Authorization: `Bearer ${token()}` } })
   .then(r => r.json())
   .then(data => area.value = data.content || '');
+
+  // в вашем calendar.js (или notes.js)
+const simplemde = new SimpleMDE({ 
+  element: document.getElementById("notes-area"),
+  autosave: {
+    enabled: true,
+    uniqueId: "user-notes",
+    delay: 1000,
+  }
+});
+
 // Сохранение при изменении
 area.addEventListener('input', () => {
   localStorage.setItem('notes', area.value); // можно сразу показать
