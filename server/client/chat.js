@@ -1345,16 +1345,6 @@ closeBtn.addEventListener('click', () => {
   // НЕ трогаем frame.src — iframe остаётся загруженным, и код календаря продолжает работать
 });
 
-  // Открыть Finance
-financeBtn.addEventListener('click', () => {
-  financeModal.classList.remove('hidden');
-});
-
-// Закрыть Finance
-financeClose.addEventListener('click', () => {
-  financeModal.classList.add('hidden');
-});
-
   // Initialization
   loadRooms();
   loadUsers();
