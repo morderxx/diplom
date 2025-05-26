@@ -50,29 +50,42 @@ function showExchange() {
     <div class="exchange-result" id="exchange-result">Введите сумму и выберите валюты</div>
   `;
 
-  fetch('https://api.exchangerate.host/symbols')
-    .then(res => res.json())
-    .then(data => {
-      const symbols = data.symbols;
-      const from = document.getElementById('from-currency');
-      const to = document.getElementById('to-currency');
-      for (const code in symbols) {
-        const option1 = document.createElement('option');
-        option1.value = code;
-        option1.textContent = `${code} - ${symbols[code].description}`;
-        const option2 = option1.cloneNode(true);
-        from.appendChild(option1);
-        to.appendChild(option2);
-      }
-      from.value = 'USD';
-      to.value = 'RUB';
-    });
+  const popularCurrencies = {
+    USD: 'US Dollar',
+    EUR: 'Euro',
+    RUB: 'Russian Ruble',
+    GBP: 'British Pound',
+    JPY: 'Japanese Yen',
+    CNY: 'Chinese Yuan',
+    BTC: 'Bitcoin',
+    ETH: 'Ethereum',
+    LTC: 'Litecoin',
+    DOGE: 'Dogecoin',
+    BNB: 'Binance Coin',
+    USDT: 'Tether',
+    XRP: 'Ripple'
+  };
+
+  const from = document.getElementById('from-currency');
+  const to = document.getElementById('to-currency');
+
+  for (const code in popularCurrencies) {
+    const option1 = document.createElement('option');
+    option1.value = code;
+    option1.textContent = `${code} - ${popularCurrencies[code]}`;
+    const option2 = option1.cloneNode(true);
+    from.appendChild(option1);
+    to.appendChild(option2);
+  }
+
+  from.value = 'USD';
+  to.value = 'BTC';
 
   const form = document.getElementById('exchange-form');
   form.addEventListener('submit', async e => {
     e.preventDefault();
-    const from = document.getElementById('from-currency').value;
-    const to = document.getElementById('to-currency').value;
+    const fromValue = from.value;
+    const toValue = to.value;
     const amount = parseFloat(document.getElementById('amount').value);
     const resultDiv = document.getElementById('exchange-result');
 
@@ -84,12 +97,13 @@ function showExchange() {
     resultDiv.textContent = 'Загрузка...';
 
     try {
-      const res = await fetch(`https://api.exchangerate.host/convert?from=${from}&to=${to}&amount=${amount}`);
+      const res = await fetch(`https://api.exchangerate.host/convert?from=${fromValue}&to=${toValue}&amount=${amount}`);
       const data = await res.json();
+
       if (data.result) {
         resultDiv.innerHTML = `
-          <strong>${amount} ${from}</strong> = 
-          <strong>${data.result.toFixed(2)} ${to}</strong>
+          <strong>${amount} ${fromValue}</strong> = 
+          <strong>${data.result.toFixed(6)} ${toValue}</strong>
         `;
       } else {
         resultDiv.textContent = 'Ошибка при конвертации.';
