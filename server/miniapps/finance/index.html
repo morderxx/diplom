@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Финансы</title>
+  <link rel="stylesheet" href="../../style.css">
+  <style>
+    body { font-family: sans-serif; padding: 1rem; }
+    .finance-nav { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .finance-nav button { flex: 1; padding: 0.5rem; border: none; border-radius: 4px; background: #eee; cursor: pointer; }
+    .finance-nav button.active { background: #007bff; color: #fff; }
+    .finance-content { border: 1px solid #ddd; padding: 1rem; border-radius: 4px; min-height: 200px; }
+  </style>
+</head>
+<body>
+  <h2>Финансы</h2>
+  <div class="finance-nav">
+    <button data-tab="exchange" class="active">Обменник</button>
+    <button data-tab="wallet">Кошелёк</button>
+    <button data-tab="stats">Статистика</button>
+  </div>
+  <div class="finance-content" id="finance-content">
+    <!-- контент первой вкладки -->
+    <h3>Обменник валют и крипты</h3>
+    <p>Здесь будет самый красивый и удобный обменник.</p>
+  </div>
+
+  <script>
+    const content = document.getElementById('finance-content');
+    document.querySelectorAll('.finance-nav button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.finance-nav button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const tab = btn.dataset.tab;
+        if (tab === 'exchange') {
+          content.innerHTML = '<h3>Обменник валют и крипты</h3><p>Здесь будет самый красивый и удобный обменник.</p>';
+        } else if (tab === 'wallet') {
+          content.innerHTML = '<h3>Кошелёк</h3><p>Здесь будет информация о вашем балансе и транзакциях.</p>';
+        } else if (tab === 'stats') {
+          content.innerHTML = '<h3>Статистика</h3><p>Графики и аналитика по вашим финансам.</p>';
+        }
+      });
+    });
+  </script>
+</body>
+</html>
