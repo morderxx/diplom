@@ -117,28 +117,55 @@ fetch('/notes', { headers: { Authorization: `Bearer ${token()}` } })
   .then(r => r.json())
   .then(data => area.value = data.content || '');
 
-  // в вашем calendar.js (или notes.js)
-const simplemde = new SimpleMDE({ 
-  element: document.getElementById("notes-area"),
-  autosave: {
-    enabled: true,
-    uniqueId: "user-notes",
-    delay: 1000,
-  }
-});
+  // notes.js (подключается после авторизации в мессенджере)
+document.addEventListener('DOMContentLoaded', async () => {
+  const token = localStorage.getItem('token');
+  const API = '/notes';
 
-// Сохранение при изменении
-area.addEventListener('input', () => {
-  localStorage.setItem('notes', area.value); // можно сразу показать
-  fetch('/notes', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token()}`,
-      'Content-Type': 'application/json'
+  // 1) Подгрузить текущие заметки
+  let initial = '';
+  try {
+    const res = await fetch(API, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (res.ok) {
+      const json = await res.json();
+      initial = json.content;
+    }
+  } catch (e) {
+    console.error('Cannot load notes:', e);
+  }
+
+  // 2) Инициализировать SimpleMDE
+  const simplemde = new SimpleMDE({
+    element: document.getElementById("notes-area"),
+    initialValue: initial,
+    autosave: {
+      enabled: true,
+      delay:   1000,
+      uniqueId: "user-notes",
+      saveFunction: async (plainText, onSuccess, onError) => {
+        try {
+          const r = await fetch(API, {
+            method:  'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type':  'application/json'
+            },
+            body: JSON.stringify({ content: plainText })
+          });
+          if (!r.ok) throw new Error(await r.text());
+          onSuccess();
+        } catch (err) {
+          console.error('Failed to save notes:', err);
+          onError(err);
+        }
+      }
     },
-    body: JSON.stringify({ content: area.value })
+    toolbar: ["bold","italic","heading","|","quote","unordered-list","ordered-list","|","link","image"]
   });
 });
+
 
   // === Инициализация ===
   (async () => {
