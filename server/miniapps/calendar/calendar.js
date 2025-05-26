@@ -1,11 +1,12 @@
 // server/miniapps/calendar/calendar.js
 // Обёртка в async IIFE для возможности await
 (async () => {
-  // === Notes (SimpleMDE) ===
+  // === Общие утилиты ===
   const token = () => localStorage.getItem('token');
-  const NOTES_API = '/notes';
+  const pad   = n => String(n).padStart(2, '0');
 
-  // 1) Загрузка заметок из БД
+  // === 1) Инициализация SimpleMDE для заметок ===
+  const NOTES_API = '/notes';
   let initialNotes = '';
   try {
     const res = await fetch(NOTES_API, {
@@ -19,22 +20,21 @@
     console.error('Не удалось загрузить заметки:', err);
   }
 
-  // 2) Инициализация SimpleMDE
   const simplemde = new SimpleMDE({
-    element: document.getElementById('notes-area'),
-    initialValue: initialNotes,
-    toolbar: ['bold','italic','heading','|','quote','unordered-list','ordered-list','|','link','image'],
+    element:       document.getElementById('notes-area'),
+    initialValue:  initialNotes,
+    toolbar:       ['bold','italic','heading','|','quote','unordered-list','ordered-list','|','link','image'],
     autosave: {
-      enabled: true,
-      delay: 1000,
-      uniqueId: `notes-${localStorage.getItem('nickname')}`,
+      enabled:      true,
+      delay:        1000,
+      uniqueId:     `notes-${localStorage.getItem('nickname')}`,
       saveFunction: async (plainText, onSuccess, onError) => {
         try {
           const r = await fetch(NOTES_API, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token()}`,
-              'Content-Type': 'application/json'
+              'Content-Type':  'application/json'
             },
             body: JSON.stringify({ content: plainText })
           });
@@ -47,8 +47,10 @@
       }
     }
   });
+  // Включаем сразу режим предпросмотра (рендерим Markdown)
+  simplemde.togglePreview();
 
-  // === Таб-навигатор ===
+  // === 2) Таб-навигатор ===
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -58,8 +60,7 @@
     });
   });
 
-  // === Календарь ===
-  const pad = n => String(n).padStart(2, '0');
+  // === 3) Рендер календаря и все, что было у вас далее ===
   const getLocalDateStr = (d = new Date()) =>
     `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 
@@ -74,15 +75,12 @@
     const year  = current.getFullYear();
     const month = current.getMonth() + 1;
     monthYearEl.textContent = current.toLocaleString('ru', { month: 'long', year: 'numeric' });
-
     const res = await fetch(`/events?year=${year}&month=${month}`, {
       headers: { 'Authorization': `Bearer ${token()}` }
     });
     const eventDates = res.ok ? await res.json() : [];
-
     const firstDay    = new Date(year, month-1, 1).getDay() || 7;
     const daysInMonth = new Date(year, month, 0).getDate();
-
     for (let i = 1; i < firstDay; i++) grid.appendChild(document.createElement('div'));
     for (let d = 1; d <= daysInMonth; d++) {
       const cell    = document.createElement('div');
