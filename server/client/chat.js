@@ -178,12 +178,7 @@ const addConfirmBtn        = document.getElementById('add-confirm-btn');
 const modal      = document.getElementById('modal');
 const frame      = document.getElementById('modal-frame');
 const closeBtn   = document.getElementById('modal-close');
-// Finance modal
-const financeBtn    = document.getElementById('btn-finance');
-const financeModal  = document.getElementById('finance-modal');
-const financeClose  = document.getElementById('finance-close');
-const financeNavBtns= financeModal.querySelectorAll('.finance-nav button');
-const financeContent= document.getElementById('finance-content');
+
 // Храним полный список пользователей (никнеймы) и выбранных
 let allUsers = [];
 const selectedUsers = new Set();
