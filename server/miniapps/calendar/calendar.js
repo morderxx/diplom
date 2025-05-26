@@ -111,6 +111,23 @@
   formBack.onclick   = () => formOverlay.classList.add('hidden');
   prevBtn.onclick   = () => { current.setMonth(current.getMonth()-1); renderCalendar(); };
   nextBtn.onclick   = () => { current.setMonth(current.getMonth()+1); renderCalendar(); };
+  const area = document.getElementById('notes-area');
+// Загрузка
+fetch('/notes', { headers: { Authorization: `Bearer ${token()}` } })
+  .then(r => r.json())
+  .then(data => area.value = data.content || '');
+// Сохранение при изменении
+area.addEventListener('input', () => {
+  localStorage.setItem('notes', area.value); // можно сразу показать
+  fetch('/notes', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token()}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ content: area.value })
+  });
+});
 
   // === Инициализация ===
   (async () => {
