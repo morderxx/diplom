@@ -1,0 +1,160 @@
+/* Сброс базовых стилей */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #f0f4f8;
+  color: #333;
+  padding: 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  height: 100vh;
+}
+
+/* Контейнер модуля */
+#finance-container {
+  width: 380px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 16px 32px rgba(0,0,0,0.08);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Навигация вкладок */
+.finance-nav {
+  display: flex;
+  background: #e1e5eb;
+}
+.finance-nav button {
+  flex: 1;
+  padding: 0.75rem;
+  border: none;
+  background: transparent;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.finance-nav button:hover {
+  background: #d0d5de;
+}
+.finance-nav button.active {
+  background: #4a90e2;
+  color: #fff;
+}
+
+/* Контент вкладок */
+.finance-content {
+  display: none;
+  padding: 1rem;
+  flex: 1;
+  overflow-y: auto;
+  background: #fafafa;
+}
+.finance-content.active {
+  display: block;
+}
+
+/* Общие стили заголовков внутри */
+.finance-content h3 {
+  margin-bottom: 0.5rem;
+  font-size: 1.2rem;
+  color: #4a90e2;
+}
+
+/* === Обменник === */
+.exchange-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.exchange-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.95rem;
+}
+.exchange-form input,
+.exchange-form select {
+  margin-top: 0.25rem;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  transition: border-color 0.2s;
+}
+.exchange-form input:focus,
+.exchange-form select:focus {
+  border-color: #4a90e2;
+  outline: none;
+}
+.exchange-form button {
+  grid-column: span 2;
+  padding: 0.6rem;
+  background: #4a90e2;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.exchange-form button:hover {
+  background: #3b7ac1;
+}
+
+/* Результат конвертации */
+.exchange-result {
+  padding: 0.75rem;
+  background: #f7f9fb;
+  border-radius: 6px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+  font-size: 1rem;
+  margin-top: 1rem;
+}
+
+/* === Кошелёк === */
+.wallet-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.wallet-info .balance {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #50a7ff;
+}
+.wallet-info .transactions {
+  list-style: none;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.wallet-info .transactions li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #ddd;
+}
+
+/* === Статистика === */
+.stats-chart {
+  width: 100%;
+  height: 200px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-style: italic;
+}
+
+/* Утилиты */
+.hidden {
+  display: none !important;
+}
