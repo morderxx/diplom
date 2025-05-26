@@ -29,7 +29,7 @@ buttons.forEach(btn => {
   });
 });
 
-function showExchange() {
+async function showExchange() {
   content.innerHTML = `
     <h3>Обменник валют и крипты</h3>
     <form class="exchange-form" id="exchange-form">
@@ -50,36 +50,41 @@ function showExchange() {
     <div class="exchange-result" id="exchange-result">Введите сумму и выберите валюты</div>
   `;
 
-  const popularCurrencies = {
-    USD: 'US Dollar',
-    EUR: 'Euro',
-    RUB: 'Russian Ruble',
-    GBP: 'British Pound',
-    JPY: 'Japanese Yen',
-    CNY: 'Chinese Yuan',
-    BTC: 'Bitcoin',
-    ETH: 'Ethereum',
-    LTC: 'Litecoin',
-    DOGE: 'Dogecoin',
-    BNB: 'Binance Coin',
-    USDT: 'Tether',
-    XRP: 'Ripple'
+  const currencies = {
+    usd: 'US Dollar',
+    eur: 'Euro',
+    rub: 'Russian Ruble',
+    gbp: 'British Pound',
+    jpy: 'Japanese Yen',
+    cny: 'Chinese Yuan',
+    btc: 'Bitcoin',
+    eth: 'Ethereum',
+    ltc: 'Litecoin',
+    doge: 'Dogecoin',
+    bnb: 'Binance Coin',
+    usdt: 'Tether',
+    xrp: 'Ripple',
+    sol: 'Solana',
+    ada: 'Cardano',
+    dot: 'Polkadot',
+    avax: 'Avalanche',
+    ton: 'Toncoin'
   };
 
   const from = document.getElementById('from-currency');
   const to = document.getElementById('to-currency');
 
-  for (const code in popularCurrencies) {
+  for (const code in currencies) {
     const option1 = document.createElement('option');
     option1.value = code;
-    option1.textContent = `${code} - ${popularCurrencies[code]}`;
+    option1.textContent = `${code.toUpperCase()} - ${currencies[code]}`;
     const option2 = option1.cloneNode(true);
     from.appendChild(option1);
     to.appendChild(option2);
   }
 
-  from.value = 'USD';
-  to.value = 'BTC';
+  from.value = 'usd';
+  to.value = 'btc';
 
   const form = document.getElementById('exchange-form');
   form.addEventListener('submit', async e => {
@@ -97,21 +102,26 @@ function showExchange() {
     resultDiv.textContent = 'Загрузка...';
 
     try {
-      const res = await fetch(`https://api.exchangerate.host/convert?from=${fromValue}&to=${toValue}&amount=${amount}`);
+      const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${fromValue}&vs_currencies=${toValue}`);
       const data = await res.json();
 
-      if (data.result) {
-        resultDiv.innerHTML = `
-          <strong>${amount} ${fromValue}</strong> = 
-          <strong>${data.result.toFixed(6)} ${toValue}</strong>
-        `;
-      } else {
-        resultDiv.textContent = 'Ошибка при конвертации.';
+      if (!data[fromValue] || !data[fromValue][toValue]) {
+        resultDiv.textContent = 'Ошибка конвертации.';
+        return;
       }
+
+      const rate = data[fromValue][toValue];
+      const converted = amount * rate;
+
+      resultDiv.innerHTML = `
+        <strong>${amount} ${fromValue.toUpperCase()}</strong> = 
+        <strong>${converted.toFixed(6)} ${toValue.toUpperCase()}</strong>
+      `;
     } catch (err) {
       resultDiv.textContent = 'Ошибка подключения к API.';
     }
   });
 }
+
 
 showExchange(); // загрузка по умолчанию
