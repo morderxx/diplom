@@ -1341,6 +1341,9 @@ document.getElementById('btn-weather')
 document.getElementById('btn-calendar')
   .addEventListener('click', () => openMiniapp('/miniapps/calendar/index.html'));
 
+document.getElementById('btn-finance')
+  .addEventListener('click', () => openMiniapp('/miniapps/finance/index.html'));
+  
 // Закрытие модалки  
 closeBtn.addEventListener('click', () => {
   modal.style.display = 'none';
