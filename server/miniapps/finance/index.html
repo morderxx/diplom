@@ -8,15 +8,16 @@
 </head>
 <body>
   <h2>Финансы</h2>
-  <div class="finance-nav">
-    <button data-tab="exchange" class="active">Обменник</button>
-    <button data-tab="wallet">Кошелёк</button>
-    <button data-tab="stats">Статистика</button>
-  </div>
-  <div class="finance-content" id="finance-content">
-    <!-- контент первой вкладки -->
-    <h3>Обменник валют и крипты</h3>
-    <p>Здесь будет самый красивый и удобный обменник.</p>
+   <div id="finance-container">
+    <h2>Финансы</h2>
+    <div class="finance-nav">
+      <button data-tab="exchange" class="active">Обменник</button>
+      <button data-tab="wallet">Кошелёк</button>
+      <button data-tab="stats">Статистика</button>
+    </div>
+    <div class="finance-content active" id="finance-content">
+      <!-- начальный контент будет заменён JS -->
+    </div>
   </div>
   <script src="script.js"></script>
 </body>
