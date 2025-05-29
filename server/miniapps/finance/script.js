@@ -19,8 +19,17 @@ document.addEventListener('DOMContentLoaded', () => {
     MATIC: 'matic-network'
   };
 
-  // API ключ для CurrencyFreaks (бесплатный)
-  const CURRENCY_API_KEY = '24f59325463e418ca66aee20d46a0925'; // Замените на свой ключ
+  // API ключ для CurrencyFreaks
+  const CURRENCY_API_KEY = '24f59325463e418ca66aee20d46a0925';
+  
+  // Прокси для обхода CORS
+  const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+  
+  // Кэш для хранения курсов валют
+  const exchangeRatesCache = {
+    rates: null,
+    timestamp: 0
+  };
 
   // Таб-переключатель
   tabs.forEach(btn => {
@@ -52,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
       </form>
       <div id="exchange-result" class="exchange-result"></div>
     `;
+    
     const selFrom = document.getElementById('from');
     const selTo = document.getElementById('to');
     selFrom.innerHTML = selTo.innerHTML = '';
@@ -61,6 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
       selFrom.add(new Option(c, c));
       selTo.add(new Option(c, c));
     });
+    
     // Крипта
     Object.keys(cryptoMap).forEach(c => {
       selFrom.add(new Option(c, c));
@@ -71,10 +82,38 @@ document.addEventListener('DOMContentLoaded', () => {
     selTo.value = 'BTC';
 
     document.getElementById('exchange-form')
-      .addEventListener('submit', e => {
+      .addEventListener('submit', async (e) => {
         e.preventDefault();
-        doConvert();
+        await doConvert();
       });
+  }
+
+  // Получение курсов валют с кэшированием
+  async function getExchangeRates() {
+    // Используем кэш, если данные свежие (менее 10 минут)
+    const now = Date.now();
+    if (exchangeRatesCache.rates && (now - exchangeRatesCache.timestamp) < 600000) {
+      return exchangeRatesCache.rates;
+    }
+    
+    try {
+      const response = await fetch(
+        `https://api.currencyfreaks.com/latest?apikey=${CURRENCY_API_KEY}`
+      );
+      
+      if (!response.ok) throw new Error('Failed to fetch exchange rates');
+      
+      const data = await response.json();
+      
+      // Сохраняем в кэш
+      exchangeRatesCache.rates = data.rates;
+      exchangeRatesCache.timestamp = now;
+      
+      return data.rates;
+    } catch (error) {
+      console.error('Error fetching exchange rates:', error);
+      return null;
+    }
   }
 
   async function doConvert() {
@@ -87,6 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
       out.textContent = 'Введите корректную сумму';
       return;
     }
+    
     out.textContent = 'Загрузка…';
 
     const isFiat = c => fiatCodes.includes(c);
@@ -97,23 +137,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // 1) Fiat → Fiat через CurrencyFreaks
       if (isFiat(f) && isFiat(t)) {
-        const j = await fetch(
-          `https://api.currencyfreaks.com/latest?apikey=${CURRENCY_API_KEY}&symbols=${f},${t}`
-        ).then(r => r.json());
+        const rates = await getExchangeRates();
+        if (!rates || !rates[f] || !rates[t]) throw new Error();
         
-        if (!j.rates || !j.rates[f] || !j.rates[t]) throw new Error();
         // Конвертация через USD как базовую валюту
-        const rateFrom = j.rates[f];
-        const rateTo = j.rates[t];
+        const rateFrom = rates[f];
+        const rateTo = rates[t];
         result = a * (rateTo / rateFrom);
       }
 
       // 2) Crypto → Crypto
       else if (isCrypto(f) && isCrypto(t)) {
         const idF = cryptoMap[f], idT = cryptoMap[t];
-        const pj = await fetch(
+        const url = encodeURIComponent(
           `https://api.coingecko.com/api/v3/simple/price?ids=${idF},${idT}&vs_currencies=usd`
-        ).then(r => r.json());
+        );
+        
+        const pj = await fetch(CORS_PROXY + url).then(r => r.json());
         const usdF = pj[idF]?.usd, usdT = pj[idT]?.usd;
         if (!usdF || !usdT) throw new Error();
         result = a * (usdF / usdT);
@@ -122,9 +162,11 @@ document.addEventListener('DOMContentLoaded', () => {
       // 3) Crypto → Fiat
       else if (isCrypto(f) && isFiat(t)) {
         const idF = cryptoMap[f];
-        const pj = await fetch(
+        const url = encodeURIComponent(
           `https://api.coingecko.com/api/v3/simple/price?ids=${idF}&vs_currencies=${t.toLowerCase()}`
-        ).then(r => r.json());
+        );
+        
+        const pj = await fetch(CORS_PROXY + url).then(r => r.json());
         const rate = pj[idF]?.[t.toLowerCase()];
         if (rate == null) throw new Error();
         result = a * rate;
@@ -133,9 +175,11 @@ document.addEventListener('DOMContentLoaded', () => {
       // 4) Fiat → Crypto
       else if (isFiat(f) && isCrypto(t)) {
         const idT = cryptoMap[t];
-        const pj = await fetch(
+        const url = encodeURIComponent(
           `https://api.coingecko.com/api/v3/simple/price?ids=${idT}&vs_currencies=${f.toLowerCase()}`
-        ).then(r => r.json());
+        );
+        
+        const pj = await fetch(CORS_PROXY + url).then(r => r.json());
         const rate = pj[idT]?.[f.toLowerCase()];
         if (!rate) throw new Error();
         result = a / rate;
@@ -148,8 +192,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!isFinite(result)) throw new Error();
       out.innerHTML = `<strong>${a} ${f}</strong> = <strong>${result.toFixed(6)} ${t}</strong>`;
     } catch (err) {
-      console.error(err);
-      out.textContent = 'Ошибка при конвертации.';
+      console.error('Conversion error:', err);
+      out.textContent = 'Ошибка при конвертации. Попробуйте позже.';
     }
   }
 
@@ -157,9 +201,11 @@ document.addEventListener('DOMContentLoaded', () => {
   function showWallet() {
     content.innerHTML = `<h3>Кошелёк</h3><p>Баланс и история транзакций…</p>`;
   }
+  
   function showStats() {
     content.innerHTML = `<h3>Статистика</h3><p>Графики и аналитика…</p>`;
   }
+  
   function showNftFloor() {
     content.innerHTML = `
       <h3>NFT Floor Price</h3>
@@ -174,22 +220,33 @@ document.addEventListener('DOMContentLoaded', () => {
       </form>
       <div id="nft-result" class="exchange-result"></div>
     `;
+    
     document.getElementById('nft-form').onsubmit = async e => {
       e.preventDefault();
       const id = document.getElementById('nft-contract').value.trim();
       const to = document.getElementById('nft-to').value.toLowerCase();
       const out = document.getElementById('nft-result');
-      if (!id) return out.textContent = 'Введите ID коллекции';
+      
+      if (!id) {
+        out.textContent = 'Введите ID коллекции';
+        return;
+      }
+      
       out.textContent = 'Загрузка…';
+      
       try {
-        const j = await fetch(
+        const url = encodeURIComponent(
           `https://api.coingecko.com/api/v3/nfts/${id}`
-        ).then(r => r.json());
+        );
+        
+        const j = await fetch(CORS_PROXY + url).then(r => r.json());
         const price = j.market_data?.floor_price?.[to];
+        
         out.innerHTML = price
           ? `Floor: <strong>${price}</strong> ${to.toUpperCase()}`
           : 'Не удалось получить цену.';
-      } catch {
+      } catch (err) {
+        console.error('NFT error:', err);
         out.textContent = 'Ошибка при запросе NFT.';
       }
     };
