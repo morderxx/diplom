@@ -51,27 +51,22 @@ async function showExchange() {
   `;
 
   const currencies = {
-    // фиат
-    USD: 'US Dollar', EUR: 'Euro', RUB: 'Russian Ruble',
-    GBP: 'British Pound', JPY: 'Japanese Yen', CNY: 'Chinese Yuan',
-    // крипта
+    USD: 'US Dollar', RUB: 'Russian Ruble', EUR: 'Euro',
     BTC: 'Bitcoin', ETH: 'Ethereum', LTC: 'Litecoin', DOGE: 'Dogecoin',
-    BNB: 'Binance Coin', USDT: 'Tether', XRP: 'Ripple',
-    SOL: 'Solana', ADA: 'Cardano', DOT: 'Polkadot', AVAX: 'Avalanche', TON: 'Toncoin'
+    BNB: 'Binance Coin', USDT: 'Tether', XRP: 'Ripple'
   };
 
-  // мапа символ → CoinGecko ID (только для крипты)
+  // ID на CoinGecko
   const cgIds = {
-    BTC: 'bitcoin', ETH: 'ethereum', LTC: 'litecoin', DOGE: 'dogecoin',
-    BNB: 'binancecoin', USDT: 'tether', XRP: 'ripple',
-    SOL: 'solana', ADA: 'cardano', DOT: 'polkadot', AVAX: 'avalanche-2', TON: 'toncoin'
+    BTC: 'bitcoin', ETH: 'ethereum', LTC: 'litecoin',
+    DOGE: 'dogecoin', BNB: 'binancecoin', USDT: 'tether', XRP: 'ripple'
   };
 
-  const fiatSet = new Set(['USD','EUR','RUB','GBP','JPY','CNY']);
+  const fiatSet = new Set(['USD','RUB','EUR']);
   const fromSel = document.getElementById('from-currency');
   const toSel   = document.getElementById('to-currency');
 
-  // заполняем селекты
+  // заполним селекты
   for (let code in currencies) {
     fromSel.add(new Option(`${code} — ${currencies[code]}`, code));
     toSel  .add(new Option(`${code} — ${currencies[code]}`, code));
@@ -84,6 +79,7 @@ async function showExchange() {
     const from = fromSel.value, to = toSel.value;
     const amount = parseFloat(document.getElementById('amount').value);
     const out = document.getElementById('exchange-result');
+
     if (isNaN(amount) || amount <= 0) {
       out.textContent = 'Введите корректную сумму';
       return;
@@ -93,43 +89,46 @@ async function showExchange() {
     try {
       let result;
 
-      // 1) fiat → fiat
+      // 1) Fiat → Fiat
       if (fiatSet.has(from) && fiatSet.has(to)) {
-        const res = await fetch(
+        const r = await fetch(
           `https://api.exchangerate.host/convert?from=${from}&to=${to}&amount=${amount}`
         );
-        const data = await res.json();
-        result = data.result;
+        const d = await r.json();
+        result = d.result;
 
-      // 2) crypto → crypto
+      // 2) Crypto → Crypto
       } else if (!fiatSet.has(from) && !fiatSet.has(to)) {
-        const idFrom = cgIds[from], idTo = cgIds[to];
-        const res = await fetch(
-          `https://api.coingecko.com/api/v3/simple/price?ids=${idFrom},${idTo}&vs_currencies=usd`
+        const idF = cgIds[from], idT = cgIds[to];
+        const r   = await fetch(
+          `https://api.coingecko.com/api/v3/simple/price?ids=${idF},${idT}&vs_currencies=usd`
         );
-        const data = await res.json();
-        const rateFrom = data[idFrom].usd;
-        const rateTo   = data[idTo].usd;
-        result = amount * (rateTo / rateFrom);
+        const d   = await r.json();
+        const rateFromUsd = d[idF].usd;
+        const rateToUsd   = d[idT].usd;
+        // правильная формула:
+        result = amount * (rateFromUsd / rateToUsd);
 
-      // 3) crypto → fiat
+      // 3) Crypto → Fiat
       } else if (!fiatSet.has(from) && fiatSet.has(to)) {
-        const idFrom = cgIds[from];
-        const res    = await fetch(
-          `https://api.coingecko.com/api/v3/simple/price?ids=${idFrom}&vs_currencies=${to.toLowerCase()}`
+        const idF = cgIds[from];
+        const r   = await fetch(
+          `https://api.coingecko.com/api/v3/simple/price?ids=${idF}&vs_currencies=${to.toLowerCase()}`
         );
-        const data = await res.json();
-        const rate = data[idFrom][to.toLowerCase()];
+        const d   = await r.json();
+        const rate = d[idF][to.toLowerCase()];
         result = amount * rate;
 
-      // 4) fiat → crypto
-      } else { // fiat → crypto
-        const idTo = cgIds[to];
-        const res  = await fetch(
-          `https://api.coingecko.com/api/v3/simple/price?ids=${idTo}&vs_currencies=${from.toLowerCase()}`
+      // 4) Fiat → Crypto
+      } else {
+        const idT = cgIds[to];
+        // получим цену 1 crypto в изначальной фиате
+        const r   = await fetch(
+          `https://api.coingecko.com/api/v3/simple/price?ids=${idT}&vs_currencies=${from.toLowerCase()}`
         );
-        const data = await res.json();
-        const rate = data[idTo][from.toLowerCase()];
+        const d   = await r.json();
+        const rate = d[idT][from.toLowerCase()];
+        // чтобы узнать, сколько crypto за amount фиата:
         result = amount / rate;
       }
 
