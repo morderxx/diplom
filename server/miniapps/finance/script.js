@@ -76,71 +76,80 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // === 2) Функция конвертации ===
-  async function doConvert() {
-    const f = document.getElementById('from').value.toUpperCase();
-    const t = document.getElementById('to'  ).value.toUpperCase();
-    const a = parseFloat(document.getElementById('amount').value);
-    const out = document.getElementById('exchange-result');
+async function doConvert() {
+  const f = document.getElementById('from').value.toUpperCase();
+  const t = document.getElementById('to'  ).value.toUpperCase();
+  const a = parseFloat(document.getElementById('amount').value);
+  const out = document.getElementById('exchange-result');
 
-    if (!a || a <= 0) {
-      out.textContent = 'Введите корректную сумму';
-      return;
-    }
-    out.textContent = 'Загрузка…';
-
-    const isFiat   = c => fiatCodes.includes(c);
-    const isCrypto = c => Object.keys(cryptoMap).includes(c);
-
-    try {
-      let rate;
-
-      // 1) Фиат → фиат (используем exchangerate.host)
-      if (isFiat(f) && isFiat(t)) {
-        const j = await fetch(
-          `https://api.exchangerate.host/convert?from=${f}&to=${t}&amount=${a}`
-        ).then(r => r.json());
-        rate = j.result;
-      }
-      // 2) Крипто → крипто (через USD как мост)
-      else if (isCrypto(f) && isCrypto(t)) {
-        const idF = cryptoMap[f];
-        const idT = cryptoMap[t];
-        const pj = await fetch(
-          `https://api.coingecko.com/api/v3/simple/price?ids=${idF},${idT}&vs_currencies=usd`
-        ).then(r => r.json());
-        const usdF = pj[idF]?.usd;
-        const usdT = pj[idT]?.usd;
-        if (!usdF || !usdT) throw new Error();
-        rate = a * (usdF / usdT);
-      }
-      // 3) Crypto → Fiаt (CoinGecko simple price, vs_currencies=fiat)
-      else if (isCrypto(f) && isFiat(t)) {
-        const idF = cryptoMap[f];
-        const pj = await fetch(
-          `https://api.coingecko.com/api/v3/simple/price?ids=${idF}&vs_currencies=${t.toLowerCase()}`
-        ).then(r => r.json());
-        rate = pj[idF]?.[t.toLowerCase()] * a;
-      }
-      // 4) Fiat → Crypto (CoinGecko simple price, vs_currencies=fiat, а затем делим)
-      else if (isFiat(f) && isCrypto(t)) {
-        const idT = cryptoMap[t];
-        const pj = await fetch(
-          `https://api.coingecko.com/api/v3/simple/price?ids=${idT}&vs_currencies=${f.toLowerCase()}`
-        ).then(r => r.json());
-        const price = pj[idT]?.[f.toLowerCase()];
-        if (!price) throw new Error();
-        rate = a / price;
-      }
-      else {
-        throw new Error('Неподдерживаемая пара');
-      }
-
-      if (!isFinite(rate)) throw new Error();
-      out.innerHTML = `<strong>${a} ${f}</strong> = <strong>${rate.toFixed(6)} ${t}</strong>`;
-    } catch {
-      out.textContent = 'Ошибка при конвертации.';
-    }
+  if (!a || a <= 0) {
+    out.textContent = 'Введите корректную сумму';
+    return;
   }
+  out.textContent = 'Загрузка…';
+
+  const fiatCodes = ['USD','EUR','RUB','GBP','JPY','CNY'];
+  const cryptoMap = {
+    BTC:'bitcoin', ETH:'ethereum', LTC:'litecoin', DOGE:'dogecoin',
+    BNB:'binancecoin', USDT:'tether', XRP:'ripple', ADA:'cardano',
+    SOL:'solana', DOT:'polkadot', AVAX:'avalanche', MATIC:'matic-network'
+  };
+  const isFiat   = c => fiatCodes.includes(c);
+  const isCrypto = c => Object.keys(cryptoMap).includes(c);
+
+  try {
+    let rate;
+
+    // 1) Фиат → фиат через /latest
+    if (isFiat(f) && isFiat(t)) {
+      const j = await fetch(
+        `https://api.exchangerate.host/latest?base=${f}&symbols=${t}`
+      ).then(r => r.json());
+      if (!j.rates || j.rates[t] == null) throw new Error();
+      rate = j.rates[t] * a;
+    }
+    // 2) Крипто → крипто
+    else if (isCrypto(f) && isCrypto(t)) {
+      const idF = cryptoMap[f], idT = cryptoMap[t];
+      const pj = await fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${idF},${idT}&vs_currencies=usd`
+      ).then(r => r.json());
+      const usdF = pj[idF]?.usd, usdT = pj[idT]?.usd;
+      if (!usdF || !usdT) throw new Error();
+      rate = a * (usdF / usdT);
+    }
+    // 3) Crypto → Fiat
+    else if (isCrypto(f) && isFiat(t)) {
+      const idF = cryptoMap[f];
+      const pj = await fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${idF}&vs_currencies=${t.toLowerCase()}`
+      ).then(r => r.json());
+      const rcv = pj[idF]?.[t.toLowerCase()];
+      if (rcv == null) throw new Error();
+      rate = a * rcv;
+    }
+    // 4) Fiat → Crypto
+    else if (isFiat(f) && isCrypto(t)) {
+      const idT = cryptoMap[t];
+      const pj = await fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${idT}&vs_currencies=${f.toLowerCase()}`
+      ).then(r => r.json());
+      const rcv = pj[idT]?.[f.toLowerCase()];
+      if (!rcv) throw new Error();
+      rate = a / rcv;
+    }
+    else {
+      throw new Error('Неподдерживаемая пара');
+    }
+
+    if (!isFinite(rate)) throw new Error();
+    out.innerHTML = `<strong>${a} ${f}</strong> = <strong>${rate.toFixed(6)} ${t}</strong>`;
+  } catch (e) {
+    console.error(e);
+    out.textContent = 'Ошибка при конвертации.';
+  }
+}
+
 
   // === Заглушки для других вкладок ===
   function showWallet() {
