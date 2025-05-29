@@ -2,21 +2,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const content = document.getElementById('finance-content');
   const tabs = document.querySelectorAll('.finance-nav button');
 
-  // Фиатные коды и карта крипто→ID CoinGecko
-  const fiatCodes = ['USD', 'EUR', 'RUB', 'GBP', 'JPY', 'CNY', 'CHF', 'CAD'];
+  // Фиатные коды и карта крипто→ID
+  const fiatCodes = ['USD', 'EUR', 'RUB', 'GBP', 'JPY', 'CNY', 'CHF', 'CAD', 'BYN'];
   const cryptoMap = {
-    BTC: 'bitcoin',
-    ETH: 'ethereum',
-    LTC: 'litecoin',
-    DOGE: 'dogecoin',
-    BNB: 'binancecoin',
-    USDT: 'tether',
-    XRP: 'ripple',
-    ADA: 'cardano',
-    SOL: 'solana',
-    DOT: 'polkadot',
-    AVAX: 'avalanche',
-    MATIC: 'matic-network'
+    BTC: { id: 'bitcoin', symbol: 'BTC' },
+    ETH: { id: 'ethereum', symbol: 'ETH' },
+    LTC: { id: 'litecoin', symbol: 'LTC' },
+    DOGE: { id: 'dogecoin', symbol: 'DOGE' },
+    BNB: { id: 'binancecoin', symbol: 'BNB' },
+    USDT: { id: 'tether', symbol: 'USDT' },
+    XRP: { id: 'ripple', symbol: 'XRP' },
+    ADA: { id: 'cardano', symbol: 'ADA' },
+    SOL: { id: 'solana', symbol: 'SOL' },
+    DOT: { id: 'polkadot', symbol: 'DOT' },
+    AVAX: { id: 'avalanche', symbol: 'AVAX' },
+    MATIC: { id: 'matic-network', symbol: 'MATIC' }
   };
 
   // API ключ для CurrencyFreaks
@@ -26,17 +26,34 @@ document.addEventListener('DOMContentLoaded', () => {
   const exchangeRatesCache = { rates: null, timestamp: 0 };
   const cryptoPricesCache = {};
   
-  // Ротация прокси-серверов для обхода лимитов
-  const CORS_PROXIES = [
-    'https://api.codetabs.com/v1/proxy?quest=',
-    'https://cors-anywhere.herokuapp.com/',
-    'https://thingproxy.freeboard.io/fetch/',
-    'https://yacdn.org/proxy/'
-  ];
+  // Основной API для крипты
+  const CRYPTO_API_URL = 'https://api.coingecko.com/api/v3';
   
-  // Получение случайного прокси
-  function getRandomProxy() {
-    return CORS_PROXIES[Math.floor(Math.random() * CORS_PROXIES.length)];
+  // Альтернативный API для крипты
+  const BACKUP_CRYPTO_API = 'https://api.coincap.io/v2';
+  
+  // Функция для безопасных запросов
+  async function safeFetch(url, isJson = true) {
+    try {
+      // Пробуем прямой запрос
+      const response = await fetch(url);
+      if (response.ok) {
+        return isJson ? await response.json() : response;
+      }
+      
+      // Пробуем через прокси если прямая ошибка
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+      const proxyResponse = await fetch(proxyUrl);
+      
+      if (proxyResponse.ok) {
+        return isJson ? await proxyResponse.json() : proxyResponse;
+      }
+      
+      throw new Error(`Ошибка запроса: ${response.status}`);
+    } catch (error) {
+      console.error('Ошибка запроса:', error);
+      throw error;
+    }
   }
 
   // Таб-переключатель
@@ -113,6 +130,11 @@ document.addEventListener('DOMContentLoaded', () => {
       
       const data = await response.json();
       
+      // Добавляем BYN, если его нет (примерный курс)
+      if (!data.rates.BYN) {
+        data.rates.BYN = 3.25; // Примерный курс BYN к USD
+      }
+      
       // Сохраняем в кэш
       exchangeRatesCache.rates = data.rates;
       exchangeRatesCache.timestamp = now;
@@ -136,39 +158,48 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     try {
-      const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=${vsCurrency}`;
-      const proxyUrl = getRandomProxy() + encodeURIComponent(url);
+      // Пробуем CoinGecko API
+      const url = `${CRYPTO_API_URL}/simple/price?ids=${coinId}&vs_currencies=${vsCurrency}`;
+      const data = await safeFetch(url);
       
-      const response = await fetch(proxyUrl);
+      if (data && data[coinId] && data[coinId][vsCurrency] !== undefined) {
+        const price = data[coinId][vsCurrency];
+        
+        // Сохраняем в кэш
+        cryptoPricesCache[cacheKey] = {
+          price: price,
+          timestamp: now
+        };
+        
+        return price;
+      }
       
-      if (!response.ok) {
-        // Если ошибка 429, ждем 1 секунду и пробуем другой прокси
-        if (response.status === 429) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          return getCryptoPrice(coinId, vsCurrency); // Рекурсивный повтор
+      // Если CoinGecko не сработал, пробуем CoinCap
+      const coinSymbol = Object.values(cryptoMap).find(c => c.id === coinId)?.symbol;
+      if (coinSymbol) {
+        const backupUrl = `${BACKUP_CRYPTO_API}/assets/${coinSymbol}`;
+        const backupData = await safeFetch(backupUrl);
+        
+        if (backupData && backupData.data && backupData.data.priceUsd) {
+          const usdPrice = parseFloat(backupData.data.priceUsd);
+          
+          // Для валют, отличных от USD, конвертируем
+          if (vsCurrency === 'usd') {
+            return usdPrice;
+          } else {
+            const rates = await getExchangeRates();
+            if (rates && rates[vsCurrency.toUpperCase()]) {
+              // Конвертируем USD в целевую валюту
+              const rate = rates[vsCurrency.toUpperCase()];
+              return usdPrice * rate;
+            }
+          }
         }
-        throw new Error(`Ошибка ${response.status} при получении курса`);
       }
       
-      const data = await response.json();
-      
-      // Проверка структуры ответа
-      if (!data || !data[coinId] || data[coinId][vsCurrency] === undefined) {
-        console.warn('Неверная структура ответа:', data);
-        throw new Error('Курс не найден в ответе');
-      }
-      
-      const price = data[coinId][vsCurrency];
-      
-      // Сохраняем в кэш
-      cryptoPricesCache[cacheKey] = {
-        price: price,
-        timestamp: now
-      };
-      
-      return price;
+      throw new Error('Курс не найден');
     } catch (error) {
-      console.error(`Ошибка получения курса для ${coinId}/${vsCurrency}:`, error);
+      console.error('Ошибка получения курса криптовалюты:', error);
       return null;
     }
   }
@@ -208,8 +239,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // 2) Crypto → Crypto
       else if (isCrypto(f) && isCrypto(t)) {
-        const idF = cryptoMap[f];
-        const idT = cryptoMap[t];
+        const idF = cryptoMap[f].id;
+        const idT = cryptoMap[t].id;
         
         // Получаем цены в USD
         const usdF = await getCryptoPrice(idF, 'usd');
@@ -224,7 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // 3) Crypto → Fiat
       else if (isCrypto(f) && isFiat(t)) {
-        const idF = cryptoMap[f];
+        const idF = cryptoMap[f].id;
         const price = await getCryptoPrice(idF, t.toLowerCase());
         
         if (price === null) {
@@ -236,7 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // 4) Fiat → Crypto
       else if (isFiat(f) && isCrypto(t)) {
-        const idT = cryptoMap[t];
+        const idT = cryptoMap[t].id;
         const price = await getCryptoPrice(idT, f.toLowerCase());
         
         if (price === null) {
@@ -310,19 +341,13 @@ document.addEventListener('DOMContentLoaded', () => {
       
       try {
         const url = `https://api.coingecko.com/api/v3/nfts/${id}`;
-        const proxyUrl = getRandomProxy() + encodeURIComponent(url);
-        const response = await fetch(proxyUrl);
+        const data = await safeFetch(url);
         
-        if (!response.ok) {
-          if (response.status === 429) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            return document.getElementById('nft-form').dispatchEvent(new Event('submit'));
-          }
-          throw new Error('Ошибка запроса NFT');
+        if (!data || !data.market_data) {
+          throw new Error('Данные не найдены');
         }
         
-        const data = await response.json();
-        const price = data.market_data?.floor_price?.[to];
+        const price = data.market_data.floor_price?.[to];
         
         if (price) {
           out.innerHTML = `Floor: <strong>${price}</strong> ${to.toUpperCase()}`;
