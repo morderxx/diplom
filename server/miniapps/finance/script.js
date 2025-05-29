@@ -122,23 +122,33 @@ function showStats() {
 function showNftFloor() {
   content.innerHTML = `
     <h3>NFT Floor Price</h3>
-    <label>Contract ID: <input id="nft-contract" placeholder="bored-ape-kennel-club"></label>
-    <label>В валюте <select id="nft-to">
-      <option>usd</option><option>eth</option><option>btc</option>
-    </select></label>
-    <button id="nft-go">Показать floor</button>
+    <form class="nft-form" id="nft-form">
+      <label>
+        Contract ID
+        <input id="nft-contract" placeholder="bored-ape-kennel-club">
+      </label>
+      <label>
+        В валюте
+        <select id="nft-to">
+          <option value="usd">USD</option>
+          <option value="eth">ETH</option>
+          <option value="btc">BTC</option>
+        </select>
+      </label>
+      <button type="submit">Показать floor</button>
+    </form>
     <div id="nft-result" class="exchange-result"></div>
   `;
-  document.getElementById('nft-go').onclick = async () => {
+
+  document.getElementById('nft-form').onsubmit = async e => {
+    e.preventDefault();
     const id = document.getElementById('nft-contract').value.trim();
     const to = document.getElementById('nft-to').value;
     const out = document.getElementById('nft-result');
     if (!id) return out.textContent = 'Введите ID коллекции';
     out.textContent = 'Загрузка…';
     try {
-      const j = await fetch(
-        `https://api.coingecko.com/api/v3/nfts/${id}`
-      ).then(r=>r.json());
+      const j = await fetch(`https://api.coingecko.com/api/v3/nfts/${id}`).then(r=>r.json());
       const price = j.market_data?.floor_price?.[to];
       out.innerHTML = price
         ? `Floor: <strong>${price}</strong> ${to.toUpperCase()}`
@@ -148,6 +158,7 @@ function showNftFloor() {
     }
   };
 }
+
 
 // старт
 showExchange();
