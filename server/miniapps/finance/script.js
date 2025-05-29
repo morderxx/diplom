@@ -2,21 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const content = document.getElementById('finance-content');
   const tabs    = document.querySelectorAll('.finance-nav button');
 
-  tabs.forEach(btn => {
-    btn.addEventListener('click', () => {
-      tabs.forEach(x => x.classList.remove('active'));
-      btn.classList.add('active');
-      const tab = btn.dataset.tab;
-      if (tab === 'exchange') showExchange();
-      else if (tab === 'wallet')   showWallet();
-      else if (tab === 'stats')    showStats();
-      else if (tab === 'nft')      showNftFloor();
-    });
-  });
-
-  showExchange(); // стартовая вкладка
-
-  // Популярные валюты/крипта
+  // 1) Сразу объявляем список популярных фиат- и криптовалют
   const popular = {
     USD: 'US Dollar',    EUR: 'Euro',           RUB: 'Russian Ruble',
     GBP: 'British Pound', JPY: 'Japanese Yen',  CNY: 'Chinese Yuan',
@@ -26,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     DOT: 'Polkadot',     AVAX: 'Avalanche',     MATIC: 'Polygon'
   };
 
+  // 2) Функции для вкладок
   async function showExchange() {
     content.innerHTML = `
       <h3>Конвертер валют и крипты</h3>
@@ -44,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const selTo   = document.getElementById('to');
     selFrom.innerHTML = selTo.innerHTML = '';
 
-    // наполняем только  популяром
+    // заполняем из popular
     Object.entries(popular).forEach(([code, name]) => {
       const txt = `${code} – ${name}`;
       selFrom.add(new Option(txt, code));
@@ -73,34 +60,30 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       let result;
       if (isFiat(f) && isFiat(t)) {
-        // фиат → фиат
         const j = await fetch(
           `https://api.exchangerate.host/convert?from=${f}&to=${t}&amount=${a}`
-        ).then(r=>r.json());
+        ).then(r => r.json());
         result = j.result;
       } else {
         // crypto или смешанный
-        // 1) получаем цены крипто в USD
         const ids = [];
         if (!isFiat(f)) ids.push(f.toLowerCase());
         if (!isFiat(t)) ids.push(t.toLowerCase());
         const cg = await fetch(
           `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd`
-        ).then(r=>r.json());
+        ).then(r => r.json());
 
         if (!isFiat(f) && !isFiat(t)) {
-          // crypto → crypto
           result = a * (cg[f.toLowerCase()].usd / cg[t.toLowerCase()].usd);
         } else if (!isFiat(f) && isFiat(t)) {
-          // crypto → fiat
           const inUsd = a * cg[f.toLowerCase()].usd;
           result = (await fetch(
             `https://api.exchangerate.host/convert?from=USD&to=${t}&amount=${inUsd}`
-          ).then(r=>r.json())).result;
-        } else { // fiat → crypto
+          ).then(r => r.json())).result;
+        } else {
           const usdAmount = (await fetch(
             `https://api.exchangerate.host/convert?from=${f}&to=USD&amount=${a}`
-          ).then(r=>r.json())).result;
+          ).then(r => r.json())).result;
           result = usdAmount / cg[t.toLowerCase()].usd;
         }
       }
@@ -121,18 +104,12 @@ document.addEventListener('DOMContentLoaded', () => {
     content.innerHTML = `
       <h3>NFT Floor Price</h3>
       <form id="nft-form" class="exchange-form">
-        <label>
-          Contract ID
-          <input id="nft-contract" placeholder="bored-ape-kennel-club">
-        </label>
-        <label>
-          В валюте
-          <select id="nft-to">
-            <option value="usd">USD</option>
-            <option value="eth">ETH</option>
-            <option value="btc">BTC</option>
-          </select>
-        </label>
+        <label>Contract ID<input id="nft-contract" placeholder="bored-ape-kennel-club"></label>
+        <label>В валюте<select id="nft-to">
+          <option value="usd">USD</option>
+          <option value="eth">ETH</option>
+          <option value="btc">BTC</option>
+        </select></label>
         <button>Показать floor</button>
       </form>
       <div id="nft-result" class="exchange-result"></div>
@@ -145,9 +122,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!id) return out.textContent = 'Введите ID коллекции';
       out.textContent = 'Загрузка…';
       try {
-        const j = await fetch(
-          `https://api.coingecko.com/api/v3/nfts/${id}`
-        ).then(r=>r.json());
+        const j = await fetch(`https://api.coingecko.com/api/v3/nfts/${id}`)
+                   .then(r => r.json());
         const price = j.market_data?.floor_price?.[to];
         out.innerHTML = price
           ? `Floor: <strong>${price}</strong> ${to.toUpperCase()}`
@@ -157,4 +133,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
   }
+
+  // 3) Вешаем табы и открываем стартовую
+  tabs.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabs.forEach(x => x.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+  showExchange();
 });
