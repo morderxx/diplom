@@ -70,8 +70,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function doConvert() {
-    const f = document.getElementById('from').value;
-    const t = document.getElementById('to'  ).value;
+    const f = document.getElementById('from').value.toUpperCase();
+    const t = document.getElementById('to'  ).value.toUpperCase();
     const a = +document.getElementById('amount').value;
     const out = document.getElementById('exchange-result');
     if (!a || a <= 0) return out.textContent = 'Введите корректную сумму';
