@@ -1,23 +1,26 @@
 document.addEventListener('DOMContentLoaded', () => {
   const content = document.getElementById('finance-content');
-  const tabs    = document.querySelectorAll('.finance-nav button');
+  const tabs = document.querySelectorAll('.finance-nav button');
 
   // Фиатные коды и карта крипто→ID CoinGecko
-  const fiatCodes = ['USD','EUR','RUB','GBP','JPY','CNY'];
+  const fiatCodes = ['USD', 'EUR', 'RUB', 'GBP', 'JPY', 'CNY', 'CHF', 'CAD'];
   const cryptoMap = {
     BTC: 'bitcoin',
     ETH: 'ethereum',
     LTC: 'litecoin',
     DOGE: 'dogecoin',
     BNB: 'binancecoin',
-    USDT:'tether',
+    USDT: 'tether',
     XRP: 'ripple',
     ADA: 'cardano',
     SOL: 'solana',
     DOT: 'polkadot',
-    AVAX:'avalanche',
-    MATIC:'matic-network'
+    AVAX: 'avalanche',
+    MATIC: 'matic-network'
   };
+
+  // API ключ для CurrencyFreaks (бесплатный)
+  const CURRENCY_API_KEY = '24f59325463e418ca66aee20d46a0925'; // Замените на свой ключ
 
   // Таб-переключатель
   tabs.forEach(btn => {
@@ -25,10 +28,10 @@ document.addEventListener('DOMContentLoaded', () => {
       tabs.forEach(x => x.classList.remove('active'));
       btn.classList.add('active');
       const tab = btn.dataset.tab;
-      if (tab === 'exchange')      showExchange();
-      else if (tab === 'wallet')   showWallet();
-      else if (tab === 'stats')    showStats();
-      else if (tab === 'nft')      showNftFloor();
+      if (tab === 'exchange') showExchange();
+      else if (tab === 'wallet') showWallet();
+      else if (tab === 'stats') showStats();
+      else if (tab === 'nft') showNftFloor();
     });
   });
 
@@ -50,22 +53,22 @@ document.addEventListener('DOMContentLoaded', () => {
       <div id="exchange-result" class="exchange-result"></div>
     `;
     const selFrom = document.getElementById('from');
-    const selTo   = document.getElementById('to');
+    const selTo = document.getElementById('to');
     selFrom.innerHTML = selTo.innerHTML = '';
 
     // Фиаты
     fiatCodes.forEach(c => {
       selFrom.add(new Option(c, c));
-      selTo  .add(new Option(c, c));
+      selTo.add(new Option(c, c));
     });
     // Крипта
     Object.keys(cryptoMap).forEach(c => {
       selFrom.add(new Option(c, c));
-      selTo  .add(new Option(c, c));
+      selTo.add(new Option(c, c));
     });
 
     selFrom.value = 'USD';
-    selTo.value   = 'BTC';
+    selTo.value = 'BTC';
 
     document.getElementById('exchange-form')
       .addEventListener('submit', e => {
@@ -76,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function doConvert() {
     const f = document.getElementById('from').value.toUpperCase();
-    const t = document.getElementById('to'  ).value.toUpperCase();
+    const t = document.getElementById('to').value.toUpperCase();
     const a = parseFloat(document.getElementById('amount').value);
     const out = document.getElementById('exchange-result');
 
@@ -86,19 +89,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     out.textContent = 'Загрузка…';
 
-    const isFiat   = c => fiatCodes.includes(c);
+    const isFiat = c => fiatCodes.includes(c);
     const isCrypto = c => Object.keys(cryptoMap).includes(c);
 
     try {
       let result;
 
-      // 1) Fiat → Fiat через /latest
+      // 1) Fiat → Fiat через CurrencyFreaks
       if (isFiat(f) && isFiat(t)) {
         const j = await fetch(
-          `https://api.exchangerate.host/latest?base=${f}&symbols=${t}`
+          `https://api.currencyfreaks.com/latest?apikey=${CURRENCY_API_KEY}&symbols=${f},${t}`
         ).then(r => r.json());
-        if (!j.rates || j.rates[t] == null) throw new Error();
-        result = j.rates[t] * a;
+        
+        if (!j.rates || !j.rates[f] || !j.rates[t]) throw new Error();
+        // Конвертация через USD как базовую валюту
+        const rateFrom = j.rates[f];
+        const rateTo = j.rates[t];
+        result = a * (rateTo / rateFrom);
       }
 
       // 2) Crypto → Crypto
@@ -169,8 +176,8 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     document.getElementById('nft-form').onsubmit = async e => {
       e.preventDefault();
-      const id  = document.getElementById('nft-contract').value.trim();
-      const to  = document.getElementById('nft-to').value.toLowerCase();
+      const id = document.getElementById('nft-contract').value.trim();
+      const to = document.getElementById('nft-to').value.toLowerCase();
       const out = document.getElementById('nft-result');
       if (!id) return out.textContent = 'Введите ID коллекции';
       out.textContent = 'Загрузка…';
