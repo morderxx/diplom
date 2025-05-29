@@ -26,21 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const exchangeRatesCache = { rates: null, timestamp: 0 };
   const cryptoPricesCache = {};
   
-  // Функция для безопасных запросов с обработкой CORS
-  async function safeFetch(url, options = {}) {
-    try {
-      // Пробуем прямой запрос
-      const directResponse = await fetch(url, options);
-      if (directResponse.ok) return directResponse;
-      
-      // Если прямая ошибка CORS, используем прокси
-      const proxyUrl = `/proxy?url=${encodeURIComponent(url)}`;
-      return await fetch(proxyUrl, options);
-    } catch (error) {
-      console.error('Fetch error:', error);
-      throw error;
-    }
-  }
+  // Рабочий CORS-прокси (протестирован)
+  const CORS_PROXY = "https://corsproxy.io/?";
 
   // Таб-переключатель
   tabs.forEach(btn => {
@@ -140,7 +127,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     try {
       const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=${vsCurrency}`;
-      const response = await safeFetch(url);
+      const proxyUrl = CORS_PROXY + encodeURIComponent(url);
+      
+      const response = await fetch(proxyUrl);
       
       if (!response.ok) throw new Error('Ошибка получения курса криптовалюты');
       
@@ -299,7 +288,8 @@ document.addEventListener('DOMContentLoaded', () => {
       
       try {
         const url = `https://api.coingecko.com/api/v3/nfts/${id}`;
-        const response = await safeFetch(url);
+        const proxyUrl = CORS_PROXY + encodeURIComponent(url);
+        const response = await fetch(proxyUrl);
         
         if (!response.ok) throw new Error('Ошибка запроса NFT');
         
