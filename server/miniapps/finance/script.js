@@ -26,8 +26,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const exchangeRatesCache = { rates: null, timestamp: 0 };
   const cryptoPricesCache = {};
   
-  // Рабочий CORS-прокси (протестирован)
-  const CORS_PROXY = "https://corsproxy.io/?";
+  // Ротация прокси-серверов для обхода лимитов
+  const CORS_PROXIES = [
+    'https://api.codetabs.com/v1/proxy?quest=',
+    'https://cors-anywhere.herokuapp.com/',
+    'https://thingproxy.freeboard.io/fetch/',
+    'https://yacdn.org/proxy/'
+  ];
+  
+  // Получение случайного прокси
+  function getRandomProxy() {
+    return CORS_PROXIES[Math.floor(Math.random() * CORS_PROXIES.length)];
+  }
 
   // Таб-переключатель
   tabs.forEach(btn => {
@@ -121,32 +131,44 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Проверка кэша
     if (cryptoPricesCache[cacheKey] && 
-        (now - cryptoPricesCache[cacheKey].timestamp) < 60000) {
+        (now - cryptoPricesCache[cacheKey].timestamp) < 300000) { // 5 минут
       return cryptoPricesCache[cacheKey].price;
     }
     
     try {
       const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=${vsCurrency}`;
-      const proxyUrl = CORS_PROXY + encodeURIComponent(url);
+      const proxyUrl = getRandomProxy() + encodeURIComponent(url);
       
       const response = await fetch(proxyUrl);
       
-      if (!response.ok) throw new Error('Ошибка получения курса криптовалюты');
-      
-      const data = await response.json();
-      const price = data[coinId]?.[vsCurrency];
-      
-      if (price) {
-        cryptoPricesCache[cacheKey] = {
-          price: price,
-          timestamp: now
-        };
-        return price;
+      if (!response.ok) {
+        // Если ошибка 429, ждем 1 секунду и пробуем другой прокси
+        if (response.status === 429) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return getCryptoPrice(coinId, vsCurrency); // Рекурсивный повтор
+        }
+        throw new Error(`Ошибка ${response.status} при получении курса`);
       }
       
-      throw new Error('Курс не найден');
+      const data = await response.json();
+      
+      // Проверка структуры ответа
+      if (!data || !data[coinId] || data[coinId][vsCurrency] === undefined) {
+        console.warn('Неверная структура ответа:', data);
+        throw new Error('Курс не найден в ответе');
+      }
+      
+      const price = data[coinId][vsCurrency];
+      
+      // Сохраняем в кэш
+      cryptoPricesCache[cacheKey] = {
+        price: price,
+        timestamp: now
+      };
+      
+      return price;
     } catch (error) {
-      console.error('Ошибка получения курса криптовалюты:', error);
+      console.error(`Ошибка получения курса для ${coinId}/${vsCurrency}:`, error);
       return null;
     }
   }
@@ -205,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const idF = cryptoMap[f];
         const price = await getCryptoPrice(idF, t.toLowerCase());
         
-        if (!price) {
+        if (price === null) {
           throw new Error('Курс недоступен');
         }
         
@@ -217,7 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const idT = cryptoMap[t];
         const price = await getCryptoPrice(idT, f.toLowerCase());
         
-        if (!price) {
+        if (price === null) {
           throw new Error('Курс недоступен');
         }
         
@@ -288,10 +310,16 @@ document.addEventListener('DOMContentLoaded', () => {
       
       try {
         const url = `https://api.coingecko.com/api/v3/nfts/${id}`;
-        const proxyUrl = CORS_PROXY + encodeURIComponent(url);
+        const proxyUrl = getRandomProxy() + encodeURIComponent(url);
         const response = await fetch(proxyUrl);
         
-        if (!response.ok) throw new Error('Ошибка запроса NFT');
+        if (!response.ok) {
+          if (response.status === 429) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return document.getElementById('nft-form').dispatchEvent(new Event('submit'));
+          }
+          throw new Error('Ошибка запроса NFT');
+        }
         
         const data = await response.json();
         const price = data.market_data?.floor_price?.[to];
