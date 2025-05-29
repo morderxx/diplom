@@ -78,76 +78,74 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function doConvert() {
   const f = document.getElementById('from').value.toUpperCase();
-  const t = document.getElementById('to'  ).value.toUpperCase();
+  const t = document.getElementById('to').value.toUpperCase();
   const a = parseFloat(document.getElementById('amount').value);
   const out = document.getElementById('exchange-result');
-  if (!a || a <= 0) {
-    return out.textContent = 'Введите корректную сумму';
-  }
+
+  if (!a || a <= 0) return out.textContent = 'Введите корректную сумму';
   out.textContent = 'Загрузка…';
 
-  // Ваши списки
-  const fiatCodes = ['USD','EUR','RUB','GBP','JPY','CNY'];
+  const fiatCodes = ['USD', 'EUR', 'RUB', 'GBP', 'JPY', 'CNY'];
   const cryptoMap = {
     BTC: 'bitcoin', ETH: 'ethereum', LTC: 'litecoin', DOGE: 'dogecoin',
-    BNB: 'binancecoin', USDT:'tether', XRP: 'ripple', ADA: 'cardano',
-    SOL: 'solana', DOT: 'polkadot', AVAX:'avalanche', MATIC:'matic-network'
+    BNB: 'binancecoin', USDT: 'tether', XRP: 'ripple', ADA: 'cardano',
+    SOL: 'solana', DOT: 'polkadot', AVAX: 'avalanche', MATIC: 'matic-network'
   };
-  const isFiat   = code => fiatCodes.includes(code);
-  const isCrypto = code => Object.keys(cryptoMap).includes(code);
+  const isFiat = c => fiatCodes.includes(c);
+  const isCrypto = c => Object.keys(cryptoMap).includes(c);
+
+  const getFiatToUsd = async (code, amount) => {
+    const j = await fetch(`https://api.exchangerate.host/convert?from=${code}&to=USD&amount=${amount}`)
+      .then(r => r.json());
+    return j?.result ?? NaN;
+  };
+
+  const getUsdToFiat = async (code, amount) => {
+    const j = await fetch(`https://api.exchangerate.host/convert?from=USD&to=${code}&amount=${amount}`)
+      .then(r => r.json());
+    return j?.result ?? NaN;
+  };
+
+  const getCryptoToUsd = async (code, amount) => {
+    const id = cryptoMap[code];
+    const j = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd`)
+      .then(r => r.json());
+    const rate = j?.[id]?.usd;
+    return rate ? amount * rate : NaN;
+  };
+
+  const getUsdToCrypto = async (code, amount) => {
+    const id = cryptoMap[code];
+    const j = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd`)
+      .then(r => r.json());
+    const rate = j?.[id]?.usd;
+    return rate ? amount / rate : NaN;
+  };
 
   try {
-    // 1) любое f → USD
-    let usdAmount;
-    if (f === 'USD') {
-      usdAmount = a;
-    }
-    else if (isFiat(f)) {
-      const j = await fetch(
-        `https://api.exchangerate.host/convert?from=${f}&to=USD&amount=${a}`
-      ).then(r => r.json());
-      usdAmount = j.result;
-    }
-    else if (isCrypto(f)) {
-      const idF = cryptoMap[f];
-      const data = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${idF}&vs_currencies=usd`
-      ).then(r => r.json());
-      usdAmount = a * (data[idF]?.usd || 0);
-    } else {
-      throw new Error('Неизвестная валюта: ' + f);
-    }
+    let usdAmount = NaN;
+    if (f === 'USD') usdAmount = a;
+    else if (isFiat(f)) usdAmount = await getFiatToUsd(f, a);
+    else if (isCrypto(f)) usdAmount = await getCryptoToUsd(f, a);
+    else throw new Error('Неверный код валюты: ' + f);
 
-    // 2) USD → любое t
-    let final;
-    if (t === 'USD') {
-      final = usdAmount;
-    }
-    else if (isFiat(t)) {
-      const j2 = await fetch(
-        `https://api.exchangerate.host/convert?from=USD&to=${t}&amount=${usdAmount}`
-      ).then(r => r.json());
-      final = j2.result;
-    }
-    else if (isCrypto(t)) {
-      const idT = cryptoMap[t];
-      const data2 = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${idT}&vs_currencies=usd`
-      ).then(r => r.json());
-      const rate = data2[idT]?.usd;
-      final = rate ? usdAmount / rate : NaN;
-    } else {
-      throw new Error('Неизвестная валюта: ' + t);
-    }
+    if (!isFinite(usdAmount)) throw new Error('Не удалось получить курс для ' + f);
 
-    if (!isFinite(final)) throw new Error('Непростая конвертация');
+    let final = NaN;
+    if (t === 'USD') final = usdAmount;
+    else if (isFiat(t)) final = await getUsdToFiat(t, usdAmount);
+    else if (isCrypto(t)) final = await getUsdToCrypto(t, usdAmount);
+    else throw new Error('Неверный код валюты: ' + t);
+
+    if (!isFinite(final)) throw new Error('Не удалось получить курс для ' + t);
 
     out.innerHTML = `<strong>${a} ${f}</strong> = <strong>${final.toFixed(6)} ${t}</strong>`;
-  } catch (err) {
-    console.error(err);
+  } catch (e) {
+    console.error(e);
     out.textContent = 'Ошибка при конвертации.';
   }
 }
+
 
 
   // ——— Прочие табы ——————————————————————————
