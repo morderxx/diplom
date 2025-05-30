@@ -282,56 +282,122 @@ document.addEventListener('DOMContentLoaded', () => {
     content.innerHTML = `<h3>Статистика</h3><p>Графики и аналитика…</p>`;
   }
   
-  function showNftFloor() {
-    content.innerHTML = `
-      <h3>NFT Floor Price</h3>
-      <form id="nft-form" class="exchange-form">
-        <label>Contract ID<input id="nft-contract" placeholder="bored-ape-kennel-club"></label>
-        <label>В валюте<select id="nft-to">
+function showNftFloor() {
+  // Популярные NFT коллекции
+  const popularNfts = [
+    { id: 'bored-ape-yacht-club', name: 'Bored Ape Yacht Club' },
+    { id: 'cryptopunks', name: 'CryptoPunks' },
+    { id: 'azuki', name: 'Azuki' },
+    { id: 'doodles-official', name: 'Doodles' },
+    { id: 'clone-x', name: 'CloneX' },
+    { id: 'mutant-ape-yacht-club', name: 'Mutant Ape Yacht Club' },
+    { id: 'otherdeed-for-otherside', name: 'Otherdeed' },
+    { id: 'cool-cats-nft', name: 'Cool Cats' },
+    { id: 'world-of-women-nft', name: 'World of Women' },
+    { id: 'mfers', name: 'mfers' }
+  ];
+
+  content.innerHTML = `
+    <h3>NFT Floor Price</h3>
+    <form id="nft-form" class="exchange-form">
+      <label>Коллекция
+        <select id="nft-collection">
+          ${popularNfts.map(nft => 
+            `<option value="${nft.id}">${nft.name}</option>`
+          ).join('')}
+        </select>
+      </label>
+      
+      <label>В валюте
+        <select id="nft-to">
           <option value="usd">USD</option>
           <option value="eth">ETH</option>
           <option value="btc">BTC</option>
-        </select></label>
-        <button>Показать floor</button>
-      </form>
-      <div id="nft-result" class="exchange-result"></div>
-    `;
-    
-    document.getElementById('nft-form').onsubmit = async e => {
-      e.preventDefault();
-      const id = document.getElementById('nft-contract').value.trim();
-      const to = document.getElementById('nft-to').value.toLowerCase();
-      const out = document.getElementById('nft-result');
+          <option value="bnb">BNB</option>
+          <option value="sol">SOL</option>
+        </select>
+      </label>
       
-      if (!id) {
-        out.textContent = 'Введите ID коллекции';
-        return;
+      <button>Показать floor</button>
+    </form>
+    <div id="nft-result" class="exchange-result"></div>
+    <div class="nft-info">
+      <p>Floor price - минимальная цена предмета в коллекции</p>
+      <p>Данные предоставлены CoinGecko</p>
+    </div>
+  `;
+  
+  document.getElementById('nft-form').onsubmit = async e => {
+    e.preventDefault();
+    const id = document.getElementById('nft-collection').value;
+    const to = document.getElementById('nft-to').value.toLowerCase();
+    const out = document.getElementById('nft-result');
+    
+    out.textContent = 'Загрузка…';
+    out.classList.remove('error');
+    
+    try {
+      const url = `https://api.coingecko.com/api/v3/nfts/${id}`;
+      const proxyUrl = CORS_PROXY + encodeURIComponent(url);
+      const response = await fetch(proxyUrl);
+      
+      if (!response.ok) throw new Error('Ошибка запроса NFT');
+      
+      const data = await response.json();
+      
+      // Проверяем наличие данных
+      if (!data || !data.market_data) {
+        throw new Error('Данные не найдены');
       }
       
-      out.textContent = 'Загрузка…';
-      out.classList.remove('error');
+      const price = data.market_data.floor_price?.[to];
       
-      try {
-        const url = `https://api.coingecko.com/api/v3/nfts/${id}`;
-        const proxyUrl = CORS_PROXY + encodeURIComponent(url);
-        const response = await fetch(proxyUrl);
-        
-        if (!response.ok) throw new Error('Ошибка запроса NFT');
-        
-        const data = await response.json();
-        const price = data.market_data?.floor_price?.[to];
-        
-        if (price) {
-          out.innerHTML = `Floor: <strong>${price}</strong> ${to.toUpperCase()}`;
+      if (price) {
+        // Форматируем цену в зависимости от величины
+        let formattedPrice;
+        if (price > 1000) {
+          formattedPrice = price.toFixed(0);
+        } else if (price > 1) {
+          formattedPrice = price.toFixed(2);
+        } else if (price > 0.01) {
+          formattedPrice = price.toFixed(4);
         } else {
-          out.textContent = 'Цена не найдена';
-          out.classList.add('error');
+          formattedPrice = price.toFixed(6);
         }
-      } catch (err) {
-        console.error('Ошибка NFT:', err);
-        out.textContent = 'Ошибка при запросе NFT. Попробуйте позже.';
+        
+        out.innerHTML = `
+          <div class="nft-price">
+            <strong>Floor: ${formattedPrice} ${to.toUpperCase()}</strong>
+          </div>
+          <div class="nft-meta">
+            <span>${data.name || 'NFT Collection'}</span>
+            ${data.image && data.image.small ? 
+              `<img src="${data.image.small}" alt="${data.name}" class="nft-image">` : ''}
+          </div>
+        `;
+      } else {
+        out.innerHTML = `
+          <div class="nft-error">
+            Цена не найдена для выбранной валюты
+          </div>
+          <div class="nft-meta">
+            <span>${data.name || 'NFT Collection'}</span>
+          </div>
+        `;
         out.classList.add('error');
       }
-    };
-  }
+    } catch (err) {
+      console.error('Ошибка NFT:', err);
+      out.innerHTML = `
+        <div class="nft-error">
+          Ошибка при запросе NFT. Попробуйте позже.
+        </div>
+        <div class="nft-meta">
+          <span>Проблема с: ${id}</span>
+        </div>
+      `;
+      out.classList.add('error');
+    }
+  };
+}
 });
