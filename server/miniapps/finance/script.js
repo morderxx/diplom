@@ -332,6 +332,7 @@ function showNftFloor() {
     const id = document.getElementById('nft-collection').value;
     const to = document.getElementById('nft-to').value.toLowerCase();
     const out = document.getElementById('nft-result');
+    const collectionName = popularNfts.find(nft => nft.id === id)?.name || 'NFT Collection';
     
     out.textContent = 'Загрузка…';
     out.classList.remove('error');
@@ -351,102 +352,104 @@ function showNftFloor() {
       
       if (!response.ok) {
         // Пробуем прочитать текст ошибки
-        try {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `Ошибка ${response.status}`);
-        } catch {
-          throw new Error(`Ошибка ${response.status}: ${response.statusText}`);
-        }
+        const errorText = await response.text();
+        throw new Error(`Ошибка ${response.status}: ${errorText}`);
       }
       
       const data = await response.json();
       
-      // Проверяем наличие данных
-      if (!data || !data.market_data || !data.market_data.floor_price) {
-        throw new Error('Данные о цене не найдены');
+      // Проверяем наличие данных - новый способ
+      let floorPrice;
+      let currency = to;
+      
+      // Способ 1: Современная структура данных
+      if (data.market_data?.floor_price?.[to] !== undefined) {
+        floorPrice = data.market_data.floor_price[to];
+      }
+      // Способ 2: Старая структура данных
+      else if (data.floor_price_in_native_currency !== undefined && 
+               data.native_currency === to) {
+        floorPrice = data.floor_price_in_native_currency;
+      }
+      // Способ 3: Общая структура
+      else if (data.floor_price?.[to] !== undefined) {
+        floorPrice = data.floor_price[to];
+      }
+      // Способ 4: Цена в ETH всегда доступна
+      else if (data.market_data?.floor_price?.eth !== undefined) {
+        floorPrice = data.market_data.floor_price.eth;
+        currency = 'eth';
       }
       
-      const price = data.market_data.floor_price[to];
+      // Если ни один способ не сработал
+      if (floorPrice === undefined) {
+        console.warn('Данные о цене не найдены в ответе:', data);
+        throw new Error('Цена для этой коллекции не найдена');
+      }
       
-      if (price === undefined || price === null) {
-        // Пробуем получить цену в ETH и конвертировать
-        const ethPrice = data.market_data.floor_price.eth;
-        if (!ethPrice) throw new Error('Цена не найдена');
-        
-        // Получаем курс для конвертации
+      // Если получили цену в ETH, но нужна другая валюта
+      if (currency === 'eth' && to !== 'eth') {
         const cryptoPrices = await getCryptoUsdPrices();
-        if (!cryptoPrices) throw new Error('Курсы недоступны');
+        if (!cryptoPrices) throw new Error('Курсы криптовалют недоступны');
         
-        // Конвертируем через USD
         const ethUsd = cryptoPrices.ethereum?.usd;
         if (!ethUsd) throw new Error('Курс ETH недоступен');
         
-        let convertedPrice;
+        let targetPrice;
         switch(to) {
-          case 'usd': convertedPrice = ethPrice * ethUsd; break;
+          case 'usd': 
+            targetPrice = ethUsd;
+            break;
           case 'btc': 
-            const btcUsd = cryptoPrices.bitcoin?.usd;
-            if (!btcUsd) throw new Error('Курс BTC недоступен');
-            convertedPrice = (ethPrice * ethUsd) / btcUsd;
+            targetPrice = cryptoPrices.bitcoin?.usd;
             break;
-          case 'bnb':
-            const bnbUsd = cryptoPrices.binancecoin?.usd;
-            if (!bnbUsd) throw new Error('Курс BNB недоступен');
-            convertedPrice = (ethPrice * ethUsd) / bnbUsd;
+          case 'bnb': 
+            targetPrice = cryptoPrices.binancecoin?.usd;
             break;
-          case 'sol':
-            const solUsd = cryptoPrices.solana?.usd;
-            if (!solUsd) throw new Error('Курс SOL недоступен');
-            convertedPrice = (ethPrice * ethUsd) / solUsd;
+          case 'sol': 
+            targetPrice = cryptoPrices.solana?.usd;
             break;
           default:
             throw new Error('Валюта недоступна');
         }
         
-        // Форматируем конвертированную цену
-        let formattedPrice;
-        if (convertedPrice > 1000) formattedPrice = convertedPrice.toFixed(0);
-        else if (convertedPrice > 1) formattedPrice = convertedPrice.toFixed(2);
-        else if (convertedPrice > 0.01) formattedPrice = convertedPrice.toFixed(4);
-        else formattedPrice = convertedPrice.toFixed(6);
+        if (!targetPrice) throw new Error(`Курс ${to.toUpperCase()} недоступен`);
         
-        out.innerHTML = `
-          <div class="nft-price">
-            <strong>Floor: ${formattedPrice} ${to.toUpperCase()}</strong>
-          </div>
-          <div class="nft-meta">
-            <span>${popularNfts.find(nft => nft.id === id)?.name || 'NFT Collection'}</span>
-          </div>
-        `;
-        return;
+        // Конвертируем: (floorPrice * ethUsd) / targetPrice
+        floorPrice = (floorPrice * ethUsd) / targetPrice;
+        currency = to;
       }
       
-      // Форматируем цену в зависимости от величины
+      // Форматируем цену
       let formattedPrice;
-      if (price > 1000) {
-        formattedPrice = price.toFixed(0);
-      } else if (price > 1) {
-        formattedPrice = price.toFixed(2);
-      } else if (price > 0.01) {
-        formattedPrice = price.toFixed(4);
+      if (floorPrice > 1000) {
+        formattedPrice = floorPrice.toFixed(0);
+      } else if (floorPrice > 1) {
+        formattedPrice = floorPrice.toFixed(2);
+      } else if (floorPrice > 0.01) {
+        formattedPrice = floorPrice.toFixed(4);
       } else {
-        formattedPrice = price.toFixed(6);
+        formattedPrice = floorPrice.toFixed(6);
       }
-      
-      // Находим название коллекции
-      const collection = popularNfts.find(nft => nft.id === id)?.name || 'NFT Collection';
       
       out.innerHTML = `
         <div class="nft-price">
-          <strong>Floor: ${formattedPrice} ${to.toUpperCase()}</strong>
+          <strong>Floor: ${formattedPrice} ${currency.toUpperCase()}</strong>
         </div>
         <div class="nft-meta">
-          <span>${collection}</span>
+          <span>${collectionName}</span>
         </div>
       `;
     } catch (err) {
       console.error('Ошибка NFT:', err);
-      out.textContent = err.message || 'Ошибка при запросе NFT. Попробуйте позже.';
+      out.innerHTML = `
+        <div class="nft-error">
+          Ошибка: ${err.message || 'Неизвестная ошибка'}
+        </div>
+        <div class="nft-meta">
+          <span>${collectionName}</span>
+        </div>
+      `;
       out.classList.add('error');
     }
   };
