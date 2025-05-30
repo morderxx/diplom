@@ -2,21 +2,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const content = document.getElementById('finance-content');
   const tabs = document.querySelectorAll('.finance-nav button');
 
-  // Фиатные коды и карта крипто→ID
+  // Фиатные коды и карта крипто→ID CoinGecko
   const fiatCodes = ['USD', 'EUR', 'RUB', 'GBP', 'JPY', 'CNY', 'CHF', 'CAD', 'BYN'];
   const cryptoMap = {
-    BTC: { id: 'bitcoin', symbol: 'BTC' },
-    ETH: { id: 'ethereum', symbol: 'ETH' },
-    LTC: { id: 'litecoin', symbol: 'LTC' },
-    DOGE: { id: 'dogecoin', symbol: 'DOGE' },
-    BNB: { id: 'binancecoin', symbol: 'BNB' },
-    USDT: { id: 'tether', symbol: 'USDT' },
-    XRP: { id: 'ripple', symbol: 'XRP' },
-    ADA: { id: 'cardano', symbol: 'ADA' },
-    SOL: { id: 'solana', symbol: 'SOL' },
-    DOT: { id: 'polkadot', symbol: 'DOT' },
-    AVAX: { id: 'avalanche', symbol: 'AVAX' },
-    MATIC: { id: 'matic-network', symbol: 'MATIC' }
+    BTC: 'bitcoin',
+    ETH: 'ethereum',
+    LTC: 'litecoin',
+    DOGE: 'dogecoin',
+    BNB: 'binancecoin',
+    USDT: 'tether',
+    XRP: 'ripple',
+    ADA: 'cardano',
+    SOL: 'solana',
+    DOT: 'polkadot',
+    AVAX: 'avalanche',
+    MATIC: 'matic-network'
   };
 
   // API ключ для CurrencyFreaks
@@ -24,37 +24,10 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Кэши
   const exchangeRatesCache = { rates: null, timestamp: 0 };
-  const cryptoPricesCache = {};
+  const cryptoUsdPricesCache = { prices: null, timestamp: 0 };
   
-  // Основной API для крипты
-  const CRYPTO_API_URL = 'https://api.coingecko.com/api/v3';
-  
-  // Альтернативный API для крипты
-  const BACKUP_CRYPTO_API = 'https://api.coincap.io/v2';
-  
-  // Функция для безопасных запросов
-  async function safeFetch(url, isJson = true) {
-    try {
-      // Пробуем прямой запрос
-      const response = await fetch(url);
-      if (response.ok) {
-        return isJson ? await response.json() : response;
-      }
-      
-      // Пробуем через прокси если прямая ошибка
-      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-      const proxyResponse = await fetch(proxyUrl);
-      
-      if (proxyResponse.ok) {
-        return isJson ? await proxyResponse.json() : proxyResponse;
-      }
-      
-      throw new Error(`Ошибка запроса: ${response.status}`);
-    } catch (error) {
-      console.error('Ошибка запроса:', error);
-      throw error;
-    }
-  }
+  // Надежный прокси
+  const CORS_PROXY = "https://api.allorigins.win/raw?url=";
 
   // Таб-переключатель
   tabs.forEach(btn => {
@@ -146,60 +119,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Получение цен криптовалют с кэшированием
-  async function getCryptoPrice(coinId, vsCurrency) {
-    const cacheKey = `${coinId}-${vsCurrency}`;
+  // Получение цен криптовалют в USD с кэшированием
+  async function getCryptoUsdPrices() {
     const now = Date.now();
     
     // Проверка кэша
-    if (cryptoPricesCache[cacheKey] && 
-        (now - cryptoPricesCache[cacheKey].timestamp) < 300000) { // 5 минут
-      return cryptoPricesCache[cacheKey].price;
+    if (cryptoUsdPricesCache.prices && (now - cryptoUsdPricesCache.timestamp) < 300000) {
+      return cryptoUsdPricesCache.prices;
     }
     
     try {
-      // Пробуем CoinGecko API
-      const url = `${CRYPTO_API_URL}/simple/price?ids=${coinId}&vs_currencies=${vsCurrency}`;
-      const data = await safeFetch(url);
+      // Получаем все цены одним запросом
+      const coinIds = Object.values(cryptoMap).join(',');
+      const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coinIds}&vs_currencies=usd`;
+      const proxyUrl = CORS_PROXY + encodeURIComponent(url);
       
-      if (data && data[coinId] && data[coinId][vsCurrency] !== undefined) {
-        const price = data[coinId][vsCurrency];
-        
-        // Сохраняем в кэш
-        cryptoPricesCache[cacheKey] = {
-          price: price,
-          timestamp: now
-        };
-        
-        return price;
-      }
+      const response = await fetch(proxyUrl);
       
-      // Если CoinGecko не сработал, пробуем CoinCap
-      const coinSymbol = Object.values(cryptoMap).find(c => c.id === coinId)?.symbol;
-      if (coinSymbol) {
-        const backupUrl = `${BACKUP_CRYPTO_API}/assets/${coinSymbol}`;
-        const backupData = await safeFetch(backupUrl);
-        
-        if (backupData && backupData.data && backupData.data.priceUsd) {
-          const usdPrice = parseFloat(backupData.data.priceUsd);
-          
-          // Для валют, отличных от USD, конвертируем
-          if (vsCurrency === 'usd') {
-            return usdPrice;
-          } else {
-            const rates = await getExchangeRates();
-            if (rates && rates[vsCurrency.toUpperCase()]) {
-              // Конвертируем USD в целевую валюту
-              const rate = rates[vsCurrency.toUpperCase()];
-              return usdPrice * rate;
-            }
-          }
-        }
-      }
+      if (!response.ok) throw new Error('Ошибка получения курсов криптовалют');
       
-      throw new Error('Курс не найден');
+      const data = await response.json();
+      
+      // Сохраняем в кэш
+      cryptoUsdPricesCache.prices = data;
+      cryptoUsdPricesCache.timestamp = now;
+      
+      return data;
     } catch (error) {
-      console.error('Ошибка получения курса криптовалюты:', error);
+      console.error('Ошибка получения курсов криптовалют:', error);
       return null;
     }
   }
@@ -237,44 +184,69 @@ document.addEventListener('DOMContentLoaded', () => {
         result = a * (rateTo / rateFrom);
       }
 
-      // 2) Crypto → Crypto
+      // 2) Crypto → Crypto через USD
       else if (isCrypto(f) && isCrypto(t)) {
-        const idF = cryptoMap[f].id;
-        const idT = cryptoMap[t].id;
-        
-        // Получаем цены в USD
-        const usdF = await getCryptoPrice(idF, 'usd');
-        const usdT = await getCryptoPrice(idT, 'usd');
-        
-        if (!usdF || !usdT) {
+        const cryptoPrices = await getCryptoUsdPrices();
+        if (!cryptoPrices) {
           throw new Error('Курсы криптовалют недоступны');
         }
         
-        result = a * (usdF / usdT);
+        const idF = cryptoMap[f];
+        const idT = cryptoMap[t];
+        const priceF = cryptoPrices[idF]?.usd;
+        const priceT = cryptoPrices[idT]?.usd;
+        
+        if (!priceF || !priceT) {
+          throw new Error('Курсы криптовалют недоступны');
+        }
+        
+        result = a * (priceF / priceT);
       }
 
-      // 3) Crypto → Fiat
+      // 3) Crypto → Fiat через USD
       else if (isCrypto(f) && isFiat(t)) {
-        const idF = cryptoMap[f].id;
-        const price = await getCryptoPrice(idF, t.toLowerCase());
+        const cryptoPrices = await getCryptoUsdPrices();
+        const rates = await getExchangeRates();
         
-        if (price === null) {
-          throw new Error('Курс недоступен');
+        if (!cryptoPrices || !rates || !rates[t]) {
+          throw new Error('Курсы недоступны');
         }
         
-        result = a * price;
+        const idF = cryptoMap[f];
+        const cryptoUsd = cryptoPrices[idF]?.usd;
+        const fiatRate = rates[t]; // Кол-во USD за 1 единицу фиата
+        
+        if (!cryptoUsd) {
+          throw new Error('Курс криптовалюты недоступен');
+        }
+        
+        // 1 крипта = X USD
+        // 1 USD = 1 / fiatRate фиата
+        // Итого: X * (1 / fiatRate) фиата за 1 крипту
+        result = a * cryptoUsd / fiatRate;
       }
 
-      // 4) Fiat → Crypto
+      // 4) Fiat → Crypto через USD
       else if (isFiat(f) && isCrypto(t)) {
-        const idT = cryptoMap[t].id;
-        const price = await getCryptoPrice(idT, f.toLowerCase());
+        const rates = await getExchangeRates();
+        const cryptoPrices = await getCryptoUsdPrices();
         
-        if (price === null) {
-          throw new Error('Курс недоступен');
+        if (!rates || !rates[f] || !cryptoPrices) {
+          throw new Error('Курсы недоступны');
         }
         
-        result = a / price;
+        const idT = cryptoMap[t];
+        const cryptoUsd = cryptoPrices[idT]?.usd;
+        const fiatRate = rates[f]; // Кол-во USD за 1 единицу фиата
+        
+        if (!cryptoUsd) {
+          throw new Error('Курс криптовалюты недоступен');
+        }
+        
+        // 1 фиат = fiatRate USD
+        // 1 крипта = Y USD
+        // Итого: (fiatRate) / Y крипты за 1 фиат
+        result = a * fiatRate / cryptoUsd;
       }
 
       else {
@@ -341,13 +313,13 @@ document.addEventListener('DOMContentLoaded', () => {
       
       try {
         const url = `https://api.coingecko.com/api/v3/nfts/${id}`;
-        const data = await safeFetch(url);
+        const proxyUrl = CORS_PROXY + encodeURIComponent(url);
+        const response = await fetch(proxyUrl);
         
-        if (!data || !data.market_data) {
-          throw new Error('Данные не найдены');
-        }
+        if (!response.ok) throw new Error('Ошибка запроса NFT');
         
-        const price = data.market_data.floor_price?.[to];
+        const data = await response.json();
+        const price = data.market_data?.floor_price?.[to];
         
         if (price) {
           out.innerHTML = `Floor: <strong>${price}</strong> ${to.toUpperCase()}`;
