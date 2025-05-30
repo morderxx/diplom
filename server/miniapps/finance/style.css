@@ -260,34 +260,53 @@ body {
   background: #3b7ac1;
 }
 
-.nft-price {
-  font-size: 1.5em;
-  margin-bottom: 15px;
-}
-
-.nft-meta {
+.nft-result-content {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 10px;
+  gap: 15px;
+  padding: 10px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  background: #f9f9f9;
+}
+
+.nft-image-container {
+  flex-shrink: 0;
 }
 
 .nft-image {
-  width: 40px;
-  height: 40px;
-  border-radius: 4px;
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  object-fit: cover;
   border: 1px solid #ddd;
 }
 
-.nft-info {
-  margin-top: 15px;
-  font-size: 0.9em;
-  color: #666;
+.nft-info-container {
+  flex-grow: 1;
+}
+
+.nft-name {
+  font-weight: bold;
+  margin-bottom: 5px;
+  font-size: 1.1em;
+}
+
+.nft-price {
+  font-size: 1.2em;
 }
 
 .nft-error {
   color: #e74c3c;
   font-weight: bold;
+  padding: 10px;
+  border: 1px solid #e74c3c;
+  border-radius: 5px;
+  background: #ffeeee;
 }
 
-/* Переносим общий стиль .exchange-result, он уже есть */
+.nft-meta {
+  margin-top: 5px;
+  font-size: 0.9em;
+  color: #666;
+}
