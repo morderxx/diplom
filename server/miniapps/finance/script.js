@@ -26,9 +26,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const exchangeRatesCache = { rates: null, timestamp: 0 };
   const cryptoUsdPricesCache = { prices: null, timestamp: 0 };
   
-  // Надежный прокси
-  const CORS_PROXY = "https://api.allorigins.win/raw?url=";
-
+  // Надежные прокси
+  const PROXY_SERVERS = [
+    "https://api.allorigins.win/raw?url=",
+    "https://cors-anywhere.herokuapp.com/",
+    "https://yacdn.org/proxy/"
+  ];
+  
   // Глобальные переменные для графиков
   let cryptoChart = null;
   let volatilityChart = null;
@@ -138,11 +142,20 @@ document.addEventListener('DOMContentLoaded', () => {
       // Получаем все цены одним запросом
       const coinIds = Object.values(cryptoMap).join(',');
       const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coinIds}&vs_currencies=usd`;
-      const proxyUrl = CORS_PROXY + encodeURIComponent(url);
       
-      const response = await fetch(proxyUrl);
+      // Перебираем прокси до успеха
+      let response;
+      for (const proxy of PROXY_SERVERS) {
+        try {
+          const proxyUrl = proxy + encodeURIComponent(url);
+          response = await fetch(proxyUrl);
+          if (response.ok) break;
+        } catch (error) {
+          console.warn(`Ошибка прокси ${proxy}:`, error);
+        }
+      }
       
-      if (!response.ok) throw new Error('Ошибка получения курсов криптовалют');
+      if (!response || !response.ok) throw new Error('Ошибка получения курсов криптовалют');
       
       const data = await response.json();
       
@@ -355,6 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Инициализация контролов
     initAssetSelector();
+    updateIntervalOptions();
     
     // Загрузка данных и построение графиков
     await loadAndDrawCharts();
@@ -364,9 +378,55 @@ document.addEventListener('DOMContentLoaded', () => {
       await loadAndDrawCharts();
     });
     
-    document.getElementById('asset-type').addEventListener('change', initAssetSelector);
-    document.getElementById('time-period').addEventListener('change', loadAndDrawCharts);
+    document.getElementById('asset-type').addEventListener('change', () => {
+      initAssetSelector();
+      loadAndDrawCharts();
+    });
+    
+    document.getElementById('time-period').addEventListener('change', () => {
+      updateIntervalOptions();
+      loadAndDrawCharts();
+    });
+    
     document.getElementById('time-interval').addEventListener('change', loadAndDrawCharts);
+  }
+
+  // Обновление доступных интервалов
+  function updateIntervalOptions() {
+    const period = parseInt(document.getElementById('time-period').value);
+    const intervalSelect = document.getElementById('time-interval');
+    const currentInterval = intervalSelect.value;
+    
+    // Доступные интервалы
+    let intervals;
+    if (period > 90) {
+      intervals = [
+        { value: 'daily', text: 'Дневной' },
+        { value: 'weekly', text: 'Недельный' }
+      ];
+    } else {
+      intervals = [
+        { value: 'hourly', text: 'Почасовой' },
+        { value: 'daily', text: 'Дневной' },
+        { value: 'weekly', text: 'Недельный' }
+      ];
+    }
+    
+    // Обновляем список
+    intervalSelect.innerHTML = '';
+    intervals.forEach(interval => {
+      const option = document.createElement('option');
+      option.value = interval.value;
+      option.textContent = interval.text;
+      intervalSelect.appendChild(option);
+    });
+    
+    // Восстанавливаем выбранное значение
+    if (intervals.some(i => i.value === currentInterval)) {
+      intervalSelect.value = currentInterval;
+    } else {
+      intervalSelect.value = intervals[0].value;
+    }
   }
 
   // Инициализация выбора активов
@@ -471,7 +531,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Загрузка данных для криптовалют (исправленная версия)
+  // Загрузка данных для криптовалют
   async function loadCryptoData(assets, days, interval) {
     const cacheKey = `${assets.join('-')}-${days}-${interval}`;
     
@@ -482,17 +542,33 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const result = {};
       
-      // Загружаем данные для каждого актива отдельно
+      // Автокоррекция интервала для больших периодов
+      let actualInterval = interval;
+      if (days > 90 && interval === 'hourly') {
+        actualInterval = 'daily';
+      }
+      
       for (const asset of assets) {
         const coinId = cryptoMap[asset];
         if (!coinId) continue;
         
-        // Используем правильный эндпоинт для исторических данных
-        const url = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}&interval=${interval}`;
-        const proxyUrl = CORS_PROXY + encodeURIComponent(url);
+        const url = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}&interval=${actualInterval}`;
         
-        const response = await fetch(proxyUrl);
-        if (!response.ok) throw new Error('Ошибка API: ' + response.status);
+        // Перебираем прокси до успеха
+        let response;
+        for (const proxy of PROXY_SERVERS) {
+          try {
+            const proxyUrl = proxy + encodeURIComponent(url);
+            response = await fetch(proxyUrl);
+            if (response.ok) break;
+          } catch (error) {
+            console.warn(`Ошибка прокси ${proxy}:`, error);
+          }
+        }
+        
+        if (!response || !response.ok) {
+          throw new Error(`Ошибка API: ${response?.status}`);
+        }
         
         const data = await response.json();
         
@@ -501,7 +577,8 @@ document.addEventListener('DOMContentLoaded', () => {
           result[asset] = {
             id: coinId,
             name: asset,
-            prices: data.prices.map(p => p[1]), // извлекаем только цены
+            history: data.prices.map(p => ({ timestamp: p[0], price: p[1] })),
+            prices: data.prices.map(p => p[1]),
             lastUpdated: new Date().toISOString()
           };
         } else {
@@ -520,6 +597,7 @@ document.addEventListener('DOMContentLoaded', () => {
       assets.forEach(asset => {
         result[asset] = {
           prices: [],
+          history: [],
           name: asset,
           lastUpdated: new Date().toISOString()
         };
@@ -558,15 +636,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Построение графиков для криптовалют (обновленная)
+  // Построение графиков для криптовалют
   function drawCryptoCharts(data) {
     const selectedAssets = getSelectedAssets();
-    const period = parseInt(document.getElementById('time-period').value);
     const interval = document.getElementById('time-interval').value;
     
     // Проверка данных
     const hasData = selectedAssets.some(asset => 
-      data[asset]?.prices?.length > 0
+      data[asset]?.history?.length > 0
     );
     
     if (!hasData) {
@@ -586,14 +663,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const priceCtx = priceCanvas.getContext('2d');
     const volCtx = volCanvas.getContext('2d');
     
-    // Рассчитываем временные метки
-    const now = Date.now();
-    const intervalMs = {
-      hourly: 3600000,
-      daily: 86400000,
-      weekly: 604800000
-    }[interval] || 86400000;
-    
     const datasets = [];
     const colors = [
       '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', 
@@ -602,11 +671,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     selectedAssets.forEach((asset, i) => {
       const assetData = data[asset];
-      if (assetData && assetData.prices && assetData.prices.length > 0) {
-        const points = assetData.prices.map((price, idx) => {
-          const pointTime = now - (assetData.prices.length - idx - 1) * intervalMs;
-          return { x: pointTime, y: price };
-        });
+      if (assetData && assetData.history && assetData.history.length > 0) {
+        const points = assetData.history.map(item => ({
+          x: item.timestamp,
+          y: item.price
+        }));
         
         datasets.push({
           label: asset,
@@ -718,7 +787,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Реализация для фиатных валют
     const selectedAssets = getSelectedAssets();
     const period = parseInt(document.getElementById('time-period').value);
-    const interval = document.getElementById('time-interval').value;
     
     // Получаем контекст для canvas
     const priceCanvas = document.getElementById('price-chart');
