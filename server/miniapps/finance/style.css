@@ -503,3 +503,19 @@ body {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+.chart-error {
+  text-align: center;
+  padding: 20px;
+  color: #ff3d00;
+}
+
+.chart-error button {
+  margin-top: 10px;
+  padding: 8px 15px;
+  background: #ff3d00;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
