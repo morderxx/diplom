@@ -26,11 +26,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const exchangeRatesCache = { rates: null, timestamp: 0 };
   const cryptoUsdPricesCache = { prices: null, timestamp: 0 };
   
-  // Надежные прокси
+  // Обновлённый список прокси-серверов
   const PROXY_SERVERS = [
     "https://api.allorigins.win/raw?url=",
     "https://cors-anywhere.herokuapp.com/",
-    "https://yacdn.org/proxy/"
+    "https://corsproxy.io/?",
+    "https://cors.bridged.cc/",
+    "https://api.codetabs.com/v1/proxy?quest="
   ];
   
   // Глобальные переменные для графиков
@@ -531,79 +533,88 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Загрузка данных для криптовалют
+  // Вспомогательная функция для пустых данных
+  function emptyAssetData(asset) {
+    return {
+      prices: [],
+      history: [],
+      name: asset,
+      lastUpdated: new Date().toISOString()
+    };
+  }
+
+  // Загрузка данных для криптовалют (исправленная)
   async function loadCryptoData(assets, days, interval) {
     const cacheKey = `${assets.join('-')}-${days}-${interval}`;
     
     if (historyCache[cacheKey]) {
       return historyCache[cacheKey];
     }
-    
-    try {
-      const result = {};
+
+    const result = {};
+    const delay = 2000; // Задержка 2 секунды между запросами
+
+    for (let i = 0; i < assets.length; i++) {
+      const asset = assets[i];
+      const coinId = cryptoMap[asset];
       
-      // Автокоррекция интервала для больших периодов
+      if (!coinId) {
+        result[asset] = emptyAssetData(asset);
+        continue;
+      }
+
+      // Автокоррекция интервала
       let actualInterval = interval;
       if (days > 90 && interval === 'hourly') {
         actualInterval = 'daily';
       }
-      
-      for (const asset of assets) {
-        const coinId = cryptoMap[asset];
-        if (!coinId) continue;
-        
-        const url = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}&interval=${actualInterval}`;
-        
-        // Перебираем прокси до успеха
-        let response;
-        for (const proxy of PROXY_SERVERS) {
-          try {
-            const proxyUrl = proxy + encodeURIComponent(url);
-            response = await fetch(proxyUrl);
-            if (response.ok) break;
-          } catch (error) {
-            console.warn(`Ошибка прокси ${proxy}:`, error);
+
+      const url = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}&interval=${actualInterval}`;
+      let success = false;
+
+      // Перебор прокси-серверов
+      for (const proxy of PROXY_SERVERS) {
+        try {
+          const proxyUrl = proxy + encodeURIComponent(url);
+          const response = await fetch(proxyUrl);
+          
+          if (response.ok) {
+            const data = await response.json();
+            
+            // Проверка структуры ответа
+            if (data.prices && Array.isArray(data.prices)) {
+              result[asset] = {
+                id: coinId,
+                name: asset,
+                history: data.prices.map(p => ({ 
+                  timestamp: p[0], 
+                  price: p[1] 
+                })),
+                prices: data.prices.map(p => p[1]),
+                lastUpdated: new Date().toISOString()
+              };
+              success = true;
+              break; // Выходим из цикла прокси, если успешно
+            }
           }
-        }
-        
-        if (!response || !response.ok) {
-          throw new Error(`Ошибка API: ${response?.status}`);
-        }
-        
-        const data = await response.json();
-        
-        // Проверка и обработка данных
-        if (data.prices && Array.isArray(data.prices)) {
-          result[asset] = {
-            id: coinId,
-            name: asset,
-            history: data.prices.map(p => ({ timestamp: p[0], price: p[1] })),
-            prices: data.prices.map(p => p[1]),
-            lastUpdated: new Date().toISOString()
-          };
-        } else {
-          throw new Error('Некорректный формат данных');
+        } catch (error) {
+          console.warn(`Ошибка прокси ${proxy} для ${asset}:`, error);
         }
       }
-      
-      historyCache[cacheKey] = result;
-      return result;
-      
-    } catch (error) {
-      console.error('Ошибка загрузки крипто данных:', error);
-      
-      // Возвращаем структуру с пустыми данными
-      const result = {};
-      assets.forEach(asset => {
-        result[asset] = {
-          prices: [],
-          history: [],
-          name: asset,
-          lastUpdated: new Date().toISOString()
-        };
-      });
-      return result;
+
+      if (!success) {
+        console.error(`Не удалось загрузить данные для ${asset}`);
+        result[asset] = emptyAssetData(asset);
+      }
+
+      // Задержка перед следующим запросом (кроме последнего)
+      if (i < assets.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
+
+    historyCache[cacheKey] = result;
+    return result;
   }
 
   // Загрузка данных для валют
