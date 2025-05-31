@@ -445,28 +445,31 @@ async function loadAndDrawCharts() {
 async function loadCryptoData(assets, days, interval) {
   const cacheKey = `${assets.join('-')}-${days}-${interval}`;
   
-  // Проверить кэш
   if (historyCache[cacheKey]) {
     return historyCache[cacheKey];
   }
   
   try {
     const coinIds = assets.map(a => cryptoMap[a]).join(',');
-    const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${coinIds}&days=${days}&interval=${interval}`;
+    // ДОБАВЬТЕ sparkline=true В ЗАПРОС
+    const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${coinIds}&days=${days}&interval=${interval}&sparkline=true`;
     const proxyUrl = CORS_PROXY + encodeURIComponent(url);
     
     const response = await fetch(proxyUrl);
-    if (!response.ok) throw new Error('Ошибка API');
+    if (!response.ok) throw new Error('Ошибка API: ' + response.status);
     
     const data = await response.json();
     
-    // Обработка данных
     const result = {};
     data.forEach(coin => {
-      const symbol = coin.symbol ? coin.symbol.toUpperCase() : 'UNKNOWN';
+      // ДОБАВЬТЕ ПРОВЕРКУ НА НАЛИЧИЕ ДАННЫХ
+      if (!coin || !coin.symbol) return;
+      
+      const symbol = coin.symbol.toUpperCase();
       result[symbol] = {
         id: coin.id,
         name: coin.name,
+        // ИСПОЛЬЗУЕМ ПРАВИЛЬНОЕ ПОЛЕ ДЛЯ ГРАФИКА
         prices: coin.sparkline_in_7d?.price || [],
         marketCap: coin.market_cap || 0,
         volume: coin.total_volume || 0,
@@ -476,13 +479,23 @@ async function loadCryptoData(assets, days, interval) {
       };
     });
     
-    // Сохранить в кэш
     historyCache[cacheKey] = result;
     return result;
     
   } catch (error) {
     console.error('Ошибка загрузки крипто данных:', error);
-    throw error;
+    // ВОЗВРАЩАЕМ ПУСТЫЕ ДАННЫЕ ПРИ ОШИБКЕ
+    const emptyResult = {};
+    assets.forEach(asset => {
+      emptyResult[asset] = {
+        prices: [],
+        name: asset,
+        change24h: 0,
+        change7d: 0,
+        lastUpdated: new Date().toISOString()
+      };
+    });
+    return emptyResult;
   }
 }
 
@@ -518,44 +531,38 @@ async function loadCurrencyData(currencies, days, interval) {
 
 // Построение графиков для криптовалют
 function drawCryptoCharts() {
-  const assetType = document.getElementById('asset-type').value;
-  const selectedAssets = getSelectedAssets();
-  const period = document.getElementById('time-period').value;
+ const selectedAssets = getSelectedAssets();
   const interval = document.getElementById('time-interval').value;
+  const period = parseInt(document.getElementById('time-period').value);
   
   const data = historyCache[`${selectedAssets.join('-')}-${period}-${interval}`];
   
-  // Контекст для графиков
-  const priceCtx = document.getElementById('price-chart').getContext('2d');
-  const volCtx = document.getElementById('volatility-chart').getContext('2d');
+  // РАССЧИТЫВАЕМ ПРАВИЛЬНЫЕ ВРЕМЕННЫЕ МЕТКИ
+  const now = Date.now();
+  const intervalMap = {
+    hourly: 3600000,    // 1 час в миллисекундах
+    daily: 86400000,    // 1 день в миллисекундах
+    weekly: 604800000   // 1 неделя в миллисекундах
+  };
+  const intervalMs = intervalMap[interval] || 86400000;
   
-  // Уничтожение старых графиков
-  if (cryptoChart) cryptoChart.destroy();
-  if (volatilityChart) volatilityChart.destroy();
-  
-  // Цвета для графиков
-  const colors = [
-    'rgba(54, 162, 235, 1)',
-    'rgba(255, 99, 132, 1)',
-    'rgba(75, 192, 192, 1)',
-    'rgba(255, 159, 64, 1)',
-    'rgba(153, 102, 255, 1)',
-    'rgba(201, 203, 207, 1)'
-  ];
-  
-  // Подготовка данных для основного графика
   const datasets = [];
   selectedAssets.forEach((asset, i) => {
-    if (data[asset]) {
+    if (data[asset] && data[asset].prices.length > 0) {
+      const points = data[asset].prices.map((price, idx) => {
+        // ВРЕМЯ ДЛЯ КАЖДОЙ ТОЧКИ
+        const pointTime = now - (data[asset].prices.length - idx - 1) * intervalMs;
+        return { x: pointTime, y: price };
+      });
+      
       datasets.push({
         label: asset,
-        data: data[asset].prices.map((price, idx) => ({x: Date.now() - (data[asset].prices.length - idx) * 3600000, y: price})),
-        borderColor: colors[i],
-        backgroundColor: colors[i].replace('1)', '0.1)'),
+        data: points,
+        borderColor: `hsl(${(i * 60) % 360}, 70%, 50%)`,
         borderWidth: 2,
         pointRadius: 0,
         fill: false,
-        tension: 0.4
+        tension: 0.1
       });
     }
   });
@@ -658,11 +665,9 @@ function drawCurrencyCharts() {
 // Обновление детальной информации
 // Обновление детальной информации
 function updateAssetDetails(asset) {
-  const assetType = document.getElementById('asset-type').value;
   const detailsContainer = document.getElementById('asset-details');
   const metricsContainer = document.getElementById('metrics-container');
   
-  // Очищаем контейнеры
   detailsContainer.innerHTML = '';
   metricsContainer.innerHTML = '';
 
@@ -671,73 +676,55 @@ function updateAssetDetails(asset) {
     return;
   }
 
-  if (assetType === 'crypto') {
-    // Получаем актуальный кэш
-    const cacheKey = `${getSelectedAssets().join('-')}-${document.getElementById('time-period').value}-${document.getElementById('time-interval').value}`;
-    const cacheData = historyCache[cacheKey];
-
-    if (!cacheData) {
-      detailsContainer.innerHTML = '<p>Данные не загружены</p>';
-      return;
-    }
-
-    const data = cacheData[asset];
-    if (!data) {
-      detailsContainer.innerHTML = `<p>Данные для ${asset} не найдены</p>`;
-      return;
-    }
-
-    // Проверяем наличие цен
-    if (!data.prices || data.prices.length === 0) {
-      detailsContainer.innerHTML = `<p>Нет данных о ценах для ${asset}</p>`;
-      return;
-    }
-
-    const lastPrice = data.prices[data.prices.length - 1];
-    const priceChange24h = data.change24h || 0;
-    const priceChange7d = data.change7d || 0;
-    
-    // Детали актива
-    detailsContainer.innerHTML = `
-      <div class="asset-header">
-        <h5>${asset} (${data.name || 'N/A'})</h5>
-        <div class="price-change">
-          <span class="${priceChange24h >= 0 ? 'positive' : 'negative'}">
-            ${priceChange24h >= 0 ? '▲' : '▼'} ${Math.abs(priceChange24h).toFixed(2)}% (24ч)
-          </span>
-          <span class="${priceChange7d >= 0 ? 'positive' : 'negative'}">
-            ${priceChange7d >= 0 ? '▲' : '▼'} ${Math.abs(priceChange7d).toFixed(2)}% (7д)
-          </span>
-        </div>
-      </div>
-      <div class="asset-meta">
-        <span>Обновлено: ${data.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : 'N/A'}</span>
-      </div>
-    `;
-    
-    // Ключевые метрики
-    metricsContainer.innerHTML = `
-      <div class="metric-card">
-        <div class="metric-value">$${lastPrice.toLocaleString('en-US', {maximumFractionDigits: 4})}</div>
-        <div class="metric-label">Текущая цена</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-value">${data.volume ? '$' + (data.volume / 1000000).toFixed(2) + 'M' : 'N/A'}</div>
-        <div class="metric-label">Объем (24ч)</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-value">${data.marketCap ? '$' + (data.marketCap / 1000000000).toFixed(2) + 'B' : 'N/A'}</div>
-        <div class="metric-label">Капитализация</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-value">${priceChange24h.toFixed(2)}%</div>
-        <div class="metric-label">Изменение (24ч)</div>
-      </div>
-    `;
-  } else {
-    // Реализация для фиатных валют
-    detailsContainer.innerHTML = `<p>Детализация для фиатных валют в разработке</p>`;
+  const cacheKey = `${getSelectedAssets().join('-')}-${document.getElementById('time-period').value}-${document.getElementById('time-interval').value}`;
+  const cacheData = historyCache[cacheKey];
+  
+  if (!cacheData || !cacheData[asset]) {
+    detailsContainer.innerHTML = `<p>Данные для ${asset} не загружены</p>`;
+    return;
   }
+
+  const data = cacheData[asset];
+  
+  // ПРОВЕРКА НА НАЛИЧИЕ ЦЕН
+  const hasPrices = data.prices && data.prices.length > 0;
+  const lastPrice = hasPrices ? data.prices[data.prices.length - 1] : 0;
+  
+  detailsContainer.innerHTML = `
+    <div class="asset-header">
+      <h5>${asset} (${data.name || 'N/A'})</h5>
+      <div class="price-change">
+        <span class="${data.change24h >= 0 ? 'positive' : 'negative'}">
+          ${data.change24h >= 0 ? '▲' : '▼'} ${Math.abs(data.change24h).toFixed(2)}% (24ч)
+        </span>
+        <span class="${data.change7d >= 0 ? 'positive' : 'negative'}">
+          ${data.change7d >= 0 ? '▲' : '▼'} ${Math.abs(data.change7d).toFixed(2)}% (7д)
+        </span>
+      </div>
+    </div>
+    <div class="asset-meta">
+      <span>Обновлено: ${new Date(data.lastUpdated).toLocaleString()}</span>
+    </div>
+  `;
+  
+  metricsContainer.innerHTML = `
+    <div class="metric-card">
+      <div class="metric-value">${hasPrices ? '$' + lastPrice.toLocaleString('en-US', {maximumFractionDigits: 4}) : 'N/A'}</div>
+      <div class="metric-label">Текущая цена</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value">${data.volume ? '$' + (data.volume / 1000000).toFixed(2) + 'M' : 'N/A'}</div>
+      <div class="metric-label">Объем (24ч)</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value">${data.marketCap ? '$' + (data.marketCap / 1000000000).toFixed(2) + 'B' : 'N/A'}</div>
+      <div class="metric-label">Капитализация</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value">${data.change24h.toFixed(2)}%</div>
+      <div class="metric-label">Изменение (24ч)</div>
+    </div>
+  `;
 }
 
 // ... остальной код без изменений ...
