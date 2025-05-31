@@ -461,21 +461,48 @@ document.addEventListener('DOMContentLoaded', () => {
       
       const data = await response.json();
       
+      // Проверка типа данных
+      if (!Array.isArray(data)) {
+        throw new Error('Ожидался массив, но получен объект');
+      }
+      
       const result = {};
       
-      // Исправление: обрабатываем каждый элемент массива
+      // Обработка каждого элемента массива
       data.forEach(coin => {
-        const symbol = coin.symbol.toUpperCase();
-        result[symbol] = {
-          id: coin.id,
-          name: coin.name,
-          prices: coin.sparkline_in_7d?.price || [],
-          marketCap: coin.market_cap || 0,
-          volume: coin.total_volume || 0,
-          change24h: coin.price_change_percentage_24h || 0,
-          change7d: coin.price_change_percentage_7d_in_currency || 0,
-          lastUpdated: coin.last_updated || new Date().toISOString()
-        };
+        // Поиск символа по ID
+        const symbol = Object.keys(cryptoMap).find(
+          key => cryptoMap[key] === coin.id
+        );
+        
+        if (symbol && assets.includes(symbol)) {
+          result[symbol] = {
+            id: coin.id,
+            name: coin.name,
+            prices: coin.sparkline_in_7d?.price || [],
+            marketCap: coin.market_cap || 0,
+            volume: coin.total_volume || 0,
+            change24h: coin.price_change_percentage_24h || 0,
+            change7d: coin.price_change_percentage_7d_in_currency || 0,
+            lastUpdated: coin.last_updated || new Date().toISOString()
+          };
+        }
+      });
+      
+      // Добавление отсутствующих активов
+      assets.forEach(asset => {
+        if (!result[asset]) {
+          result[asset] = {
+            id: cryptoMap[asset],
+            name: asset,
+            prices: [],
+            marketCap: 0,
+            volume: 0,
+            change24h: 0,
+            change7d: 0,
+            lastUpdated: new Date().toISOString()
+          };
+        }
       });
       
       historyCache[cacheKey] = result;
@@ -484,9 +511,9 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
       console.error('Ошибка загрузки крипто данных:', error);
       // Возвращаем пустые данные при ошибке
-      const emptyResult = {};
+      const result = {};
       assets.forEach(asset => {
-        emptyResult[asset] = {
+        result[asset] = {
           prices: [],
           name: asset,
           change24h: 0,
@@ -494,7 +521,7 @@ document.addEventListener('DOMContentLoaded', () => {
           lastUpdated: new Date().toISOString()
         };
       });
-      return emptyResult;
+      return result;
     }
   }
 
@@ -534,7 +561,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const period = parseInt(document.getElementById('time-period').value);
     const interval = document.getElementById('time-interval').value;
     
-    const data = historyCache[`${selectedAssets.join('-')}-${period}-${interval}`];
+    const cacheKey = `${selectedAssets.join('-')}-${period}-${interval}`;
+    const data = historyCache[cacheKey];
+    
+    // Проверка существования данных
+    if (!data) {
+      console.error('Данные не загружены');
+      return;
+    }
     
     // Получаем контекст для canvas
     const priceCanvas = document.getElementById('price-chart');
@@ -567,9 +601,10 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
     
     selectedAssets.forEach((asset, i) => {
-      if (data[asset] && data[asset].prices.length > 0) {
-        const points = data[asset].prices.map((price, idx) => {
-          const pointTime = now - (data[asset].prices.length - idx - 1) * intervalMs;
+      const assetData = data[asset];
+      if (assetData && assetData.prices && assetData.prices.length > 0) {
+        const points = assetData.prices.map((price, idx) => {
+          const pointTime = now - (assetData.prices.length - idx - 1) * intervalMs;
           return { x: pointTime, y: price };
         });
         
@@ -586,52 +621,60 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // График цен
-    cryptoChart = new Chart(priceCtx, {
-      type: 'line',
-      data: { datasets },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: {
-          mode: 'index',
-          intersect: false
-        },
-        scales: {
-          x: {
-            type: 'time',
-            time: {
-              unit: interval === 'hourly' ? 'hour' : 'day',
-              tooltipFormat: 'dd MMM yyyy HH:mm'
-            },
-            title: { display: true, text: 'Дата' }
+    if (datasets.length > 0) {
+      cryptoChart = new Chart(priceCtx, {
+        type: 'line',
+        data: { datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
           },
-          y: {
-            title: { display: true, text: 'Цена (USD)' },
-            position: 'right'
-          }
-        },
-        plugins: {
-          legend: { position: 'top' },
-          tooltip: {
-            callbacks: {
-              label: function(context) {
-                return `${context.dataset.label}: $${context.parsed.y.toFixed(4)}`;
+          scales: {
+            x: {
+              type: 'time',
+              time: {
+                unit: interval === 'hourly' ? 'hour' : 'day',
+                tooltipFormat: 'dd MMM yyyy HH:mm'
+              },
+              title: { display: true, text: 'Дата' }
+            },
+            y: {
+              title: { display: true, text: 'Цена (USD)' },
+              position: 'right'
+            }
+          },
+          plugins: {
+            legend: { position: 'top' },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: $${context.parsed.y.toFixed(4)}`;
+                }
               }
             }
           }
         }
-      }
-    });
+      });
+    } else {
+      priceCtx.clearRect(0, 0, priceCanvas.width, priceCanvas.height);
+      priceCtx.fillText('Нет данных для построения графика', 10, 50);
+    }
     
     // График волатильности
     const volatilityData = [];
+    const labels = [];
+    
     selectedAssets.forEach(asset => {
-      if (!data[asset] || data[asset].prices.length < 2) {
+      const assetData = data[asset];
+      if (!assetData || !assetData.prices || assetData.prices.length < 2) {
         volatilityData.push(0);
         return;
       }
       
-      const prices = data[asset].prices;
+      const prices = assetData.prices;
       let sum = 0;
       for (let i = 1; i < prices.length; i++) {
         const change = (prices[i] - prices[i-1]) / prices[i-1];
@@ -639,39 +682,45 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       
       volatilityData.push(Math.sqrt(sum / (prices.length - 1)) * 100);
+      labels.push(asset);
     });
     
-    volatilityChart = new Chart(volCtx, {
-      type: 'bar',
-      data: {
-        labels: selectedAssets,
-        datasets: [{
-          label: 'Волатильность (%)',
-          data: volatilityData,
-          backgroundColor: selectedAssets.map((_, i) => colors[i % colors.length])
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: {
-            beginAtZero: true,
-            title: { display: true, text: 'Волатильность (%)' }
-          }
+    if (volatilityData.length > 0) {
+      volatilityChart = new Chart(volCtx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Волатильность (%)',
+            data: volatilityData,
+            backgroundColor: volatilityData.map((_, i) => colors[i % colors.length])
+          }]
         },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: function(context) {
-                return `${context.parsed.y.toFixed(2)}%`;
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: 'Волатильность (%)' }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.parsed.y.toFixed(2)}%`;
+                }
               }
             }
           }
         }
-      }
-    });
+      });
+    } else {
+      volCtx.clearRect(0, 0, volCanvas.width, volCanvas.height);
+      volCtx.fillText('Нет данных для построения графика', 10, 50);
+    }
   }
 
   // Построение графиков для валют
