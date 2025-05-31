@@ -278,7 +278,156 @@ document.addEventListener('DOMContentLoaded', () => {
     content.innerHTML = `<h3>Кошелёк</h3><p>Баланс и история транзакций…</p>`;
   }
   
-  function showStats() {
-    content.innerHTML = `<h3>Статистика</h3><p>Графики и аналитика…</p>`;
+ async function showStats() {
+  content.innerHTML = `
+    <h3>Статистика</h3>
+    <div class="stats-controls">
+      <label>
+        Тип графика:
+        <select id="chart-type">
+          <option value="bar">Столбчатая</option>
+          <option value="line">Линейная</option>
+        </select>
+      </label>
+      <label>
+        Период:
+        <select id="chart-period">
+          <option value="7">7 дней</option>
+          <option value="14">14 дней</option>
+          <option value="30">30 дней</option>
+        </select>
+      </label>
+      <button id="update-chart">Обновить</button>
+    </div>
+    <div class="chart-container">
+      <canvas id="currency-chart"></canvas>
+    </div>
+    <div class="chart-container">
+      <canvas id="crypto-chart"></canvas>
+    </div>
+  `;
+
+  // Инициализация графиков
+  await drawCharts();
+  
+  // Обработчик обновления графика
+  document.getElementById('update-chart').addEventListener('click', async () => {
+    await drawCharts();
+  });
+}
+
+// Глобальные переменные для хранения экземпляров графиков
+let currencyChartInstance = null;
+let cryptoChartInstance = null;
+
+async function drawCharts() {
+  const chartType = document.getElementById('chart-type').value;
+  const period = parseInt(document.getElementById('chart-period').value);
+  
+  // Получаем данные
+  const rates = await getExchangeRates();
+  const cryptoPrices = await getCryptoUsdPrices();
+  
+  if (!rates || !cryptoPrices) {
+    content.querySelector('.chart-container').innerHTML = '<p>Ошибка загрузки данных</p>';
+    return;
   }
+
+  // Подготовка данных для фиатных валют
+  const fiatLabels = ['USD', 'EUR', 'RUB', 'GBP', 'JPY', 'CNY', 'CHF', 'CAD', 'BYN'];
+  const fiatData = fiatLabels.map(currency => {
+    return currency === 'USD' ? 1 : (1 / rates[currency]);
+  });
+
+  // Подготовка данных для криптовалют
+  const cryptoLabels = ['BTC', 'ETH', 'LTC', 'DOGE', 'BNB', 'XRP', 'ADA', 'SOL'];
+  const cryptoData = cryptoLabels.map(symbol => {
+    const id = cryptoMap[symbol];
+    return cryptoPrices[id]?.usd || 0;
+  });
+
+  // Уничтожаем предыдущие графики если они существуют
+  if (currencyChartInstance) currencyChartInstance.destroy();
+  if (cryptoChartInstance) cryptoChartInstance.destroy();
+
+  // Создаем график для фиатных валют
+  const currencyCtx = document.getElementById('currency-chart').getContext('2d');
+  currencyChartInstance = new Chart(currencyCtx, {
+    type: chartType,
+    data: {
+      labels: fiatLabels,
+      datasets: [{
+        label: 'Фиатные валюты (к USD)',
+        data: fiatData,
+        backgroundColor: [
+          'rgba(54, 162, 235, 0.7)',
+          'rgba(255, 99, 132, 0.7)',
+          'rgba(75, 192, 192, 0.7)',
+          'rgba(255, 159, 64, 0.7)',
+          'rgba(153, 102, 255, 0.7)',
+          'rgba(201, 203, 207, 0.7)',
+          'rgba(255, 205, 86, 0.7)',
+          'rgba(101, 203, 207, 0.7)',
+          'rgba(155, 102, 155, 0.7)'
+        ],
+        borderColor: 'rgba(0, 0, 0, 0.1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Относительная стоимость валют к USD'
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return `1 ${context.label} = ${context.raw.toFixed(4)} USD`;
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // Создаем график для криптовалют
+  const cryptoCtx = document.getElementById('crypto-chart').getContext('2d');
+  cryptoChartInstance = new Chart(cryptoCtx, {
+    type: chartType,
+    data: {
+      labels: cryptoLabels,
+      datasets: [{
+        label: 'Криптовалюты (USD)',
+        data: cryptoData,
+        backgroundColor: 'rgba(75, 192, 192, 0.7)',
+        borderColor: 'rgba(75, 192, 192, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          type: 'logarithmic',
+          min: 0.1
+        }
+      },
+      plugins: {
+        title: {
+          display: true,
+          text: 'Стоимость криптовалют в USD'
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return `1 ${context.label} = $${context.raw.toFixed(2)}`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
 });
