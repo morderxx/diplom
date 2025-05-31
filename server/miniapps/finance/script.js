@@ -284,11 +284,10 @@ document.addEventListener('DOMContentLoaded', () => {
     content.innerHTML = `<h3>Кошелёк</h3><p>Баланс и история транзакций…</p>`;
   }
   
-  // Функция показа статистики
-  async function showStats() {
+ async function showStats() {
     content.innerHTML = `
       <div class="stats-container">
-        <h3>Финансовая аналитика</h3>
+        <h3>Упрощенная финансовая аналитика</h3>
         
         <div class="stats-controls">
           <div class="control-group">
@@ -304,51 +303,14 @@ document.addEventListener('DOMContentLoaded', () => {
             <div id="asset-selector" class="asset-selector"></div>
           </div>
           
-          <div class="control-group">
-            <label>Период:</label>
-            <select id="time-period">
-              <option value="7">7 дней</option>
-              <option value="14">14 дней</option>
-              <option value="30" selected>30 дней</option>
-              <option value="90">90 дней</option>
-              <option value="180">180 дней</option>
-            </select>
-          </div>
-          
-          <div class="control-group">
-            <label>Интервал:</label>
-            <select id="time-interval">
-              <option value="hourly">Почасовой</option>
-              <option value="daily" selected>Дневной</option>
-              <option value="weekly">Недельный</option>
-            </select>
-          </div>
-          
-          <button id="update-chart" class="update-btn">Обновить графики</button>
+          <button id="update-chart" class="update-btn">Обновить график</button>
         </div>
         
-        <div class="chart-grid">
-          <div class="chart-container">
-            <h4>Динамика цен</h4>
-            <canvas id="price-chart"></canvas>
-            <div class="chart-loader">Загрузка данных...</div>
-            <div class="chart-error hidden"></div>
-          </div>
-          
-          <div class="chart-container">
-            <h4>Волатильность</h4>
-            <canvas id="volatility-chart"></canvas>
-            <div class="chart-loader">Загрузка данных...</div>
-            <div class="chart-error hidden"></div>
-          </div>
-          
-          <div class="info-panel">
-            <h4>Детализация</h4>
-            <div id="asset-details" class="asset-details">
-              <p>Выберите актив для просмотра детальной информации</p>
-            </div>
-            <div class="metrics-grid" id="metrics-container"></div>
-          </div>
+        <div class="chart-container">
+          <h4>Динамика цен за 30 дней</h4>
+          <canvas id="price-chart"></canvas>
+          <div class="chart-loader">Загрузка данных...</div>
+          <div class="chart-error hidden"></div>
         </div>
       </div>
     `;
@@ -356,17 +318,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Инициализация контролов
     initAssetSelector();
     
-    // Загрузка данных и построение графиков
-    await loadAndDrawCharts();
+    // Загрузка данных и построение графика
+    await loadAndDrawChart();
     
     // Обработчики событий
     document.getElementById('update-chart').addEventListener('click', async () => {
-      await loadAndDrawCharts();
+      await loadAndDrawChart();
     });
     
-    document.getElementById('asset-type').addEventListener('change', initAssetSelector);
-    document.getElementById('time-period').addEventListener('change', loadAndDrawCharts);
-    document.getElementById('time-interval').addEventListener('change', loadAndDrawCharts);
+    document.getElementById('asset-type').addEventListener('change', () => {
+      initAssetSelector();
+      loadAndDrawChart();
+    });
   }
 
   // Инициализация выбора активов
@@ -376,7 +339,9 @@ document.addEventListener('DOMContentLoaded', () => {
     container.innerHTML = '';
     
     if (assetType === 'crypto') {
-      Object.keys(cryptoMap).slice(0, 6).forEach(crypto => {
+      // Только основные криптовалюты
+      const topCryptos = ['BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA'];
+      topCryptos.forEach(crypto => {
         const id = `asset-${crypto}`;
         container.innerHTML += `
           <div class="asset-option">
@@ -386,7 +351,9 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
       });
     } else {
-      fiatCodes.slice(0, 6).forEach(currency => {
+      // Основные фиатные валюты
+      const topFiats = ['USD', 'EUR', 'RUB', 'GBP', 'JPY', 'CNY'];
+      topFiats.forEach(currency => {
         const id = `asset-${currency}`;
         container.innerHTML += `
           <div class="asset-option">
@@ -407,32 +374,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Показать/скрыть загрузчик
   function toggleLoader(show) {
-    document.querySelectorAll('.chart-loader').forEach(el => {
-      el.style.display = show ? 'flex' : 'none';
-    });
+    const loader = document.querySelector('.chart-loader');
+    if (loader) loader.style.display = show ? 'block' : 'none';
   }
 
   // Показать ошибку
   function showChartError(message) {
-    document.querySelectorAll('.chart-error').forEach(el => {
-      el.textContent = message;
-      el.classList.remove('hidden');
-    });
+    const errorEl = document.querySelector('.chart-error');
+    if (errorEl) {
+      errorEl.textContent = message;
+      errorEl.classList.remove('hidden');
+    }
   }
 
   // Скрыть ошибки
   function hideErrors() {
-    document.querySelectorAll('.chart-error').forEach(el => {
-      el.classList.add('hidden');
-    });
+    const errorEl = document.querySelector('.chart-error');
+    if (errorEl) errorEl.classList.add('hidden');
   }
 
-  // Загрузка данных и построение графиков
-  async function loadAndDrawCharts() {
+  // Загрузка данных и построение графика
+  async function loadAndDrawChart() {
     const assetType = document.getElementById('asset-type').value;
     const selectedAssets = getSelectedAssets();
-    const period = document.getElementById('time-period').value;
-    const interval = document.getElementById('time-interval').value;
     
     // Скрыть старые ошибки
     hideErrors();
@@ -440,188 +404,152 @@ document.addEventListener('DOMContentLoaded', () => {
     // Показать загрузчик
     toggleLoader(true);
     
-    // Уничтожить старые графики
-    if (cryptoChart) cryptoChart.destroy();
-    if (volatilityChart) volatilityChart.destroy();
-    
-    // Очистить детализацию
-    document.getElementById('asset-details').innerHTML = '<p>Загрузка данных...</p>';
-    document.getElementById('metrics-container').innerHTML = '';
+    // Уничтожить старый график
+    if (cryptoChart) {
+      cryptoChart.destroy();
+      cryptoChart = null;
+    }
 
     try {
       let data;
       if (assetType === 'crypto') {
-        data = await loadCryptoData(selectedAssets, period, interval);
-        drawCryptoCharts(data);
+        data = await loadCryptoData(selectedAssets);
       } else {
-        data = await loadCurrencyData(selectedAssets, period, interval);
-        drawCurrencyCharts(data);
+        data = await loadCurrencyData(selectedAssets);
       }
-      
-      // Обновить детализацию
-      if (selectedAssets.length > 0) {
-        updateAssetDetails(selectedAssets[0], data);
-      }
+      drawPriceChart(data, assetType);
     } catch (error) {
       console.error('Ошибка загрузки данных:', error);
-      showChartError('Не удалось загрузить данные. Попробуйте позже.');
+      showChartError('Не удалось загрузить данные. Попробуйте позже или выберите другие активы.');
     } finally {
       // Скрыть загрузчик
       toggleLoader(false);
     }
   }
 
-  // Загрузка данных для криптовалют (исправленная версия)
-  async function loadCryptoData(assets, days, interval) {
-    const cacheKey = `${assets.join('-')}-${days}-${interval}`;
+  // Загрузка данных для криптовалют
+  async function loadCryptoData(assets) {
+    const result = {};
     
-    if (historyCache[cacheKey]) {
-      return historyCache[cacheKey];
-    }
-    
-    try {
-      const result = {};
+    for (const asset of assets) {
+      const coinId = cryptoMap[asset];
+      if (!coinId) continue;
       
-      // Загружаем данные для каждого актива отдельно
-      for (const asset of assets) {
-        const coinId = cryptoMap[asset];
-        if (!coinId) continue;
+      try {
+        // Упрощенный запрос к CoinGecko
+        const url = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=30&interval=daily`;
         
-        // Используем правильный эндпоинт для исторических данных
-        const url = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}&interval=${interval}`;
-        const proxyUrl = CORS_PROXY + encodeURIComponent(url);
-        
-        const response = await fetch(proxyUrl);
-        if (!response.ok) throw new Error('Ошибка API: ' + response.status);
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Ошибка API: ${response.status}`);
         
         const data = await response.json();
         
-        // Проверка и обработка данных
+        // Упрощенная обработка данных
         if (data.prices && Array.isArray(data.prices)) {
           result[asset] = {
-            id: coinId,
-            name: asset,
-            prices: data.prices.map(p => p[1]), // извлекаем только цены
-            lastUpdated: new Date().toISOString()
+            prices: data.prices.map(p => p[1]),
+            timestamps: data.prices.map(p => p[0]),
+            name: asset
           };
         } else {
           throw new Error('Некорректный формат данных');
         }
+      } catch (error) {
+        console.error(`Ошибка загрузки данных для ${asset}:`, error);
+        result[asset] = {
+          error: true,
+          message: `Не удалось загрузить данные для ${asset}`,
+          name: asset
+        };
+      }
+    }
+    
+    return result;
+  }
+
+  // Загрузка данных для валют (на основе текущих курсов)
+  async function loadCurrencyData(currencies) {
+    // Получаем текущие курсы
+    const rates = await getExchangeRates();
+    if (!rates) throw new Error('Не удалось получить курсы валют');
+    
+    const result = {};
+    const now = Date.now();
+    const oneDay = 24 * 60 * 60 * 1000;
+    
+    currencies.forEach(currency => {
+      // Базовый курс относительно USD
+      const baseRate = rates[currency] ? parseFloat(rates[currency]) : 1;
+      
+      // Генерация исторических данных
+      const prices = [];
+      const timestamps = [];
+      
+      for (let i = 30; i >= 0; i--) {
+        const date = new Date(now - i * oneDay);
+        timestamps.push(date.getTime());
+        
+        // Имитация колебаний курса
+        const fluctuation = 1 + (Math.random() - 0.5) * 0.02;
+        prices.push(baseRate * fluctuation);
       }
       
-      historyCache[cacheKey] = result;
-      return result;
-      
-    } catch (error) {
-      console.error('Ошибка загрузки крипто данных:', error);
-      
-      // Возвращаем структуру с пустыми данными
-      const result = {};
-      assets.forEach(asset => {
-        result[asset] = {
-          prices: [],
-          name: asset,
-          lastUpdated: new Date().toISOString()
-        };
-      });
-      return result;
-    }
-  }
-
-  // Загрузка данных для валют
-  async function loadCurrencyData(currencies, days, interval) {
-    // Заглушка для фиатных валют
-    return new Promise(resolve => {
-      setTimeout(() => {
-        const result = {};
-        const now = Date.now();
-        
-        currencies.forEach(currency => {
-          const prices = [];
-          for (let i = 0; i < days; i++) {
-            // Генерация случайных данных с трендом
-            const baseValue = 0.8 + Math.random() * 0.4;
-            const trend = Math.sin(i / days * Math.PI * 2) * 0.1;
-            prices.push((baseValue + trend).toFixed(4));
-          }
-          
-          result[currency] = {
-            prices,
-            change24h: (Math.random() - 0.5) * 3,
-            change7d: (Math.random() - 0.5) * 5,
-            name: currency
-          };
-        });
-        
-        resolve(result);
-      }, 500);
+      result[currency] = {
+        prices,
+        timestamps,
+        name: currency,
+        currentRate: baseRate
+      };
     });
+    
+    return result;
   }
 
-  // Построение графиков для криптовалют (обновленная)
-  function drawCryptoCharts(data) {
-    const selectedAssets = getSelectedAssets();
-    const period = parseInt(document.getElementById('time-period').value);
-    const interval = document.getElementById('time-interval').value;
+  // Построение графика цен
+  function drawPriceChart(data, assetType) {
+    const canvas = document.getElementById('price-chart');
+    if (!canvas) return;
     
-    // Проверка данных
-    const hasData = selectedAssets.some(asset => 
-      data[asset]?.prices?.length > 0
+    const ctx = canvas.getContext('2d');
+    const assets = Object.keys(data);
+    
+    // Проверка наличия данных
+    const hasData = assets.some(asset => 
+      !data[asset].error && data[asset].prices?.length > 0
     );
     
     if (!hasData) {
-      showChartError('Нет данных для построения графиков');
+      showChartError('Нет данных для построения графика');
       return;
     }
     
-    // Получаем контекст для canvas
-    const priceCanvas = document.getElementById('price-chart');
-    const volCanvas = document.getElementById('volatility-chart');
-    
-    if (!priceCanvas || !volCanvas) {
-      console.error('Canvas элементы не найдены');
-      return;
-    }
-    
-    const priceCtx = priceCanvas.getContext('2d');
-    const volCtx = volCanvas.getContext('2d');
-    
-    // Рассчитываем временные метки
-    const now = Date.now();
-    const intervalMs = {
-      hourly: 3600000,
-      daily: 86400000,
-      weekly: 604800000
-    }[interval] || 86400000;
-    
+    const colors = ['#4e73df', '#1cc88a', '#f6c23e', '#e74a3b', '#858796', '#36b9cc'];
     const datasets = [];
-    const colors = [
-      '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', 
-      '#e74a3b', '#858796', '#5a5c69', '#2e59d9'
-    ];
     
-    selectedAssets.forEach((asset, i) => {
+    assets.forEach((asset, i) => {
       const assetData = data[asset];
-      if (assetData && assetData.prices && assetData.prices.length > 0) {
-        const points = assetData.prices.map((price, idx) => {
-          const pointTime = now - (assetData.prices.length - idx - 1) * intervalMs;
-          return { x: pointTime, y: price };
-        });
-        
-        datasets.push({
-          label: asset,
-          data: points,
-          borderColor: colors[i % colors.length],
-          borderWidth: 2,
-          pointRadius: 0,
-          fill: false,
-          tension: 0.1
-        });
-      }
+      
+      // Пропускаем активы с ошибками
+      if (assetData.error) return;
+      
+      datasets.push({
+        label: asset,
+        data: assetData.prices.map((price, index) => ({
+          x: assetData.timestamps[index],
+          y: price
+        })),
+        borderColor: colors[i % colors.length],
+        borderWidth: 2,
+        pointRadius: 0,
+        fill: false,
+        tension: 0.1
+      });
     });
     
-    // График цен
-    cryptoChart = new Chart(priceCtx, {
+    // Определяем единицы измерения
+    const yAxisLabel = assetType === 'crypto' ? 'Цена (USD)' : 'Курс к USD';
+    
+    cryptoChart = new Chart(ctx, {
       type: 'line',
       data: { datasets },
       options: {
@@ -635,14 +563,13 @@ document.addEventListener('DOMContentLoaded', () => {
           x: {
             type: 'time',
             time: {
-              unit: interval === 'hourly' ? 'hour' : 'day',
-              tooltipFormat: 'dd MMM yyyy HH:mm'
+              unit: 'day',
+              tooltipFormat: 'dd MMM yyyy'
             },
             title: { display: true, text: 'Дата' }
           },
           y: {
-            title: { display: true, text: 'Цена (USD)' },
-            position: 'right'
+            title: { display: true, text: yAxisLabel }
           }
         },
         plugins: {
@@ -650,187 +577,13 @@ document.addEventListener('DOMContentLoaded', () => {
           tooltip: {
             callbacks: {
               label: function(context) {
-                return `${context.dataset.label}: $${context.parsed.y.toFixed(4)}`;
+                const value = context.parsed.y;
+                return `${context.dataset.label}: ${value.toFixed(4)}`;
               }
             }
           }
         }
       }
     });
-    
-    // График волатильности
-    const volatilityData = [];
-    const labels = [];
-    
-    selectedAssets.forEach(asset => {
-      const assetData = data[asset];
-      if (!assetData || !assetData.prices || assetData.prices.length < 2) {
-        volatilityData.push(0);
-        return;
-      }
-      
-      const prices = assetData.prices;
-      let sum = 0;
-      for (let i = 1; i < prices.length; i++) {
-        const change = (prices[i] - prices[i-1]) / prices[i-1];
-        sum += change * change;
-      }
-      
-      volatilityData.push(Math.sqrt(sum / (prices.length - 1)) * 100);
-      labels.push(asset);
-    });
-    
-    volatilityChart = new Chart(volCtx, {
-      type: 'bar',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Волатильность (%)',
-          data: volatilityData,
-          backgroundColor: volatilityData.map((_, i) => colors[i % colors.length])
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: {
-            beginAtZero: true,
-            title: { display: true, text: 'Волатильность (%)' }
-          }
-        },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: function(context) {
-                return `${context.parsed.y.toFixed(2)}%`;
-              }
-            }
-          }
-        }
-      }
-    });
-  }
-
-  // Построение графиков для валют
-  function drawCurrencyCharts(data) {
-    // Реализация для фиатных валют
-    const selectedAssets = getSelectedAssets();
-    const period = parseInt(document.getElementById('time-period').value);
-    const interval = document.getElementById('time-interval').value;
-    
-    // Получаем контекст для canvas
-    const priceCanvas = document.getElementById('price-chart');
-    const priceCtx = priceCanvas.getContext('2d');
-    
-    const datasets = [];
-    const colors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e'];
-    
-    selectedAssets.forEach((asset, i) => {
-      const assetData = data[asset];
-      if (assetData && assetData.prices) {
-        const points = assetData.prices.map((price, idx) => {
-          return { x: idx, y: price };
-        });
-        
-        datasets.push({
-          label: asset,
-          data: points,
-          borderColor: colors[i % colors.length],
-          borderWidth: 2,
-          pointRadius: 0,
-          fill: false,
-          tension: 0.1
-        });
-      }
-    });
-    
-    // График цен для валют
-    cryptoChart = new Chart(priceCtx, {
-      type: 'line',
-      data: { datasets },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: {
-            title: { display: true, text: 'Дни' }
-          },
-          y: {
-            title: { display: true, text: 'Относительное значение' },
-            position: 'right'
-          }
-        },
-        plugins: {
-          legend: { position: 'top' }
-        }
-      }
-    });
-  }
-
-  // Обновление детальной информации
-  function updateAssetDetails(asset, data) {
-    const detailsContainer = document.getElementById('asset-details');
-    const metricsContainer = document.getElementById('metrics-container');
-    
-    detailsContainer.innerHTML = '';
-    metricsContainer.innerHTML = '';
-
-    if (!asset || !data || !data[asset]) {
-      detailsContainer.innerHTML = '<p>Данные недоступны</p>';
-      return;
-    }
-
-    const assetData = data[asset];
-    
-    // Проверка на наличие цен
-    const hasPrices = assetData.prices && assetData.prices.length > 0;
-    const lastPrice = hasPrices ? assetData.prices[assetData.prices.length - 1] : 0;
-    
-    // Рассчет изменений
-    const change24h = assetData.change24h || (hasPrices && assetData.prices.length > 24 ? 
-      ((lastPrice - assetData.prices[assetData.prices.length - 25]) / assetData.prices[assetData.prices.length - 25] * 100) : 
-      0);
-    
-    const change7d = assetData.change7d || (hasPrices && assetData.prices.length > 7 ? 
-      ((lastPrice - assetData.prices[0]) / assetData.prices[0] * 100) : 
-      0);
-
-    detailsContainer.innerHTML = `
-      <div class="asset-header">
-        <h5>${asset} (${assetData.name || 'N/A'})</h5>
-        <div class="price-change">
-          <span class="${change24h >= 0 ? 'positive' : 'negative'}">
-            ${change24h >= 0 ? '▲' : '▼'} ${Math.abs(change24h).toFixed(2)}% (24ч)
-          </span>
-          <span class="${change7d >= 0 ? 'positive' : 'negative'}">
-            ${change7d >= 0 ? '▲' : '▼'} ${Math.abs(change7d).toFixed(2)}% (7д)
-          </span>
-        </div>
-      </div>
-      <div class="asset-meta">
-        <span>Обновлено: ${new Date(assetData.lastUpdated).toLocaleString()}</span>
-      </div>
-    `;
-    
-    metricsContainer.innerHTML = `
-      <div class="metric-card">
-        <div class="metric-value">${hasPrices ? '$' + lastPrice.toLocaleString('en-US', {maximumFractionDigits: 4}) : 'N/A'}</div>
-        <div class="metric-label">Текущая цена</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-value">${hasPrices ? assetData.prices.length : '0'}</div>
-        <div class="metric-label">Точек данных</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-value">${hasPrices ? Math.min(...assetData.prices).toFixed(4) : 'N/A'}</div>
-        <div class="metric-label">Минимум</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-value">${hasPrices ? Math.max(...assetData.prices).toFixed(4) : 'N/A'}</div>
-        <div class="metric-label">Максимум</div>
-      </div>
-    `;
   }
 });
