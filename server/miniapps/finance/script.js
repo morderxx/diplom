@@ -468,7 +468,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Загрузка данных для валют (на основе текущих курсов)
-  async function loadCurrencyData(currencies) {
+   async function loadCurrencyData(currencies) {
     // Получаем текущие курсы
     const rates = await getExchangeRates();
     if (!rates) throw new Error('Не удалось получить курсы валют');
@@ -481,15 +481,17 @@ document.addEventListener('DOMContentLoaded', () => {
       // Базовый курс относительно USD
       const baseRate = rates[currency] ? parseFloat(rates[currency]) : 1;
       
-      // Генерация исторических данных
+      // Генерация исторических данных с ПРАВИЛЬНЫМИ временными метками
       const prices = [];
       const timestamps = [];
       
-      for (let i = 30; i >= 0; i--) {
-        const date = new Date(now - i * oneDay);
+      for (let i = 0; i <= 30; i++) {
+        const date = new Date(now - (30 - i) * oneDay);
+        // Фиксируем время на 12:00 UTC для согласованности
+        date.setUTCHours(12, 0, 0, 0);
         timestamps.push(date.getTime());
         
-        // Имитация колебаний курса
+        // Реалистичные колебания курса (±1%)
         const fluctuation = 1 + (Math.random() - 0.5) * 0.02;
         prices.push(baseRate * fluctuation);
       }
@@ -505,12 +507,18 @@ document.addEventListener('DOMContentLoaded', () => {
     return result;
   }
 
-  // Построение графика цен
+  // Построение графика цен (ИСПРАВЛЕННАЯ ВЕРСИЯ)
   function drawPriceChart(data, assetType) {
     const canvas = document.getElementById('price-chart');
     if (!canvas) return;
     
-    const ctx = canvas.getContext('2d');
+    // Очищаем canvas перед созданием нового графика
+    const parent = canvas.parentNode;
+    const newCanvas = document.createElement('canvas');
+    newCanvas.id = 'price-chart';
+    parent.replaceChild(newCanvas, canvas);
+    
+    const ctx = newCanvas.getContext('2d');
     const assets = Object.keys(data);
     
     // Проверка наличия данных
@@ -532,23 +540,31 @@ document.addEventListener('DOMContentLoaded', () => {
       // Пропускаем активы с ошибками
       if (assetData.error) return;
       
+      // Создаем массив точек в правильном порядке
+      const points = [];
+      for (let j = 0; j < assetData.prices.length; j++) {
+        points.push({
+          x: assetData.timestamps[j],
+          y: assetData.prices[j]
+        });
+      }
+      
       datasets.push({
         label: asset,
-        data: assetData.prices.map((price, index) => ({
-          x: assetData.timestamps[index],
-          y: price
-        })),
+        data: points,
         borderColor: colors[i % colors.length],
         borderWidth: 2,
-        pointRadius: 0,
+        pointRadius: 3,
+        pointBackgroundColor: colors[i % colors.length],
         fill: false,
-        tension: 0.1
+        tension: 0.4
       });
     });
     
     // Определяем единицы измерения
     const yAxisLabel = assetType === 'crypto' ? 'Цена (USD)' : 'Курс к USD';
     
+    // Создаем новый график
     cryptoChart = new Chart(ctx, {
       type: 'line',
       data: { datasets },
@@ -564,11 +580,13 @@ document.addEventListener('DOMContentLoaded', () => {
             type: 'time',
             time: {
               unit: 'day',
-              tooltipFormat: 'dd MMM yyyy'
+              tooltipFormat: 'dd MMM yyyy',
+              displayFormats: { day: 'dd MMM' }
             },
             title: { display: true, text: 'Дата' }
           },
           y: {
+            beginAtZero: false,
             title: { display: true, text: yAxisLabel }
           }
         },
