@@ -309,7 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <select id="time-period">
               <option value="7">7 дней</option>
               <option value="14">14 дней</option>
-              <option value="30">30 дней</option>
+              <option value="30" selected>30 дней</option>
               <option value="90">90 дней</option>
               <option value="180">180 дней</option>
             </select>
@@ -331,11 +331,15 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="chart-container">
             <h4>Динамика цен</h4>
             <canvas id="price-chart"></canvas>
+            <div class="chart-loader">Загрузка данных...</div>
+            <div class="chart-error hidden"></div>
           </div>
           
           <div class="chart-container">
             <h4>Волатильность</h4>
             <canvas id="volatility-chart"></canvas>
+            <div class="chart-loader">Загрузка данных...</div>
+            <div class="chart-error hidden"></div>
           </div>
           
           <div class="info-panel">
@@ -357,9 +361,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Обработчики событий
     document.getElementById('update-chart').addEventListener('click', async () => {
-      // Уничтожаем старые графики перед обновлением
-      if (cryptoChart) cryptoChart.destroy();
-      if (volatilityChart) volatilityChart.destroy();
       await loadAndDrawCharts();
     });
     
@@ -404,6 +405,28 @@ document.addEventListener('DOMContentLoaded', () => {
     return Array.from(checkboxes).map(cb => cb.value);
   }
 
+  // Показать/скрыть загрузчик
+  function toggleLoader(show) {
+    document.querySelectorAll('.chart-loader').forEach(el => {
+      el.style.display = show ? 'flex' : 'none';
+    });
+  }
+
+  // Показать ошибку
+  function showChartError(message) {
+    document.querySelectorAll('.chart-error').forEach(el => {
+      el.textContent = message;
+      el.classList.remove('hidden');
+    });
+  }
+
+  // Скрыть ошибки
+  function hideErrors() {
+    document.querySelectorAll('.chart-error').forEach(el => {
+      el.classList.add('hidden');
+    });
+  }
+
   // Загрузка данных и построение графиков
   async function loadAndDrawCharts() {
     const assetType = document.getElementById('asset-type').value;
@@ -411,39 +434,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const period = document.getElementById('time-period').value;
     const interval = document.getElementById('time-interval').value;
     
-    // Показать индикатор загрузки
-    document.querySelectorAll('.chart-container canvas').forEach(canvas => {
-      canvas.parentElement.classList.add('loading');
-    });
+    // Скрыть старые ошибки
+    hideErrors();
     
+    // Показать загрузчик
+    toggleLoader(true);
+    
+    // Уничтожить старые графики
+    if (cryptoChart) cryptoChart.destroy();
+    if (volatilityChart) volatilityChart.destroy();
+    
+    // Очистить детализацию
+    document.getElementById('asset-details').innerHTML = '<p>Загрузка данных...</p>';
+    document.getElementById('metrics-container').innerHTML = '';
+
     try {
+      let data;
       if (assetType === 'crypto') {
-        await loadCryptoData(selectedAssets, period, interval);
-        drawCryptoCharts();
+        data = await loadCryptoData(selectedAssets, period, interval);
+        drawCryptoCharts(data);
       } else {
-        await loadCurrencyData(selectedAssets, period, interval);
-        drawCurrencyCharts();
+        data = await loadCurrencyData(selectedAssets, period, interval);
+        drawCurrencyCharts(data);
       }
       
       // Обновить детализацию
       if (selectedAssets.length > 0) {
-        updateAssetDetails(selectedAssets[0]);
-      } else {
-        updateAssetDetails(null);
+        updateAssetDetails(selectedAssets[0], data);
       }
     } catch (error) {
       console.error('Ошибка загрузки данных:', error);
       showChartError('Не удалось загрузить данные. Попробуйте позже.');
-      updateAssetDetails(null);
     } finally {
-      // Скрыть индикатор загрузки
-      document.querySelectorAll('.chart-container canvas').forEach(canvas => {
-        canvas.parentElement.classList.remove('loading');
-      });
+      // Скрыть загрузчик
+      toggleLoader(false);
     }
   }
 
-  // Загрузка данных для криптовалют
+  // Загрузка данных для криптовалют (исправленная версия)
   async function loadCryptoData(assets, days, interval) {
     const cacheKey = `${assets.join('-')}-${days}-${interval}`;
     
@@ -452,72 +480,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     try {
-      const coinIds = assets.map(a => cryptoMap[a]).join(',');
-      const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${coinIds}&days=${days}&interval=${interval}&sparkline=true`;
-      const proxyUrl = CORS_PROXY + encodeURIComponent(url);
-      
-      const response = await fetch(proxyUrl);
-      if (!response.ok) throw new Error('Ошибка API: ' + response.status);
-      
-      const data = await response.json();
-      
-      // Проверка типа данных
-      if (!Array.isArray(data)) {
-        throw new Error('Ожидался массив, но получен объект');
-      }
-      
       const result = {};
       
-      // Обработка каждого элемента массива
-      data.forEach(coin => {
-        // Поиск символа по ID
-        const symbol = Object.keys(cryptoMap).find(
-          key => cryptoMap[key] === coin.id
-        );
+      // Загружаем данные для каждого актива отдельно
+      for (const asset of assets) {
+        const coinId = cryptoMap[asset];
+        if (!coinId) continue;
         
-        if (symbol && assets.includes(symbol)) {
-          result[symbol] = {
-            id: coin.id,
-            name: coin.name,
-            prices: coin.sparkline_in_7d?.price || [],
-            marketCap: coin.market_cap || 0,
-            volume: coin.total_volume || 0,
-            change24h: coin.price_change_percentage_24h || 0,
-            change7d: coin.price_change_percentage_7d_in_currency || 0,
-            lastUpdated: coin.last_updated || new Date().toISOString()
-          };
-        }
-      });
-      
-      // Добавление отсутствующих активов
-      assets.forEach(asset => {
-        if (!result[asset]) {
+        // Используем правильный эндпоинт для исторических данных
+        const url = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}&interval=${interval}`;
+        const proxyUrl = CORS_PROXY + encodeURIComponent(url);
+        
+        const response = await fetch(proxyUrl);
+        if (!response.ok) throw new Error('Ошибка API: ' + response.status);
+        
+        const data = await response.json();
+        
+        // Проверка и обработка данных
+        if (data.prices && Array.isArray(data.prices)) {
           result[asset] = {
-            id: cryptoMap[asset],
+            id: coinId,
             name: asset,
-            prices: [],
-            marketCap: 0,
-            volume: 0,
-            change24h: 0,
-            change7d: 0,
+            prices: data.prices.map(p => p[1]), // извлекаем только цены
             lastUpdated: new Date().toISOString()
           };
+        } else {
+          throw new Error('Некорректный формат данных');
         }
-      });
+      }
       
       historyCache[cacheKey] = result;
       return result;
       
     } catch (error) {
       console.error('Ошибка загрузки крипто данных:', error);
-      // Возвращаем пустые данные при ошибке
+      
+      // Возвращаем структуру с пустыми данными
       const result = {};
       assets.forEach(asset => {
         result[asset] = {
           prices: [],
           name: asset,
-          change24h: 0,
-          change7d: 0,
           lastUpdated: new Date().toISOString()
         };
       });
@@ -555,18 +558,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Построение графиков для криптовалют
-  function drawCryptoCharts() {
+  // Построение графиков для криптовалют (обновленная)
+  function drawCryptoCharts(data) {
     const selectedAssets = getSelectedAssets();
     const period = parseInt(document.getElementById('time-period').value);
     const interval = document.getElementById('time-interval').value;
     
-    const cacheKey = `${selectedAssets.join('-')}-${period}-${interval}`;
-    const data = historyCache[cacheKey];
+    // Проверка данных
+    const hasData = selectedAssets.some(asset => 
+      data[asset]?.prices?.length > 0
+    );
     
-    // Проверка существования данных
-    if (!data) {
-      console.error('Данные не загружены');
+    if (!hasData) {
+      showChartError('Нет данных для построения графиков');
       return;
     }
     
@@ -575,16 +579,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const volCanvas = document.getElementById('volatility-chart');
     
     if (!priceCanvas || !volCanvas) {
-      console.error('Canvas elements not found');
+      console.error('Canvas элементы не найдены');
       return;
     }
     
     const priceCtx = priceCanvas.getContext('2d');
     const volCtx = volCanvas.getContext('2d');
-    
-    // Уничтожаем предыдущие графики
-    if (cryptoChart) cryptoChart.destroy();
-    if (volatilityChart) volatilityChart.destroy();
     
     // Рассчитываем временные метки
     const now = Date.now();
@@ -621,47 +621,42 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // График цен
-    if (datasets.length > 0) {
-      cryptoChart = new Chart(priceCtx, {
-        type: 'line',
-        data: { datasets },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: {
-            mode: 'index',
-            intersect: false
-          },
-          scales: {
-            x: {
-              type: 'time',
-              time: {
-                unit: interval === 'hourly' ? 'hour' : 'day',
-                tooltipFormat: 'dd MMM yyyy HH:mm'
-              },
-              title: { display: true, text: 'Дата' }
+    cryptoChart = new Chart(priceCtx, {
+      type: 'line',
+      data: { datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
+        scales: {
+          x: {
+            type: 'time',
+            time: {
+              unit: interval === 'hourly' ? 'hour' : 'day',
+              tooltipFormat: 'dd MMM yyyy HH:mm'
             },
-            y: {
-              title: { display: true, text: 'Цена (USD)' },
-              position: 'right'
-            }
+            title: { display: true, text: 'Дата' }
           },
-          plugins: {
-            legend: { position: 'top' },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  return `${context.dataset.label}: $${context.parsed.y.toFixed(4)}`;
-                }
+          y: {
+            title: { display: true, text: 'Цена (USD)' },
+            position: 'right'
+          }
+        },
+        plugins: {
+          legend: { position: 'top' },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return `${context.dataset.label}: $${context.parsed.y.toFixed(4)}`;
               }
             }
           }
         }
-      });
-    } else {
-      priceCtx.clearRect(0, 0, priceCanvas.width, priceCanvas.height);
-      priceCtx.fillText('Нет данных для построения графика', 10, 50);
-    }
+      }
+    });
     
     // График волатильности
     const volatilityData = [];
@@ -685,101 +680,137 @@ document.addEventListener('DOMContentLoaded', () => {
       labels.push(asset);
     });
     
-    if (volatilityData.length > 0) {
-      volatilityChart = new Chart(volCtx, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: 'Волатильность (%)',
-            data: volatilityData,
-            backgroundColor: volatilityData.map((_, i) => colors[i % colors.length])
-          }]
+    volatilityChart = new Chart(volCtx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Волатильность (%)',
+          data: volatilityData,
+          backgroundColor: volatilityData.map((_, i) => colors[i % colors.length])
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: 'Волатильность (%)' }
+          }
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: true,
-              title: { display: true, text: 'Волатильность (%)' }
-            }
-          },
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  return `${context.parsed.y.toFixed(2)}%`;
-                }
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return `${context.parsed.y.toFixed(2)}%`;
               }
             }
           }
         }
-      });
-    } else {
-      volCtx.clearRect(0, 0, volCanvas.width, volCanvas.height);
-      volCtx.fillText('Нет данных для построения графика', 10, 50);
-    }
+      }
+    });
   }
 
   // Построение графиков для валют
-  function drawCurrencyCharts() {
-    // Заглушка для фиатных валют
-    console.log('Draw currency charts placeholder');
-  }
-
-  // Показать ошибку на графике
-  function showChartError(message) {
-    document.querySelectorAll('.chart-container').forEach(container => {
-      container.innerHTML = `<div class="chart-error">
-        <p>${message}</p>
-        <button onclick="location.reload()">Попробовать снова</button>
-      </div>`;
+  function drawCurrencyCharts(data) {
+    // Реализация для фиатных валют
+    const selectedAssets = getSelectedAssets();
+    const period = parseInt(document.getElementById('time-period').value);
+    const interval = document.getElementById('time-interval').value;
+    
+    // Получаем контекст для canvas
+    const priceCanvas = document.getElementById('price-chart');
+    const priceCtx = priceCanvas.getContext('2d');
+    
+    const datasets = [];
+    const colors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e'];
+    
+    selectedAssets.forEach((asset, i) => {
+      const assetData = data[asset];
+      if (assetData && assetData.prices) {
+        const points = assetData.prices.map((price, idx) => {
+          return { x: idx, y: price };
+        });
+        
+        datasets.push({
+          label: asset,
+          data: points,
+          borderColor: colors[i % colors.length],
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: false,
+          tension: 0.1
+        });
+      }
+    });
+    
+    // График цен для валют
+    cryptoChart = new Chart(priceCtx, {
+      type: 'line',
+      data: { datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            title: { display: true, text: 'Дни' }
+          },
+          y: {
+            title: { display: true, text: 'Относительное значение' },
+            position: 'right'
+          }
+        },
+        plugins: {
+          legend: { position: 'top' }
+        }
+      }
     });
   }
 
   // Обновление детальной информации
-  function updateAssetDetails(asset) {
+  function updateAssetDetails(asset, data) {
     const detailsContainer = document.getElementById('asset-details');
     const metricsContainer = document.getElementById('metrics-container');
     
     detailsContainer.innerHTML = '';
     metricsContainer.innerHTML = '';
 
-    if (!asset) {
-      detailsContainer.innerHTML = '<p>Выберите актив для просмотра детальной информации</p>';
+    if (!asset || !data || !data[asset]) {
+      detailsContainer.innerHTML = '<p>Данные недоступны</p>';
       return;
     }
 
-    const cacheKey = `${getSelectedAssets().join('-')}-${document.getElementById('time-period').value}-${document.getElementById('time-interval').value}`;
-    const cacheData = historyCache[cacheKey];
-    
-    if (!cacheData || !cacheData[asset]) {
-      detailsContainer.innerHTML = `<p>Данные для ${asset} не загружены</p>`;
-      return;
-    }
-
-    const data = cacheData[asset];
+    const assetData = data[asset];
     
     // Проверка на наличие цен
-    const hasPrices = data.prices && data.prices.length > 0;
-    const lastPrice = hasPrices ? data.prices[data.prices.length - 1] : 0;
+    const hasPrices = assetData.prices && assetData.prices.length > 0;
+    const lastPrice = hasPrices ? assetData.prices[assetData.prices.length - 1] : 0;
     
+    // Рассчет изменений
+    const change24h = assetData.change24h || (hasPrices && assetData.prices.length > 24 ? 
+      ((lastPrice - assetData.prices[assetData.prices.length - 25]) / assetData.prices[assetData.prices.length - 25] * 100) : 
+      0);
+    
+    const change7d = assetData.change7d || (hasPrices && assetData.prices.length > 7 ? 
+      ((lastPrice - assetData.prices[0]) / assetData.prices[0] * 100) : 
+      0);
+
     detailsContainer.innerHTML = `
       <div class="asset-header">
-        <h5>${asset} (${data.name || 'N/A'})</h5>
+        <h5>${asset} (${assetData.name || 'N/A'})</h5>
         <div class="price-change">
-          <span class="${data.change24h >= 0 ? 'positive' : 'negative'}">
-            ${data.change24h >= 0 ? '▲' : '▼'} ${Math.abs(data.change24h).toFixed(2)}% (24ч)
+          <span class="${change24h >= 0 ? 'positive' : 'negative'}">
+            ${change24h >= 0 ? '▲' : '▼'} ${Math.abs(change24h).toFixed(2)}% (24ч)
           </span>
-          <span class="${data.change7d >= 0 ? 'positive' : 'negative'}">
-            ${data.change7d >= 0 ? '▲' : '▼'} ${Math.abs(data.change7d).toFixed(2)}% (7д)
+          <span class="${change7d >= 0 ? 'positive' : 'negative'}">
+            ${change7d >= 0 ? '▲' : '▼'} ${Math.abs(change7d).toFixed(2)}% (7д)
           </span>
         </div>
       </div>
       <div class="asset-meta">
-        <span>Обновлено: ${new Date(data.lastUpdated).toLocaleString()}</span>
+        <span>Обновлено: ${new Date(assetData.lastUpdated).toLocaleString()}</span>
       </div>
     `;
     
@@ -789,16 +820,16 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="metric-label">Текущая цена</div>
       </div>
       <div class="metric-card">
-        <div class="metric-value">${data.volume ? '$' + (data.volume / 1000000).toFixed(2) + 'M' : 'N/A'}</div>
-        <div class="metric-label">Объем (24ч)</div>
+        <div class="metric-value">${hasPrices ? assetData.prices.length : '0'}</div>
+        <div class="metric-label">Точек данных</div>
       </div>
       <div class="metric-card">
-        <div class="metric-value">${data.marketCap ? '$' + (data.marketCap / 1000000000).toFixed(2) + 'B' : 'N/A'}</div>
-        <div class="metric-label">Капитализация</div>
+        <div class="metric-value">${hasPrices ? Math.min(...assetData.prices).toFixed(4) : 'N/A'}</div>
+        <div class="metric-label">Минимум</div>
       </div>
       <div class="metric-card">
-        <div class="metric-value">${data.change24h.toFixed(2)}%</div>
-        <div class="metric-label">Изменение (24ч)</div>
+        <div class="metric-value">${hasPrices ? Math.max(...assetData.prices).toFixed(4) : 'N/A'}</div>
+        <div class="metric-label">Максимум</div>
       </div>
     `;
   }
