@@ -299,7 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
     content.innerHTML = `<h3>Кошелёк</h3><p>Баланс и история транзакций…</p>`;
   }
   
-  // Функция показа статистики
+  // Функция показа статистики (ИСПРАВЛЕННАЯ)
   async function showStats() {
     content.innerHTML = `
       <div class="stats-container">
@@ -323,19 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <label>Период:</label>
             <select id="time-period">
               <option value="7">7 дней</option>
-              <option value="14">14 дней</option>
               <option value="30" selected>30 дней</option>
-              <option value="90">90 дней</option>
-              <option value="180">180 дней</option>
-            </select>
-          </div>
-          
-          <div class="control-group">
-            <label>Интервал:</label>
-            <select id="time-interval">
-              <option value="hourly">Почасовой</option>
-              <option value="daily" selected>Дневной</option>
-              <option value="weekly">Недельный</option>
             </select>
           </div>
           
@@ -370,7 +358,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Инициализация контролов
     initAssetSelector();
-    updateIntervalOptions();
     
     // Загрузка данных и построение графиков
     await loadAndDrawCharts();
@@ -385,50 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
       loadAndDrawCharts();
     });
     
-    document.getElementById('time-period').addEventListener('change', () => {
-      updateIntervalOptions();
-      loadAndDrawCharts();
-    });
-    
-    document.getElementById('time-interval').addEventListener('change', loadAndDrawCharts);
-  }
-
-  // Обновление доступных интервалов
-  function updateIntervalOptions() {
-    const period = parseInt(document.getElementById('time-period').value);
-    const intervalSelect = document.getElementById('time-interval');
-    const currentInterval = intervalSelect.value;
-    
-    // Доступные интервалы
-    let intervals;
-    if (period > 90) {
-      intervals = [
-        { value: 'daily', text: 'Дневной' },
-        { value: 'weekly', text: 'Недельный' }
-      ];
-    } else {
-      intervals = [
-        { value: 'hourly', text: 'Почасовой' },
-        { value: 'daily', text: 'Дневной' },
-        { value: 'weekly', text: 'Недельный' }
-      ];
-    }
-    
-    // Обновляем список
-    intervalSelect.innerHTML = '';
-    intervals.forEach(interval => {
-      const option = document.createElement('option');
-      option.value = interval.value;
-      option.textContent = interval.text;
-      intervalSelect.appendChild(option);
-    });
-    
-    // Восстанавливаем выбранное значение
-    if (intervals.some(i => i.value === currentInterval)) {
-      intervalSelect.value = currentInterval;
-    } else {
-      intervalSelect.value = intervals[0].value;
-    }
+    document.getElementById('time-period').addEventListener('change', loadAndDrawCharts);
   }
 
   // Инициализация выбора активов
@@ -489,12 +433,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Загрузка данных и построение графиков
+  // Загрузка данных и построение графиков (ИСПРАВЛЕННАЯ)
   async function loadAndDrawCharts() {
     const assetType = document.getElementById('asset-type').value;
     const selectedAssets = getSelectedAssets();
     const period = document.getElementById('time-period').value;
-    const interval = document.getElementById('time-interval').value;
     
     // Скрыть старые ошибки
     hideErrors();
@@ -513,10 +456,10 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       let data;
       if (assetType === 'crypto') {
-        data = await loadCryptoData(selectedAssets, period, interval);
+        data = await loadCryptoData(selectedAssets, period);
         drawCryptoCharts(data);
       } else {
-        data = await loadCurrencyData(selectedAssets, period, interval);
+        data = await loadCurrencyData(selectedAssets, period);
         drawCurrencyCharts(data);
       }
       
@@ -543,82 +486,85 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // Загрузка данных для криптовалют (исправленная)
-  async function loadCryptoData(assets, days, interval) {
-    const cacheKey = `${assets.join('-')}-${days}-${interval}`;
+  // Загрузка данных для криптовалют (ИСПРАВЛЕННАЯ)
+  async function loadCryptoData(assets, days) {
+    const cacheKey = `${assets.join('-')}-${days}`;
     
     if (historyCache[cacheKey]) {
       return historyCache[cacheKey];
     }
 
     const result = {};
-    const delay = 2000; // Задержка 2 секунды между запросами
-
-    for (let i = 0; i < assets.length; i++) {
-      const asset = assets[i];
-      const coinId = cryptoMap[asset];
+    
+    try {
+      // Получаем все данные одним запросом
+      const coinIds = assets.map(a => cryptoMap[a]).filter(Boolean).join(',');
+      const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${coinIds}&price_change_percentage=7d`;
       
-      if (!coinId) {
-        result[asset] = emptyAssetData(asset);
-        continue;
-      }
-
-      // Автокоррекция интервала
-      let actualInterval = interval;
-      if (days > 90 && interval === 'hourly') {
-        actualInterval = 'daily';
-      }
-
-      const url = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}&interval=${actualInterval}`;
-      let success = false;
-
-      // Перебор прокси-серверов
+      // Используем прокси
+      let response;
       for (const proxy of PROXY_SERVERS) {
         try {
           const proxyUrl = proxy + encodeURIComponent(url);
-          const response = await fetch(proxyUrl);
-          
-          if (response.ok) {
-            const data = await response.json();
-            
-            // Проверка структуры ответа
-            if (data.prices && Array.isArray(data.prices)) {
-              result[asset] = {
-                id: coinId,
-                name: asset,
-                history: data.prices.map(p => ({ 
-                  timestamp: p[0], 
-                  price: p[1] 
-                })),
-                prices: data.prices.map(p => p[1]),
-                lastUpdated: new Date().toISOString()
-              };
-              success = true;
-              break; // Выходим из цикла прокси, если успешно
-            }
-          }
+          response = await fetch(proxyUrl);
+          if (response.ok) break;
         } catch (error) {
-          console.warn(`Ошибка прокси ${proxy} для ${asset}:`, error);
+          console.warn(`Ошибка прокси ${proxy}:`, error);
         }
       }
-
-      if (!success) {
-        console.error(`Не удалось загрузить данные для ${asset}`);
-        result[asset] = emptyAssetData(asset);
+      
+      if (!response || !response.ok) throw new Error('Ошибка получения данных');
+      
+      const marketData = await response.json();
+      
+      // Получаем исторические данные
+      for (const asset of assets) {
+        const coinId = cryptoMap[asset];
+        if (!coinId) continue;
+        
+        const coinData = marketData.find(c => c.id === coinId);
+        if (!coinData) continue;
+        
+        // Получаем историю цен
+        const historyUrl = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`;
+        let historyResponse;
+        
+        for (const proxy of PROXY_SERVERS) {
+          try {
+            const proxyHistoryUrl = proxy + encodeURIComponent(historyUrl);
+            historyResponse = await fetch(proxyHistoryUrl);
+            if (historyResponse.ok) break;
+          } catch (error) {
+            console.warn(`Ошибка прокси ${proxy}:`, error);
+          }
+        }
+        
+        if (!historyResponse || !historyResponse.ok) continue;
+        
+        const historyData = await historyResponse.json();
+        
+        result[asset] = {
+          id: coinId,
+          name: asset,
+          current_price: coinData.current_price,
+          prices: historyData.prices.map(p => p[1]),
+          timestamps: historyData.prices.map(p => p[0]),
+          change24h: coinData.price_change_percentage_24h_in_currency,
+          change7d: coinData.price_change_percentage_7d_in_currency,
+          lastUpdated: new Date().toISOString()
+        };
       }
-
-      // Задержка перед следующим запросом (кроме последнего)
-      if (i < assets.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
+    } catch (error) {
+      console.error('Ошибка загрузки данных:', error);
     }
 
+    // Сохраняем в кэш
     historyCache[cacheKey] = result;
     return result;
   }
 
   // Загрузка данных для валют
-  async function loadCurrencyData(currencies, days, interval) {
+  async function loadCurrencyData(currencies, days) {
     // Заглушка для фиатных валют
     return new Promise(resolve => {
       setTimeout(() => {
@@ -638,7 +584,8 @@ document.addEventListener('DOMContentLoaded', () => {
             prices,
             change24h: (Math.random() - 0.5) * 3,
             change7d: (Math.random() - 0.5) * 5,
-            name: currency
+            name: currency,
+            lastUpdated: new Date().toISOString()
           };
         });
         
@@ -647,14 +594,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Построение графиков для криптовалют
+  // Построение графиков для криптовалют (ИСПРАВЛЕННОЕ)
   function drawCryptoCharts(data) {
     const selectedAssets = getSelectedAssets();
-    const interval = document.getElementById('time-interval').value;
     
     // Проверка данных
     const hasData = selectedAssets.some(asset => 
-      data[asset]?.history?.length > 0
+      data[asset]?.prices?.length > 0
     );
     
     if (!hasData) {
@@ -682,10 +628,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     selectedAssets.forEach((asset, i) => {
       const assetData = data[asset];
-      if (assetData && assetData.history && assetData.history.length > 0) {
-        const points = assetData.history.map(item => ({
-          x: item.timestamp,
-          y: item.price
+      if (assetData && assetData.timestamps && assetData.timestamps.length > 0) {
+        const points = assetData.timestamps.map((timestamp, index) => ({
+          x: timestamp,
+          y: assetData.prices[index]
         }));
         
         datasets.push({
@@ -715,8 +661,8 @@ document.addEventListener('DOMContentLoaded', () => {
           x: {
             type: 'time',
             time: {
-              unit: interval === 'hourly' ? 'hour' : 'day',
-              tooltipFormat: 'dd MMM yyyy HH:mm'
+              unit: 'day',
+              tooltipFormat: 'dd MMM yyyy'
             },
             title: { display: true, text: 'Дата' }
           },
