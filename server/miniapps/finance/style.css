@@ -582,3 +582,26 @@ body {
   font-size: 0.85rem;
   color: #6e707e;
 }
+ .chart-container {
+    position: relative;
+    height: 60vh;
+    min-height: 400px;
+    max-height: 800px;
+  }
+  
+  .chart-loader, .chart-error {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  
+  .chart-error {
+    color: #e74a3b;
+    font-weight: bold;
+  }
+  
+  .hidden {
+    display: none;
+  }
