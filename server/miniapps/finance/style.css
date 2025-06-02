@@ -388,6 +388,7 @@ body {
 }
 
 .chart-container {
+  overflow: hidden;
   position: relative;
   background: white;
   border-radius: 10px;
