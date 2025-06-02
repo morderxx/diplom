@@ -560,8 +560,7 @@ document.addEventListener('DOMContentLoaded', () => {
       data: { datasets },
       options: {
         responsive: true,
-        maintainAspectRatio: true,
-        aspectRatio: 2,
+        maintainAspectRatio: false,
         interaction: {
           mode: 'index',
           intersect: false
