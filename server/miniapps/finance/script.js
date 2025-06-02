@@ -561,6 +561,7 @@ document.addEventListener('DOMContentLoaded', () => {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        aspectRatio: 2,
         interaction: {
           mode: 'index',
           intersect: false
