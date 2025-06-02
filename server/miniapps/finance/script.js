@@ -284,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
     content.innerHTML = `<h3>Кошелёк</h3><p>Баланс и история транзакций…</p>`;
   }
   
- async function showStats() {
+  async function showStats() {
     content.innerHTML = `
       <div class="stats-container">
         <h3>Упрощенная финансовая аналитика</h3>
@@ -404,12 +404,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Показать загрузчик
     toggleLoader(true);
     
-    // Уничтожить старый график
-    if (cryptoChart) {
-      cryptoChart.destroy();
-      cryptoChart = null;
-    }
-
     try {
       let data;
       if (assetType === 'crypto') {
@@ -467,8 +461,8 @@ document.addEventListener('DOMContentLoaded', () => {
     return result;
   }
 
-  // Загрузка данных для валют (на основе текущих курсов)
-   async function loadCurrencyData(currencies) {
+  // Загрузка данных для валют (исправленная версия)
+  async function loadCurrencyData(currencies) {
     // Получаем текущие курсы
     const rates = await getExchangeRates();
     if (!rates) throw new Error('Не удалось получить курсы валют');
@@ -481,14 +475,16 @@ document.addEventListener('DOMContentLoaded', () => {
       // Базовый курс относительно USD
       const baseRate = rates[currency] ? parseFloat(rates[currency]) : 1;
       
-      // Генерация исторических данных с ПРАВИЛЬНЫМИ временными метками
+      // Генерация исторических данных с правильными временными метками
       const prices = [];
       const timestamps = [];
       
-      for (let i = 0; i <= 30; i++) {
-        const date = new Date(now - (30 - i) * oneDay);
-        // Фиксируем время на 12:00 UTC для согласованности
-        date.setUTCHours(12, 0, 0, 0);
+      // Создаем дату с фиксированным временем (12:00 UTC)
+      const baseDate = new Date();
+      baseDate.setHours(12, 0, 0, 0);
+      
+      for (let i = 30; i >= 0; i--) {
+        const date = new Date(baseDate.getTime() - i * oneDay);
         timestamps.push(date.getTime());
         
         // Реалистичные колебания курса (±1%)
@@ -507,18 +503,18 @@ document.addEventListener('DOMContentLoaded', () => {
     return result;
   }
 
-  // Построение графика цен (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+  // Построение графика цен (исправленная версия)
   function drawPriceChart(data, assetType) {
     const canvas = document.getElementById('price-chart');
     if (!canvas) return;
     
-    // Очищаем canvas перед созданием нового графика
-    const parent = canvas.parentNode;
-    const newCanvas = document.createElement('canvas');
-    newCanvas.id = 'price-chart';
-    parent.replaceChild(newCanvas, canvas);
+    // Уничтожаем предыдущий график если существует
+    if (cryptoChart) {
+      cryptoChart.destroy();
+      cryptoChart = null;
+    }
     
-    const ctx = newCanvas.getContext('2d');
+    const ctx = canvas.getContext('2d');
     const assets = Object.keys(data);
     
     // Проверка наличия данных
@@ -536,28 +532,22 @@ document.addEventListener('DOMContentLoaded', () => {
     
     assets.forEach((asset, i) => {
       const assetData = data[asset];
-      
-      // Пропускаем активы с ошибками
       if (assetData.error) return;
       
-      // Создаем массив точек в правильном порядке
-      const points = [];
-      for (let j = 0; j < assetData.prices.length; j++) {
-        points.push({
-          x: assetData.timestamps[j],
-          y: assetData.prices[j]
-        });
-      }
+      // Сортируем данные по времени
+      const sortedData = assetData.timestamps
+        .map((ts, idx) => ({ x: ts, y: assetData.prices[idx] }))
+        .sort((a, b) => a.x - b.x);
       
       datasets.push({
         label: asset,
-        data: points,
+        data: sortedData,
         borderColor: colors[i % colors.length],
         borderWidth: 2,
         pointRadius: 3,
         pointBackgroundColor: colors[i % colors.length],
         fill: false,
-        tension: 0.4
+        tension: 0.1 // Уменьшаем сглаживание
       });
     });
     
@@ -570,7 +560,8 @@ document.addEventListener('DOMContentLoaded', () => {
       data: { datasets },
       options: {
         responsive: true,
-        maintainAspectRatio: false,
+        maintainAspectRatio: true,
+        aspectRatio: 2,
         interaction: {
           mode: 'index',
           intersect: false
@@ -583,11 +574,23 @@ document.addEventListener('DOMContentLoaded', () => {
               tooltipFormat: 'dd MMM yyyy',
               displayFormats: { day: 'dd MMM' }
             },
-            title: { display: true, text: 'Дата' }
+            title: { display: true, text: 'Дата' },
+            ticks: {
+              autoSkip: true,
+              maxTicksLimit: 10
+            }
           },
           y: {
             beginAtZero: false,
-            title: { display: true, text: yAxisLabel }
+            title: { display: true, text: yAxisLabel },
+            ticks: {
+              callback: function(value) {
+                return value.toLocaleString('ru-RU', {
+                  minimumFractionDigits: 4,
+                  maximumFractionDigits: 4
+                });
+              }
+            }
           }
         },
         plugins: {
