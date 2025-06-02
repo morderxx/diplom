@@ -80,7 +80,10 @@ body {
 }
 
 .finance-content.active {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
 }
 
 /* Внутренние заголовки */
@@ -328,6 +331,7 @@ body {
   border-radius: 10px;
   margin-bottom: 20px;
   box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  flex-shrink: 0;
 }
 
 .control-group {
@@ -387,15 +391,22 @@ body {
   background: #3a7bc8;
 }
 
-.chart-container {
+.chart-wrapper {
+  flex: 1;
+  min-height: 0;
   position: relative;
+}
+
+.chart-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: white;
   border-radius: 10px;
   padding: 15px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-  height: 70vh; /* Увеличена высота */
-  min-height: 500px; /* Увеличен мин. размер */
-  width: 100%; /* Занимает всю ширину */
 }
 
 .chart-container h4 {
@@ -406,6 +417,11 @@ body {
   padding-bottom: 10px;
 }
 
+#price-chart {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 .chart-loader, 
 .chart-error {
   position: absolute;
@@ -413,6 +429,7 @@ body {
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
+  z-index: 10;
 }
 
 .chart-error {
@@ -437,6 +454,7 @@ body {
   border-top: 4px solid #4a90e2;
   border-radius: 50%;
   animation: spin 1s linear infinite;
+  z-index: 5;
 }
 
 @keyframes spin {
