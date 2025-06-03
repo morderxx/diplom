@@ -703,27 +703,27 @@ document.addEventListener('DOMContentLoaded', () => {
     checkWalletConnection();
   }
 
-  function openMetaMask() {
-    try {
-        // Пытаемся открыть MetaMask через deeplink
-        window.open('https://metamask.app.link/', '_blank');
-        
-        // Альтернативный метод для десктопных браузеров
-        setTimeout(() => {
-            // Пытаемся отправить запрос на открытие
-            if (typeof window.ethereum !== 'undefined') {
-                window.ethereum.request({ 
-                    method: 'wallet_requestSnaps', 
-                    params: { 
-                        'npm:metamask': {} 
-                    }
-                }).catch(console.error);
-            }
-        }, 500);
-    } catch (e) {
-        console.error('Ошибка открытия MetaMask:', e);
-        alert('Не удалось открыть MetaMask. Убедитесь, что расширение установлено.');
+ function openMetaMask() {
+  try {
+    // Попытка открыть через Ethereum API
+    if (typeof window.ethereum !== 'undefined') {
+      window.ethereum.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] });
+      return;
     }
+    
+    // Deeplink для мобильных устройств
+    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      window.open('https://metamask.app.link/', '_blank');
+      return;
+    }
+    
+    // Для десктопных браузеров
+    if (typeof window.open !== 'undefined') {
+      window.open('chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html', '_blank');
+    }
+  } catch (e) {
+    console.error('Ошибка открытия MetaMask:', e);
+  }
 }
   // Проверка существующего подключения
   async function checkWalletConnection() {
