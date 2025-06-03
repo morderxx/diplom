@@ -626,10 +626,19 @@ document.addEventListener('DOMContentLoaded', () => {
             <p>Статус: <span class="status-disconnected">Не подключено</span></p>
           </div>
           
-          <button id="connect-metamask" class="connect-btn">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask">
-            Подключить MetaMask
-          </button>
+          <div class="wallet-connect-buttons">
+            <button id="connect-metamask" class="connect-btn">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask">
+              Подключить MetaMask
+            </button>
+            
+            <button id="open-metamask" class="open-btn" title="Открыть расширение MetaMask">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"></path>
+              </svg>
+              Открыть MetaMask
+            </button>
+          </div>
           
           <div class="wallet-details hidden" id="wallet-details">
             <div class="wallet-address">
@@ -664,9 +673,13 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     
     const connectBtn = document.getElementById('connect-metamask');
+    const openBtn = document.getElementById('open-metamask');
     const disconnectBtn = document.getElementById('disconnect-wallet');
     const copyBtn = document.getElementById('copy-address');
     const viewTransactionsBtn = document.getElementById('view-transactions');
+    
+    // Обработчик для кнопки открытия MetaMask
+    openBtn.addEventListener('click', openMetaMask);
     
     // Проверяем, установлен ли MetaMask
     if (typeof window.ethereum === 'undefined') {
@@ -689,7 +702,29 @@ document.addEventListener('DOMContentLoaded', () => {
     // Проверяем, есть ли уже подключенный кошелек
     checkWalletConnection();
   }
-  
+
+  function openMetaMask() {
+    try {
+        // Пытаемся открыть MetaMask через deeplink
+        window.open('https://metamask.app.link/', '_blank');
+        
+        // Альтернативный метод для десктопных браузеров
+        setTimeout(() => {
+            // Пытаемся отправить запрос на открытие
+            if (typeof window.ethereum !== 'undefined') {
+                window.ethereum.request({ 
+                    method: 'wallet_requestSnaps', 
+                    params: { 
+                        'npm:metamask': {} 
+                    }
+                }).catch(console.error);
+            }
+        }, 500);
+    } catch (e) {
+        console.error('Ошибка открытия MetaMask:', e);
+        alert('Не удалось открыть MetaMask. Убедитесь, что расширение установлено.');
+    }
+}
   // Проверка существующего подключения
   async function checkWalletConnection() {
     if (typeof window.ethereum === 'undefined') return;
