@@ -607,4 +607,209 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+   // ======== НОВЫЙ ФУНКЦИОНАЛ ДЛЯ ВКЛАДКИ "КОШЕЛЁК" ========
+  async function showWallet() {
+    content.innerHTML = `
+      <div class="wallet-container">
+        <h3>Ваш криптокошелёк</h3>
+        
+        <div class="wallet-header">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask" class="metamask-logo">
+          <h4>Подключите MetaMask для управления вашими активами</h4>
+        </div>
+        
+        <div class="wallet-info">
+          <p>Подключите свой кошелёк, чтобы просматривать баланс, историю транзакций и управлять своими криптоактивами напрямую через браузер.</p>
+          
+          <div class="wallet-status" id="wallet-status">
+            <p>Статус: <span class="status-disconnected">Не подключено</span></p>
+          </div>
+          
+          <button id="connect-metamask" class="connect-btn">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask">
+            Подключить MetaMask
+          </button>
+          
+          <div class="wallet-details hidden" id="wallet-details">
+            <div class="wallet-address">
+              <strong>Адрес кошелька:</strong>
+              <span id="wallet-address"></span>
+              <button id="copy-address">Копировать</button>
+            </div>
+            
+            <div class="wallet-balance">
+              <h4>Баланс:</h4>
+              <div id="balance-details"></div>
+            </div>
+            
+            <div class="wallet-actions">
+              <button id="view-transactions">Посмотреть транзакции</button>
+              <button id="disconnect-wallet">Отключить кошелёк</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="wallet-features">
+          <h4>Возможности с подключенным кошельком:</h4>
+          <ul>
+            <li>Просмотр баланса в реальном времени</li>
+            <li>История всех транзакций</li>
+            <li>Быстрый доступ к DeFi платформам</li>
+            <li>Управление NFT коллекциями</li>
+            <li>Безопасное хранение ключей</li>
+          </ul>
+        </div>
+      </div>
+    `;
+    
+    const connectBtn = document.getElementById('connect-metamask');
+    const disconnectBtn = document.getElementById('disconnect-wallet');
+    const copyBtn = document.getElementById('copy-address');
+    const viewTransactionsBtn = document.getElementById('view-transactions');
+    
+    // Проверяем, установлен ли MetaMask
+    if (typeof window.ethereum === 'undefined') {
+      document.getElementById('wallet-status').innerHTML = `
+        <p>Статус: <span class="status-error">MetaMask не обнаружен!</span></p>
+        <p class="install-hint">Установите расширение MetaMask для доступа к функциям кошелька</p>
+        <a href="https://metamask.io/download/" target="_blank" class="install-link">
+          Установить MetaMask
+        </a>
+      `;
+      connectBtn.disabled = true;
+    } else {
+      connectBtn.addEventListener('click', connectMetaMask);
+    }
+    
+    if (disconnectBtn) disconnectBtn.addEventListener('click', disconnectWallet);
+    if (copyBtn) copyBtn.addEventListener('click', copyAddress);
+    if (viewTransactionsBtn) viewTransactionsBtn.addEventListener('click', viewTransactions);
+    
+    // Проверяем, есть ли уже подключенный кошелек
+    checkWalletConnection();
+  }
+  
+  // Проверка существующего подключения
+  async function checkWalletConnection() {
+    if (typeof window.ethereum === 'undefined') return;
+    
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+      if (accounts.length > 0) {
+        displayWalletInfo(accounts[0]);
+      }
+    } catch (error) {
+      console.error("Ошибка при проверке подключения:", error);
+    }
+  }
+  
+  // Подключение к MetaMask
+  async function connectMetaMask() {
+    if (typeof window.ethereum === 'undefined') return;
+    
+    try {
+      const accounts = await window.ethereum.request({ 
+        method: 'eth_requestAccounts' 
+      });
+      
+      if (accounts.length > 0) {
+        displayWalletInfo(accounts[0]);
+        setupEventListeners();
+      }
+    } catch (error) {
+      console.error("Ошибка подключения:", error);
+      document.getElementById('wallet-status').innerHTML = `
+        <p>Статус: <span class="status-error">Ошибка подключения!</span></p>
+        <p>${error.message || 'Проверьте расширение MetaMask'}</p>
+      `;
+    }
+  }
+  
+  // Отображение информации о кошельке
+  async function displayWalletInfo(account) {
+    document.getElementById('wallet-status').innerHTML = `
+      <p>Статус: <span class="status-connected">Подключено</span></p>
+    `;
+    
+    // Форматируем адрес для отображения
+    const formattedAddress = `${account.substring(0, 6)}...${account.substring(account.length - 4)}`;
+    document.getElementById('wallet-address').textContent = formattedAddress;
+    document.getElementById('wallet-address').dataset.full = account;
+    
+    // Показываем детали кошелька
+    document.getElementById('wallet-details').classList.remove('hidden');
+    
+    // Получаем баланс
+    try {
+      const balance = await window.ethereum.request({ 
+        method: 'eth_getBalance',
+        params: [account, 'latest']
+      });
+      
+      // Конвертируем из wei в ETH
+      const ethBalance = parseInt(balance) / 1e18;
+      document.getElementById('balance-details').innerHTML = `
+        <div class="balance-item">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/0/05/Ethereum_logo_2014.svg" alt="ETH">
+          <span>${ethBalance.toFixed(4)} ETH</span>
+        </div>
+        <div class="balance-value">$${(ethBalance * 3500).toFixed(2)} USD</div>
+      `;
+    } catch (error) {
+      console.error("Ошибка получения баланса:", error);
+      document.getElementById('balance-details').innerHTML = `
+        <p class="balance-error">Не удалось получить баланс</p>
+      `;
+    }
+  }
+  
+  // Отключение кошелька
+  function disconnectWallet() {
+    document.getElementById('wallet-status').innerHTML = `
+      <p>Статус: <span class="status-disconnected">Не подключено</span></p>
+    `;
+    document.getElementById('wallet-details').classList.add('hidden');
+  }
+  
+  // Копирование адреса в буфер обмена
+  function copyAddress() {
+    const address = document.getElementById('wallet-address').dataset.full;
+    navigator.clipboard.writeText(address)
+      .then(() => {
+        const copyBtn = document.getElementById('copy-address');
+        copyBtn.textContent = 'Скопировано!';
+        setTimeout(() => {
+          copyBtn.textContent = 'Копировать';
+        }, 2000);
+      })
+      .catch(err => {
+        console.error('Ошибка копирования:', err);
+      });
+  }
+  
+  // Просмотр транзакций
+  function viewTransactions() {
+    const address = document.getElementById('wallet-address').dataset.full;
+    const url = `https://etherscan.io/address/${address}`;
+    window.open(url, '_blank');
+  }
+  
+  // Настройка обработчиков событий
+  function setupEventListeners() {
+    // Обработка изменения аккаунтов
+    window.ethereum.on('accountsChanged', (accounts) => {
+      if (accounts.length === 0) {
+        disconnectWallet();
+      } else {
+        displayWalletInfo(accounts[0]);
+      }
+    });
+    
+    // Обработка изменения сети
+    window.ethereum.on('chainChanged', (chainId) => {
+      // При изменении сети перезагружаем информацию
+      window.location.reload();
+    });
+  }
 });
