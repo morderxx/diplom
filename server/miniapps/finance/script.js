@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // API ключ для CurrencyFreaks
   const CURRENCY_API_KEY = '24f59325463e418ca66aee20d46a0925';
-  
+  const METAMASK_EXTENSION_ID = 'nkbihfbeogaeaoehlefnkodbefgpgknn';
   // Кэши
   const exchangeRatesCache = { rates: null, timestamp: 0 };
   const cryptoUsdPricesCache = { prices: null, timestamp: 0 };
@@ -639,6 +639,12 @@ document.addEventListener('DOMContentLoaded', () => {
               Открыть MetaMask
             </button>
           </div>
+
+         <!-- Скрытое fallback‑сообщение на случай, если window.open заблокирован -->
+         <div id="metamask-fallback-message" style="display:none; margin-top:10px; color:#f39c12;">
+           Автоматическое открытие кошелька заблокировано.<br>
+           <strong>Чтобы открыть MetaMask:</strong> нажмите, пожалуйста, на иконку MetaMask в правом‑верхнем углу вашего браузера.
+         </div>
           
           <div class="wallet-details hidden" id="wallet-details">
             <div class="wallet-address">
@@ -703,52 +709,57 @@ document.addEventListener('DOMContentLoaded', () => {
     checkWalletConnection();
   }
 
-function openMetaMask() {
-  try {
-    // Если MetaMask вообще не установлен, ничего не делаем
-    if (typeof window.ethereum === 'undefined') {
-      console.warn('MetaMask не найден');
-      return;
+  // ——— Функция, вызываемая при клике «Открыть MetaMask» ——————————————————
+  function openMetaMask() {
+    try {
+      // 1) Проверяем, вообще ли установлен MetaMask
+      if (typeof window.ethereum === 'undefined') {
+        console.warn('MetaMask не найден');
+        return;
+      }
+
+      // 2) Сначала проверяем, подключён ли уже аккаунт к сайту
+      window.ethereum.request({ method: 'eth_accounts' })
+        .then(accounts => {
+          if (accounts.length === 0) {
+            // Ещё не подключён → открываем окно запроса разрешения (connect)
+            return window.ethereum.request({ method: 'eth_requestAccounts' })
+              .then(() => {
+                // Как только пользователь подключился, сразу пробуем открыть полноценный UI
+                openMetaMaskUI();
+              })
+              .catch(err => {
+                console.error('Пользователь отменил подключение или произошла ошибка:', err);
+              });
+          } else {
+            // Если уже есть подключённый аккаунт — просто открываем полноценный UI
+            openMetaMaskUI();
+          }
+        })
+        .catch(err => {
+          console.error('Ошибка при проверке подключённых аккаунтов:', err);
+        });
+    } catch (e) {
+      console.error('Ошибка открытия MetaMask:', e);
     }
-
-    // 1) Сначала проверяем, подключён ли уже аккаунт
-    window.ethereum.request({ method: 'eth_accounts' })
-      .then(accounts => {
-        if (accounts.length === 0) {
-          // Если аккаунт не подключён, сначала откроем окно подтверждения подключения
-          return window.ethereum.request({ method: 'eth_requestAccounts' })
-            .then(() => {
-              // Как только пользователь подключится, сразу открываем интерфейс MetaMask
-              openMetaMaskUI();
-            })
-            .catch(err => {
-              console.error('Пользователь отменил подключение или произошла ошибка:', err);
-            });
-        } else {
-          // Если аккаунт уже подключён — просто открываем UI
-          openMetaMaskUI();
-        }
-      })
-      .catch(err => {
-        console.error('Ошибка при проверке подключённых аккаунтов:', err);
-      });
-  } catch (e) {
-    console.error('Ошибка открытия MetaMask:', e);
   }
-}
 
-// Функция, которая открывает «полноценный» интерфейс расширения MetaMask
-function openMetaMaskUI() {
-  // Здесь нужно подставить ID вашего расширения. 
-  // Пример для Chrome: chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html
-  const EXTENSION_ID = 'nkbihfbeogaeaoehlefnkodbefgpgknn'; // замените на свой ID
-  const url = `chrome-extension://${EXTENSION_ID}/home.html`;
+  // ——— Функция для «force‑open» полноценного интерфейса MetaMask ——————————————————
+  function openMetaMaskUI() {
+    // Подставляем URL home.html из вашего расширения
+    const url = `chrome-extension://${METAMASK_EXTENSION_ID}/home.html`;
 
-  // Для Firefox путь может быть чуть другим (иногда popup.html), проверьте в своих расширениях
-  // const url = `moz-extension://${EXTENSION_ID}/popup.html`;
+    // Пытаемся открыть pop‑up. Если браузер блокирует, window.open вернёт null.
+    const newWin = window.open(url, '_blank');
+    if (!newWin) {
+      // Если не получилось открыть, показываем элемент с id="metamask-fallback-message"
+      const fallback = document.getElementById('metamask-fallback-message');
+      if (fallback) {
+        fallback.style.display = 'block';
+      }
+    }
+  }
 
-  window.open(url, '_blank');
-}
 
   // Проверка существующего подключения
   async function checkWalletConnection() {
