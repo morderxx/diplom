@@ -278,11 +278,6 @@ document.addEventListener('DOMContentLoaded', () => {
       out.classList.add('error');
     }
   }
-
-  // ——— Прочие вкладки ——————————————————
-  function showWallet() {
-    content.innerHTML = `<h3>Кошелёк</h3><p>Баланс и история транзакций…</p>`;
-  }
   
   async function showStats() {
     content.innerHTML = `
