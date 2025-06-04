@@ -703,37 +703,38 @@ document.addEventListener('DOMContentLoaded', () => {
     checkWalletConnection();
   }
 
-  function openMetaMask() {
-    try {
-      // Определяем тип устройства
-      const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-      
-      if (isMobile) {
-        // Для мобильных устройств
-        window.open('https://metamask.app.link/', '_blank');
-      } else {
-        // Для десктопных браузеров
-        if (typeof window.ethereum !== 'undefined') {
-          // Открываем интерфейс кошелька напрямую
-          window.open('chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html', '_blank');
-        } else {
-          // Если MetaMask не установлен
-          window.open('https://metamask.io/download/', '_blank');
-        }
-      }
-    } catch (e) {
-      console.error('Ошибка открытия MetaMask:', e);
-      // Альтернативный способ
+function openMetaMask() {
+  try {
+    // Определяем тип устройства
+    const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      // Для мобильных устройств
+      window.open('https://metamask.app.link/', '_blank');
+    } else {
+      // Для десктопных браузеров
       if (typeof window.ethereum !== 'undefined') {
-        window.ethereum.request({ 
+        // Используем официальный метод MetaMask для открытия интерфейса
+        window.ethereum.request({
           method: 'wallet_requestSnaps',
           params: {
             'npm:metamask': {}
           }
+        }).then(() => {
+          // После открытия запрашиваем аккаунты
+          window.ethereum.request({ method: 'eth_requestAccounts' });
         });
+      } else {
+        // Если MetaMask не установлен
+        window.open('https://metamask.io/download/', '_blank');
       }
     }
+  } catch (e) {
+    console.error('Ошибка открытия MetaMask:', e);
+    // Показываем инструкцию пользователю
+    showMetaMaskInstructions();
   }
+}
   // Проверка существующего подключения
   async function checkWalletConnection() {
     if (typeof window.ethereum === 'undefined') return;
