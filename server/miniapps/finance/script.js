@@ -713,36 +713,36 @@ document.addEventListener('DOMContentLoaded', () => {
     checkWalletConnection();
   }
 
-  async function openMetaMask() {
-    // Проверяем, установлен ли провайдер (MetaMask) в браузере
-    if (typeof window.ethereum === 'undefined') {
-      alert('MetaMask не найден. Установите расширение MetaMask и обновите страницу.');
-      return;
-    }
-  
-    try {
-      // 1) Инициируем popup MetaMask для запроса доступа к аккаунтам
-      await window.ethereum.request({ method: 'eth_requestAccounts' });
-    } catch (err) {
-      // Если пользователь закрыл окно или произошла другая ошибка — показываем предупреждение
-      console.error('Пользователь отклонил запрос или произошла ошибка при eth_requestAccounts:', err);
-      return;
-    }
-  
-    // 2) После успешного открытия popup пытаемся показать домашний экран MetaMask
-    try {
-      await window.ethereum.request({ method: 'wallet_showHomeScreen' });
-      // Если ничего не упало — MetaMask должна переключиться на свой home.html.
-      // В реальности браузер/версия MetaMask может игнорировать этот вызов.
-    } catch (e) {
-      console.warn('wallet_showHomeScreen не поддерживается в этой версии MetaMask или заблокирован.', e);
-      // 3) Фоллбэк: показываем пользователю инструкцию «открыть вручную»
-      alert(
-        'Не удалось автоматически открыть домашнюю страницу MetaMask.\n' +
-        'Чтобы посмотреть кошелёк, нажмите иконку MetaMask (лисичка) в правом верхнем углу браузера.'
-      );
-    }
+async function openMetaMask() {
+  // Проверяем, установлен ли провайдер (MetaMask) в браузере
+  if (typeof window.ethereum === 'undefined') {
+    alert('MetaMask не найден. Установите расширение MetaMask и обновите страницу.');
+    return;
   }
+
+  try {
+    // 1) Инициируем popup MetaMask для запроса доступа к аккаунтам
+    await window.ethereum.request({ method: 'eth_requestAccounts' });
+  } catch (err) {
+    // Если пользователь закрыл окно или произошла другая ошибка — показываем предупреждение
+    console.error('Пользователь отклонил запрос или произошла ошибка при eth_requestAccounts:', err);
+    return;
+  }
+
+  // 2) После успешного открытия popup пытаемся показать домашний экран MetaMask
+  try {
+    await window.ethereum.request({ method: 'wallet_showHomeScreen' });
+    // Если ничего не упало — MetaMask должна переключиться на свой home.html.
+    // В реальности браузер/версия MetaMask может игнорировать этот вызов.
+  } catch (e) {
+    console.warn('wallet_showHomeScreen не поддерживается в этой версии MetaMask или заблокирован.', e);
+    // 3) Фоллбэк: показываем пользователю инструкцию «открыть вручную»
+    alert(
+      'Не удалось автоматически открыть домашнюю страницу MetaMask.\n' +
+      'Чтобы посмотреть кошелёк, нажмите иконку MetaMask (лисичка) в правом верхнем углу браузера.'
+    );
+  }
+}
 
 
   
