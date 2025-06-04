@@ -608,7 +608,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-   // ======== ОБНОВЛЕННАЯ ВКЛАДКА "КОШЕЛЁК" ========
+   // ======== ИСПРАВЛЕННАЯ ВКЛАДКА "КОШЕЛЁК" ========
   async function showWallet() {
     content.innerHTML = `
       <div class="wallet-container">
@@ -690,10 +690,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewTransactionsBtn = document.getElementById('view-transactions');
     
     // Обработчики кнопок
-    openBtn.addEventListener('click', () => {
-      openMetaMask();
-      startWalletCheck();
-    });
+    openBtn.addEventListener('click', openMetaMask);
     
     // Проверяем, установлен ли MetaMask
     if (typeof window.ethereum === 'undefined') {
@@ -705,7 +702,6 @@ document.addEventListener('DOMContentLoaded', () => {
         </a>
       `;
       connectBtn.disabled = true;
-      openBtn.disabled = true;
     } else {
       connectBtn.addEventListener('click', connectMetaMask);
     }
@@ -718,7 +714,8 @@ document.addEventListener('DOMContentLoaded', () => {
     checkWalletConnection();
   }
 
-function openMetaMask() {
+  // БЕЗОПАСНАЯ ФУНКЦИЯ ОТКРЫТИЯ METAMASK
+  function openMetaMask() {
     const statusHint = document.getElementById('wallet-open-status');
     statusHint.textContent = 'Пытаемся открыть MetaMask...';
     statusHint.style.display = 'block';
@@ -776,69 +773,6 @@ function openMetaMask() {
             showManualHint();
         }
     }, 3000);
-}
-    
-    // Fallback методы открытия
-    function fallbackOpen() {
-      statusHint.textContent = 'Используем альтернативные методы...';
-      
-      // Мобильные устройства
-      if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
-        window.location.href = 'https://metamask.app.link/';
-        setTimeout(() => {
-          window.location.href = 'metamask://';
-        }, 500);
-      } 
-      // Десктопные браузеры
-      else {
-        try {
-          // Пытаемся открыть через известные URL расширений
-          const extensions = {
-            chrome: 'chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html',
-            firefox: 'moz-extension://{uuid}/home.html',
-            brave: 'chrome-extension://odbfpeeihdkbihmopkbjmoonfanlbfcl/home.html',
-            edge: 'chrome-extension://ejbalbakoplchlghecdalmeeeajnimhm/home.html'
-          };
-          
-          let extensionUrl;
-          if (navigator.userAgent.includes('Firefox')) {
-            extensionUrl = extensions.firefox;
-          } else if (navigator.userAgent.includes('Edg')) {
-            extensionUrl = extensions.edge;
-          } else if (navigator.brave && navigator.brave.isBrave()) {
-            extensionUrl = extensions.brave;
-          } else {
-            extensionUrl = extensions.chrome;
-          }
-          
-          window.open(extensionUrl, '_blank');
-        } catch (e) {
-          console.error('Ошибка fallback открытия:', e);
-          showManualHint();
-        }
-      }
-      showManualHint();
-    }
-    
-    function showManualHint() {
-      statusHint.textContent = 'Если MetaMask не открылся, следуйте инструкции ниже';
-      document.getElementById('manual-hint').classList.remove('hidden');
-    }
-  }
-
-  // Периодическая проверка состояния кошелька
-  let walletCheckInterval;
-  function startWalletCheck() {
-    clearInterval(walletCheckInterval);
-    walletCheckInterval = setInterval(async () => {
-      if (typeof window.ethereum !== 'undefined') {
-        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-        if (accounts.length > 0) {
-          document.getElementById('wallet-open-status').style.display = 'none';
-          clearInterval(walletCheckInterval);
-        }
-      }
-    }, 1000);
   }
 
   // Проверка существующего подключения
@@ -949,17 +883,19 @@ function openMetaMask() {
   // Настройка обработчиков событий
   function setupEventListeners() {
     // Обработка изменения аккаунтов
-    window.ethereum.on('accountsChanged', (accounts) => {
-      if (accounts.length === 0) {
-        disconnectWallet();
-      } else {
-        displayWalletInfo(accounts[0]);
-      }
-    });
-    
-    // Обработка изменения сети
-    window.ethereum.on('chainChanged', (chainId) => {
-      window.location.reload();
-    });
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', (accounts) => {
+        if (accounts.length === 0) {
+          disconnectWallet();
+        } else {
+          displayWalletInfo(accounts[0]);
+        }
+      });
+      
+      // Обработка изменения сети
+      window.ethereum.on('chainChanged', (chainId) => {
+        window.location.reload();
+      });
+    }
   }
 });
