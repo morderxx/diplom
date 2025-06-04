@@ -713,28 +713,33 @@ document.addEventListener('DOMContentLoaded', () => {
     checkWalletConnection();
   }
 
-  function openMetaMask() {
-    try {
-      if (typeof window.ethereum === 'undefined') {
-        throw new Error('MetaMask не установлен');
-      }
+function openMetaMask() {
+  try {
+    // Проверяем, установлен ли MetaMask
+    if (typeof window.ethereum !== 'undefined') {
+      // Создаем iframe для обхода политики безопасности
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
       
-      // Пытаемся открыть главную страницу через специальный метод
-      if (window.ethereum.request && typeof window.ethereum.request === 'function') {
-        window.ethereum.request({ 
-          method: 'wallet_showHomeScreen' 
-        }).catch(() => {
-          // Если метод не поддерживается, используем обходной путь
-          redirectToMetaMaskHome();
-        });
-      } else {
-        redirectToMetaMaskHome();
-      }
-    } catch (e) {
-      console.error('Ошибка открытия MetaMask:', e);
-      redirectToMetaMaskHome();
+      // Пытаемся открыть через внутренний URL расширения
+      const extensionId = 'nkbihfbeogaeaoehlefnkodbefgpgknn';
+      iframe.src = `chrome-extension://${extensionId}/home.html`;
+      
+      // Если не сработало - открываем новое окно
+      setTimeout(() => {
+        if (!iframe.contentWindow || iframe.contentWindow.closed) {
+          window.open(`chrome-extension://${extensionId}/home.html`, '_blank');
+        }
+      }, 100);
+    } else {
+      // Если MetaMask не установлен - просто открываем страницу
+      window.open('https://metamask.io/', '_blank');
     }
+  } catch (e) {
+    console.error('Ошибка открытия MetaMask:', e);
   }
+}
   
   function redirectToMetaMaskHome() {
     const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
