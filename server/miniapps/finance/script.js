@@ -718,45 +718,65 @@ document.addEventListener('DOMContentLoaded', () => {
     checkWalletConnection();
   }
 
-  // ФУНКЦИЯ ОТКРЫТИЯ METAMASK С ИСПРАВЛЕНИЯМИ
-  function openMetaMask() {
+function openMetaMask() {
     const statusHint = document.getElementById('wallet-open-status');
-    statusHint.textContent = 'Открытие MetaMask...';
+    statusHint.textContent = 'Пытаемся открыть MetaMask...';
     statusHint.style.display = 'block';
     
-    try {
-      // Основной метод для открытия через Ethereum API
-      if (typeof window.ethereum !== 'undefined') {
-        // Попробуем использовать специфические методы MetaMask
-        if (window.ethereum._metamask) {
-          window.ethereum._metamask.isUnlocked().then(unlocked => {
-            if (unlocked) {
-              // Метод для открытия UI кошелька
-              window.ethereum.request({ 
-                method: 'wallet_requestSnaps', 
-                params: {} 
-              }).catch(() => {
-                fallbackOpen();
-              });
-            } else {
-              // Если кошелек заблокирован, запрашиваем разблокировку
-              window.ethereum.request({ method: 'eth_requestAccounts' })
-                .then(() => fallbackOpen())
-                .catch(fallbackOpen);
-            }
-          });
-        } else {
-          fallbackOpen();
+    // Основной метод - использование стандартного API
+    const openViaAPI = () => {
+        if (typeof window.ethereum === 'undefined') {
+            return false;
         }
-        return;
-      }
-      
-      // Если не обнаружен Ethereum провайдер
-      fallbackOpen();
-    } catch (e) {
-      console.error('Ошибка открытия MetaMask:', e);
-      fallbackOpen();
+        
+        try {
+            // Пробуем два разных метода API
+            window.ethereum.request({ 
+                method: 'wallet_requestPermissions', 
+                params: [{ eth_accounts: {} }] 
+            }).catch(() => {
+                window.ethereum.request({ method: 'eth_requestAccounts' });
+            });
+            
+            statusHint.textContent = 'Открываем MetaMask через API...';
+            return true;
+        } catch (e) {
+            console.error('API метод не сработал:', e);
+            return false;
+        }
+    };
+    
+    // Метод для мобильных устройств
+    const openMobile = () => {
+        if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+            statusHint.textContent = 'Перенаправляем в приложение...';
+            window.location.href = 'https://metamask.app.link/';
+            return true;
+        }
+        return false;
+    };
+    
+    // Показ инструкции
+    const showManualHint = () => {
+        statusHint.textContent = 'Пожалуйста, откройте MetaMask вручную:';
+        document.getElementById('manual-hint').classList.remove('hidden');
+    };
+    
+    // Пробуем методы по очереди
+    if (!openViaAPI() && !openMobile()) {
+        showManualHint();
     }
+    
+    // Проверка через 3 секунды
+    setTimeout(() => {
+        if (!document.getElementById('wallet-details').classList.contains('hidden')) {
+            statusHint.textContent = 'MetaMask успешно открыт!';
+        } else {
+            statusHint.textContent = 'Не удалось открыть автоматически.';
+            showManualHint();
+        }
+    }, 3000);
+}
     
     // Fallback методы открытия
     function fallbackOpen() {
