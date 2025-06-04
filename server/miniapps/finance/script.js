@@ -751,6 +751,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (accounts.length > 0) {
         displayWalletInfo(accounts[0]);
         setupEventListeners();
+        
+        // Добавлено: сохраняем состояние подключения
+        localStorage.setItem('walletConnected', 'true');
+        localStorage.setItem('walletAddress', accounts[0]);
+        
+        // Добавлено: предотвращаем закрытие окна
+        document.querySelector('.wallet-container').classList.add('connected');
       }
     } catch (error) {
       console.error("Ошибка подключения:", error);
@@ -760,7 +767,17 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     }
   }
+
+  function checkWalletConnection() {
+  const isConnected = localStorage.getItem('walletConnected') === 'true';
+  const address = localStorage.getItem('walletAddress');
   
+  if (isConnected && address) {
+    displayWalletInfo(address);
+    setupEventListeners();
+    document.querySelector('.wallet-container').classList.add('connected');
+  }
+}
   // Отображение информации о кошельке
   async function displayWalletInfo(account) {
     document.getElementById('wallet-status').innerHTML = `
