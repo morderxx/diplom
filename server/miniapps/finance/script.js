@@ -1,17 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
   const content = document.getElementById('finance-content');
   const tabs = document.querySelectorAll('.finance-nav button');
-  // В начале скрипта
-  const ALLOWED_DOMAINS = [
-    'diplom-production-8971.up.railway.app',
-    'localhost',
-    '127.0.0.1'
-  ];
-  
-  if (!ALLOWED_DOMAINS.includes(window.location.hostname)) {
-    console.error('Домен не разрешен для работы с MetaMask');
-    // Показать предупреждение пользователю
-  }
+
   // Фиатные коды и карта крипто→ID CoinGecko
   const fiatCodes = ['USD', 'EUR', 'RUB', 'GBP', 'JPY', 'CNY', 'CHF', 'CAD', 'BYN'];
   const cryptoMap = {
@@ -643,10 +633,10 @@ document.addEventListener('DOMContentLoaded', () => {
             </button>
             
             <button id="open-metamask" class="open-btn" title="Открыть расширение MetaMask">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-            </svg>
-            Открыть кошелек
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"></path>
+              </svg>
+              Открыть MetaMask
             </button>
           </div>
           
@@ -713,43 +703,41 @@ document.addEventListener('DOMContentLoaded', () => {
     checkWalletConnection();
   }
 
-async function openMetaMask() {
-    const extensionId = 'nkbihfbeogaeaoehlefnkodbefgpgknn';
-  const metamaskURL = `chrome-extension://${extensionId}/home.html`;
-  const newWin = window.open(metamaskURL, '_blank', 'width=360,height=640');
-
-  // 2) Если MetaMask не установлено или окно не открылось, дадим понятное сообщение.
-  if (!newWin) {
-    alert(
-      'Не удалось открыть окно MetaMask автоматически.\n' +
-      'Возможно, браузер заблокировал popup или MetaMask не установлено.\n' +
-      'Откройте MetaMask вручную и повторите попытку.'
-    );
-    return;
-  }
-
-  // 3) Ждём не блокирующе 200 мс, чтобы дать браузеру загрузить окно расширения (по желанию)
-  await new Promise((res) => setTimeout(res, 200));
-
-  // 4) Проверяем, есть ли провайдер (MetaMask) и просим подключиться.
-  if (typeof window.ethereum === 'undefined') {
-    alert('MetaMask не найден. Установите расширение и обновите страницу.');
-    return;
-  }
-
+ function openMetaMask() {
   try {
-    // Это откроет pop‑up MetaMask (список аккаунтов)
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    console.log('Подключённый аккаунт:', accounts[0]);
-  } catch (err) {
-    console.error('Пользователь отказался или случилась ошибка при eth_requestAccounts:', err);
-    // Закрываем окно MetaMask, если пользователь отменил подключение (по желанию)
-    try { newWin.close(); } catch (_) {}
-    return;
+    // Попытка открыть через Ethereum API
+    if (typeof window.ethereum !== 'undefined') {
+      window.ethereum.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] });
+      return;
+    }
+    
+    // Deeplink для мобильных устройств
+    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      window.open('https://metamask.app.link/', '_blank');
+      return;
+    }
+    
+    // Для десктопных браузеров
+    if (typeof window.open !== 'undefined') {
+      window.open('chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html', '_blank');
+    }
+  } catch (e) {
+    console.error('Ошибка открытия MetaMask:', e);
   }
 }
-
-
+  // Проверка существующего подключения
+  async function checkWalletConnection() {
+    if (typeof window.ethereum === 'undefined') return;
+    
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+      if (accounts.length > 0) {
+        displayWalletInfo(accounts[0]);
+      }
+    } catch (error) {
+      console.error("Ошибка при проверке подключения:", error);
+    }
+  }
   
   // Подключение к MetaMask
   async function connectMetaMask() {
