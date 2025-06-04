@@ -608,7 +608,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-   // ======== НОВЫЙ ФУНКЦИОНАЛ ДЛЯ ВКЛАДКИ "КОШЕЛЁК" ========
+   // ======== ИСПРАВЛЕННЫЙ ФУНКЦИОНАЛ ДЛЯ ВКЛАДКИ "КОШЕЛЁК" ========
   async function showWallet() {
     content.innerHTML = `
       <div class="wallet-container">
@@ -678,7 +678,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const copyBtn = document.getElementById('copy-address');
     const viewTransactionsBtn = document.getElementById('view-transactions');
     
-    // Обработчик для кнопки открытия MetaMask
+    // Функция для открытия MetaMask
+    function openMetaMask() {
+      try {
+        // Попытка открыть через Ethereum API
+        if (typeof window.ethereum !== 'undefined') {
+          window.ethereum.request({ 
+            method: 'wallet_requestPermissions', 
+            params: [{ eth_accounts: {} }] 
+          }).then(() => {
+            // После открытия проверяем подключение
+            checkWalletConnection();
+          });
+          return;
+        }
+        
+        // Deeplink для мобильных устройств
+        if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+          window.location.href = 'https://metamask.app.link/';
+          return;
+        }
+        
+        // Для десктопных браузеров
+        window.open('chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html', '_blank');
+      } catch (e) {
+        console.error('Ошибка открытия MetaMask:', e);
+        alert('Не удалось открыть MetaMask. Убедитесь, что расширение установлено.');
+      }
+    }
+
+    // Обработчик для кнопки открытия
     openBtn.addEventListener('click', openMetaMask);
     
     // Проверяем, установлен ли MetaMask
@@ -692,39 +721,37 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
       connectBtn.disabled = true;
     } else {
-      connectBtn.addEventListener('click', connectMetaMask);
+      // Обработчик подключения с открытием MetaMask после успеха
+      connectBtn.addEventListener('click', async () => {
+        try {
+          const accounts = await window.ethereum.request({ 
+            method: 'eth_requestAccounts' 
+          });
+          
+          if (accounts.length > 0) {
+            displayWalletInfo(accounts[0]);
+            setupEventListeners();
+            // После подключения открываем MetaMask
+            openMetaMask();
+          }
+        } catch (error) {
+          console.error("Ошибка подключения:", error);
+          document.getElementById('wallet-status').innerHTML = `
+            <p>Статус: <span class="status-error">Ошибка подключения!</span></p>
+            <p>${error.message || 'Проверьте расширение MetaMask'}</p>
+          `;
+        }
+      });
+      
+      // Проверка существующего подключения
+      checkWalletConnection();
     }
     
     if (disconnectBtn) disconnectBtn.addEventListener('click', disconnectWallet);
     if (copyBtn) copyBtn.addEventListener('click', copyAddress);
     if (viewTransactionsBtn) viewTransactionsBtn.addEventListener('click', viewTransactions);
-    
-    // Проверяем, есть ли уже подключенный кошелек
-    checkWalletConnection();
   }
 
- function openMetaMask() {
-  try {
-    // Попытка открыть через Ethereum API
-    if (typeof window.ethereum !== 'undefined') {
-      window.ethereum.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] });
-      return;
-    }
-    
-    // Deeplink для мобильных устройств
-    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
-      window.open('https://metamask.app.link/', '_blank');
-      return;
-    }
-    
-    // Для десктопных браузеров
-    if (typeof window.open !== 'undefined') {
-      window.open('chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html', '_blank');
-    }
-  } catch (e) {
-    console.error('Ошибка открытия MetaMask:', e);
-  }
-}
   // Проверка существующего подключения
   async function checkWalletConnection() {
     if (typeof window.ethereum === 'undefined') return;
