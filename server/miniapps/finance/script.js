@@ -703,28 +703,17 @@ document.addEventListener('DOMContentLoaded', () => {
     checkWalletConnection();
   }
 
-function openMetaMask() {
-  // Проверяем, установлен ли MetaMask
-  if (typeof window.ethereum === 'undefined') {
-    // Если MetaMask не установлен - открываем страницу загрузки
-    window.open('https://metamask.io/download/', '_blank');
-    return;
-  }
-
-  // Если MetaMask установлен - инициируем процесс подключения
-  connectMetaMask();
-}
-  
-  function fallbackOpen() {
-    // Универсальный фолбэк
-    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
-      window.open('https://metamask.app.link/', '_blank');
-    } else {
-      // Открываем страницу установки с инструкцией
+  function openMetaMask() {
+    // Проверяем, установлен ли MetaMask
+    if (typeof window.ethereum === 'undefined') {
+      // Если MetaMask не установлен - открываем страницу загрузки
       window.open('https://metamask.io/download/', '_blank');
+      return;
     }
+  
+    // Если MetaMask установлен - инициируем процесс подключения
+    connectMetaMask();
   }
-}
   // Проверка существующего подключения
   async function checkWalletConnection() {
     if (typeof window.ethereum === 'undefined') return;
