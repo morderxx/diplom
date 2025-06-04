@@ -704,27 +704,47 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 function openMetaMask() {
+  // Проверяем, установлен ли MetaMask
+  if (typeof window.ethereum === 'undefined') {
+    // Если MetaMask не установлен - открываем страницу загрузки
+    window.open('https://metamask.io/download/', '_blank');
+    return;
+  }
+
+  // Если MetaMask установлен - инициируем процесс подключения
+  connectMetaMask();
+}
+
+async function connectMetaMask() {
   try {
-    // Для всех платформ используем универсальный метод открытия интерфейса
-    if (typeof window.ethereum !== 'undefined') {
-      // Метод, гарантированно открывающий интерфейс MetaMask
-      window.ethereum.request({ 
-        method: 'wallet_requestSnaps', 
-        params: {
-          'npm:metamask': {}
-        }
-      }).catch(error => {
-        console.log("Ошибка открытия интерфейса:", error);
-        fallbackOpen();
-      });
-      return;
+    const accounts = await window.ethereum.request({ 
+      method: 'eth_requestAccounts' 
+    });
+    
+    if (accounts.length > 0) {
+      displayWalletInfo(accounts[0]);
+      setupEventListeners();
+    }
+  } catch (error) {
+    console.error("Ошибка подключения:", error);
+    
+    // Обрабатываем разные типы ошибок
+    let errorMessage = 'Ошибка подключения к MetaMask';
+    
+    if (error.code === 4001) {
+      errorMessage = 'Вы отменили запрос на подключение';
+    } else if (error.code === -32002) {
+      errorMessage = 'Уже ожидается запрос на подключение. Откройте расширение MetaMask';
     }
     
-    fallbackOpen();
-  } catch (e) {
-    console.error('Ошибка открытия MetaMask:', e);
-    fallbackOpen();
+    document.getElementById('wallet-status').innerHTML = `
+      <p>Статус: <span class="status-error">${errorMessage}</span></p>
+      <button class="retry-btn" id="retry-connect">Повторить попытку</button>
+    `;
+    
+    document.getElementById('retry-connect').addEventListener('click', connectMetaMask);
   }
+}
   
   function fallbackOpen() {
     // Универсальный фолбэк
@@ -751,37 +771,7 @@ function openMetaMask() {
   }
   
   // Подключение к MetaMask
-async function connectMetaMask() {
-  if (typeof window.ethereum === 'undefined') {
-    showMetaMaskNotInstalled();
-    return;
-  }
 
-  try {
-    const accounts = await window.ethereum.request({ 
-      method: 'eth_requestAccounts' 
-    });
-    
-    if (accounts.length > 0) {
-      displayWalletInfo(accounts[0]);
-      setupEventListeners();
-    }
-  } catch (error) {
-    console.error("Ошибка подключения:", error);
-    document.getElementById('wallet-status').innerHTML = `
-      <p>Статус: <span class="status-error">Ошибка подключения!</span></p>
-      <p>${error.message || 'Проверьте расширение MetaMask'}</p>
-    `;
-    
-    // Предлагаем открыть интерфейс вручную
-    if (error.code === 4001) {
-      document.getElementById('wallet-status').innerHTML += `
-        <button class="retry-btn" id="manual-open">Открыть MetaMask вручную</button>
-      `;
-      document.getElementById('manual-open').addEventListener('click', openMetaMask);
-    }
-  }
-}
   
   // Отображение информации о кошельке
   async function displayWalletInfo(account) {
