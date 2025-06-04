@@ -713,40 +713,25 @@ document.addEventListener('DOMContentLoaded', () => {
     checkWalletConnection();
   }
 
-  function openMetaMask() {
-  try {
-    const ua = navigator.userAgent;
-    const isChrome = ua.includes('Chrome') && !ua.includes('Edge') && !ua.includes('OPR');
-    const isFirefox = ua.includes('Firefox');
+    async function openMetaMask() {
+      if (typeof window.ethereum === 'undefined') {
+        alert('MetaMask не установлен. Установите расширение и обновите страницу.');
+        return;
+      }
 
-    if (isChrome) {
-      // В Chrome у MetaMask фиксированный ID расширения
-      const extensionId = 'nkbihfbeogaeaoehlefnkodbefgpgknn';
-      const url = `chrome-extension://${extensionId}/home.html`;
-      window.open(url, '_blank', 'width=360,height=640');
-    }
-    else if (isFirefox) {
-      // В Firefox ID расширения динамический, поэтому используем шаблон
-      const url = 'moz-extension://*/home.html';
-      window.open(url, '_blank', 'width=360,height=640');
-    }
-    else {
-      // Для прочих браузеров (или если MetaMask установлен не как расширение)
-      if (typeof window.ethereum !== 'undefined') {
+      try {
+        // Открывает поп‑ап MetaMask
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        // Попытаться открыть домашний экран, если поддерживается
         try {
-          // Метод может открыть домашний экран MetaMask, если он поддерживается
-          window.ethereum.request({ method: 'wallet_showHomeScreen' });
+          await window.ethereum.request({ method: 'wallet_showHomeScreen' });
         } catch (e) {
-          console.warn('wallet_showHomeScreen не поддерживается в этой версии MetaMask');
+          console.warn('wallet_showHomeScreen не поддерживается');
         }
-      } else {
-        console.warn('MetaMask не найден в вашем браузере.');
+      } catch (err) {
+        console.error('Ошибка или пользователь отклонил запрос:', err);
       }
     }
-  } catch (e) {
-    console.error('Ошибка открытия MetaMask:', e);
-  }
-}
 
   
   // Подключение к MetaMask
