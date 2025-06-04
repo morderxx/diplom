@@ -714,7 +714,32 @@ function openMetaMask() {
   // Если MetaMask установлен - инициируем процесс подключения
   connectMetaMask();
 }
-
+  
+  function fallbackOpen() {
+    // Универсальный фолбэк
+    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      window.open('https://metamask.app.link/', '_blank');
+    } else {
+      // Открываем страницу установки с инструкцией
+      window.open('https://metamask.io/download/', '_blank');
+    }
+  }
+}
+  // Проверка существующего подключения
+  async function checkWalletConnection() {
+    if (typeof window.ethereum === 'undefined') return;
+    
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+      if (accounts.length > 0) {
+        displayWalletInfo(accounts[0]);
+      }
+    } catch (error) {
+      console.error("Ошибка при проверке подключения:", error);
+    }
+  }
+  
+  // Подключение к MetaMask
 async function connectMetaMask() {
   try {
     const accounts = await window.ethereum.request({ 
@@ -745,33 +770,6 @@ async function connectMetaMask() {
     document.getElementById('retry-connect').addEventListener('click', connectMetaMask);
   }
 }
-  
-  function fallbackOpen() {
-    // Универсальный фолбэк
-    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
-      window.open('https://metamask.app.link/', '_blank');
-    } else {
-      // Открываем страницу установки с инструкцией
-      window.open('https://metamask.io/download/', '_blank');
-    }
-  }
-}
-  // Проверка существующего подключения
-  async function checkWalletConnection() {
-    if (typeof window.ethereum === 'undefined') return;
-    
-    try {
-      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-      if (accounts.length > 0) {
-        displayWalletInfo(accounts[0]);
-      }
-    } catch (error) {
-      console.error("Ошибка при проверке подключения:", error);
-    }
-  }
-  
-  // Подключение к MetaMask
-
   
   // Отображение информации о кошельке
   async function displayWalletInfo(account) {
