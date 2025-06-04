@@ -713,72 +713,41 @@ document.addEventListener('DOMContentLoaded', () => {
     checkWalletConnection();
   }
 
-function openMetaMask() {
+  function openMetaMask() {
   try {
-    // Пытаемся определить браузер
-    const isChrome = navigator.userAgent.includes('Chrome');
-    const isFirefox = navigator.userAgent.includes('Firefox');
-    
+    const ua = navigator.userAgent;
+    const isChrome = ua.includes('Chrome') && !ua.includes('Edge') && !ua.includes('OPR');
+    const isFirefox = ua.includes('Firefox');
+
     if (isChrome) {
-      openChromeMetaMask();
-    } else if (isFirefox) {
-      openFirefoxMetaMask();
-    } else {
-      // Для других браузеров используем универсальный метод
-      openUniversalMetaMask();
+      // В Chrome у MetaMask фиксированный ID расширения
+      const extensionId = 'nkbihfbeogaeaoehlefnkodbefgpgknn';
+      const url = `chrome-extension://${extensionId}/home.html`;
+      window.open(url, '_blank', 'width=360,height=640');
+    }
+    else if (isFirefox) {
+      // В Firefox ID расширения динамический, поэтому используем шаблон
+      const url = 'moz-extension://*/home.html';
+      window.open(url, '_blank', 'width=360,height=640');
+    }
+    else {
+      // Для прочих браузеров (или если MetaMask установлен не как расширение)
+      if (typeof window.ethereum !== 'undefined') {
+        try {
+          // Метод может открыть домашний экран MetaMask, если он поддерживается
+          window.ethereum.request({ method: 'wallet_showHomeScreen' });
+        } catch (e) {
+          console.warn('wallet_showHomeScreen не поддерживается в этой версии MetaMask');
+        }
+      } else {
+        console.warn('MetaMask не найден в вашем браузере.');
+      }
     }
   } catch (e) {
     console.error('Ошибка открытия MetaMask:', e);
   }
 }
 
-function openChromeMetaMask() {
-  const extensionId = 'nkbihfbeogaeaoehlefnkodbefgpgknn';
-  const url = `chrome-extension://${extensionId}/home.html`;
-  
-  // Пробуем через iframe
-  const iframe = document.createElement('iframe');
-  iframe.style.display = 'none';
-  iframe.src = url;
-  document.body.appendChild(iframe);
-  
-  // Если не сработало - открываем в новом окне
-  setTimeout(() => {
-    if (!iframe.contentWindow || iframe.contentWindow.closed) {
-      window.open(url, '_blank', 'width=400,height=600');
-    }
-  }, 100);
-}
-
-function openFirefoxMetaMask() {
-  // Для Firefox используем другой URL
-  const url = 'moz-extension://*/home.html';
-  window.open(url, '_blank', 'width=400,height=600');
-}
-
-function openUniversalMetaMask() {
-  // Универсальный метод для всех браузеров
-  if (typeof window.ethereum !== 'undefined') {
-    window.ethereum.request({ 
-      method: 'wallet_showHomeScreen' 
-    });
-  } else {
-    window.open('https://metamask.io/', '_blank');
-  }
-}
-  
-  function redirectToMetaMaskHome() {
-    const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-    
-    if (isMobile) {
-      // Deeplink для мобильных приложений
-      window.location.href = 'https://metamask.app.link/home';
-    } else {
-      // Для десктопа открываем страницу расширения в новом окне
-      const extensionURL = 'chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html';
-      window.open(extensionURL, '_blank');
-    }
-  }
   
   // Подключение к MetaMask
   async function connectMetaMask() {
