@@ -713,29 +713,41 @@ document.addEventListener('DOMContentLoaded', () => {
     checkWalletConnection();
   }
 
-function openMetaMask() {
-  try {
-    // Пытаемся программно открыть MetaMask
-    if (typeof window.ethereum !== 'undefined') {
-      window.ethereum.request({ 
-        method: 'wallet_requestPermissions', 
-        params: [{ eth_accounts: {} }] 
-      }).catch(console.error);
-    } else {
-      // Альтернативные методы открытия
-      const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-      if (isMobile) {
-        window.open('https://metamask.app.link/', '_blank');
-      } else {
-        // Для десктопа показываем простой алерт
-        alert('Нажмите на иконку MetaMask в панели расширений браузера');
+  function openMetaMask() {
+    try {
+      if (typeof window.ethereum === 'undefined') {
+        throw new Error('MetaMask не установлен');
       }
+      
+      // Пытаемся открыть главную страницу через специальный метод
+      if (window.ethereum.request && typeof window.ethereum.request === 'function') {
+        window.ethereum.request({ 
+          method: 'wallet_showHomeScreen' 
+        }).catch(() => {
+          // Если метод не поддерживается, используем обходной путь
+          redirectToMetaMaskHome();
+        });
+      } else {
+        redirectToMetaMaskHome();
+      }
+    } catch (e) {
+      console.error('Ошибка открытия MetaMask:', e);
+      redirectToMetaMaskHome();
     }
-  } catch (e) {
-    console.error('Ошибка открытия MetaMask:', e);
-    alert('Откройте MetaMask вручную через расширение браузера');
   }
-}
+  
+  function redirectToMetaMaskHome() {
+    const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      // Deeplink для мобильных приложений
+      window.location.href = 'https://metamask.app.link/home';
+    } else {
+      // Для десктопа открываем страницу расширения в новом окне
+      const extensionURL = 'chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html';
+      window.open(extensionURL, '_blank');
+    }
+  }
   
   // Подключение к MetaMask
   async function connectMetaMask() {
