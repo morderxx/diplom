@@ -608,7 +608,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-   // ======== ИСПРАВЛЕННАЯ ВКЛАДКА "КОШЕЛЁК" ========
+   // ======== НОВЫЙ ФУНКЦИОНАЛ ДЛЯ ВКЛАДКИ "КОШЕЛЁК" ========
   async function showWallet() {
     content.innerHTML = `
       <div class="wallet-container">
@@ -638,17 +638,6 @@ document.addEventListener('DOMContentLoaded', () => {
               </svg>
               Открыть MetaMask
             </button>
-          </div>
-          
-          <div id="wallet-open-status" class="wallet-open-status"></div>
-          
-          <div class="manual-open-hint hidden" id="manual-hint">
-            <p>Если MetaMask не открылся автоматически:</p>
-            <ol>
-              <li>Найдите иконку MetaMask (🦊) в панели расширений браузера</li>
-              <li>Нажмите на иконку чтобы открыть интерфейс кошелька</li>
-              <li>При необходимости разблокируйте кошелек паролем</li>
-            </ol>
           </div>
           
           <div class="wallet-details hidden" id="wallet-details">
@@ -689,7 +678,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const copyBtn = document.getElementById('copy-address');
     const viewTransactionsBtn = document.getElementById('view-transactions');
     
-    // Обработчики кнопок
+    // Обработчик для кнопки открытия MetaMask
     openBtn.addEventListener('click', openMetaMask);
     
     // Проверяем, установлен ли MetaMask
@@ -714,67 +703,28 @@ document.addEventListener('DOMContentLoaded', () => {
     checkWalletConnection();
   }
 
-  // БЕЗОПАСНАЯ ФУНКЦИЯ ОТКРЫТИЯ METAMASK
-  function openMetaMask() {
-    const statusHint = document.getElementById('wallet-open-status');
-    statusHint.textContent = 'Пытаемся открыть MetaMask...';
-    statusHint.style.display = 'block';
-    
-    // Основной метод - использование стандартного API
-    const openViaAPI = () => {
-        if (typeof window.ethereum === 'undefined') {
-            return false;
-        }
-        
-        try {
-            // Пробуем два разных метода API
-            window.ethereum.request({ 
-                method: 'wallet_requestPermissions', 
-                params: [{ eth_accounts: {} }] 
-            }).catch(() => {
-                window.ethereum.request({ method: 'eth_requestAccounts' });
-            });
-            
-            statusHint.textContent = 'Открываем MetaMask через API...';
-            return true;
-        } catch (e) {
-            console.error('API метод не сработал:', e);
-            return false;
-        }
-    };
-    
-    // Метод для мобильных устройств
-    const openMobile = () => {
-        if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
-            statusHint.textContent = 'Перенаправляем в приложение...';
-            window.location.href = 'https://metamask.app.link/';
-            return true;
-        }
-        return false;
-    };
-    
-    // Показ инструкции
-    const showManualHint = () => {
-        statusHint.textContent = 'Пожалуйста, откройте MetaMask вручную:';
-        document.getElementById('manual-hint').classList.remove('hidden');
-    };
-    
-    // Пробуем методы по очереди
-    if (!openViaAPI() && !openMobile()) {
-        showManualHint();
+ function openMetaMask() {
+  try {
+    // Попытка открыть через Ethereum API
+    if (typeof window.ethereum !== 'undefined') {
+      window.ethereum.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] });
+      return;
     }
     
-    // Проверка через 3 секунды
-    setTimeout(() => {
-        if (!document.getElementById('wallet-details').classList.contains('hidden')) {
-            statusHint.textContent = 'MetaMask успешно открыт!';
-        } else {
-            statusHint.textContent = 'Не удалось открыть автоматически.';
-            showManualHint();
-        }
-    }, 3000);
+    // Deeplink для мобильных устройств
+    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      window.open('https://metamask.app.link/', '_blank');
+      return;
+    }
+    
+    // Для десктопных браузеров
+    if (typeof window.open !== 'undefined') {
+      window.open('chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html', '_blank');
+    }
+  } catch (e) {
+    console.error('Ошибка открытия MetaMask:', e);
   }
-
+}
   // Проверка существующего подключения
   async function checkWalletConnection() {
     if (typeof window.ethereum === 'undefined') return;
@@ -883,19 +833,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // Настройка обработчиков событий
   function setupEventListeners() {
     // Обработка изменения аккаунтов
-    if (window.ethereum) {
-      window.ethereum.on('accountsChanged', (accounts) => {
-        if (accounts.length === 0) {
-          disconnectWallet();
-        } else {
-          displayWalletInfo(accounts[0]);
-        }
-      });
-      
-      // Обработка изменения сети
-      window.ethereum.on('chainChanged', (chainId) => {
-        window.location.reload();
-      });
-    }
+    window.ethereum.on('accountsChanged', (accounts) => {
+      if (accounts.length === 0) {
+        disconnectWallet();
+      } else {
+        displayWalletInfo(accounts[0]);
+      }
+    });
+    
+    // Обработка изменения сети
+    window.ethereum.on('chainChanged', (chainId) => {
+      // При изменении сети перезагружаем информацию
+      window.location.reload();
+    });
   }
 });
