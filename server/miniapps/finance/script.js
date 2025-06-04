@@ -608,7 +608,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-   // ======== ИСПРАВЛЕННЫЙ ФУНКЦИОНАЛ ДЛЯ ВКЛАДКИ "КОШЕЛЁК" ========
+   // ======== НОВЫЙ ФУНКЦИОНАЛ ДЛЯ ВКЛАДКИ "КОШЕЛЁК" ========
   async function showWallet() {
     content.innerHTML = `
       <div class="wallet-container">
@@ -678,36 +678,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const copyBtn = document.getElementById('copy-address');
     const viewTransactionsBtn = document.getElementById('view-transactions');
     
-    // Функция для открытия MetaMask
-    function openMetaMask() {
-      try {
-        // Попытка открыть через Ethereum API
-        if (typeof window.ethereum !== 'undefined') {
-          window.ethereum.request({ 
-            method: 'wallet_requestPermissions', 
-            params: [{ eth_accounts: {} }] 
-          }).then(() => {
-            // После открытия проверяем подключение
-            checkWalletConnection();
-          });
-          return;
-        }
-        
-        // Deeplink для мобильных устройств
-        if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
-          window.location.href = 'https://metamask.app.link/';
-          return;
-        }
-        
-        // Для десктопных браузеров
-        window.open('chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html', '_blank');
-      } catch (e) {
-        console.error('Ошибка открытия MetaMask:', e);
-        alert('Не удалось открыть MetaMask. Убедитесь, что расширение установлено.');
-      }
-    }
-
-    // Обработчик для кнопки открытия
+    // Обработчик для кнопки открытия MetaMask
     openBtn.addEventListener('click', openMetaMask);
     
     // Проверяем, установлен ли MetaMask
@@ -721,35 +692,41 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
       connectBtn.disabled = true;
     } else {
-      // Обработчик подключения с открытием MetaMask после успеха
-      connectBtn.addEventListener('click', async () => {
-        try {
-          const accounts = await window.ethereum.request({ 
-            method: 'eth_requestAccounts' 
-          });
-          
-          if (accounts.length > 0) {
-            displayWalletInfo(accounts[0]);
-            setupEventListeners();
-            // После подключения открываем MetaMask
-            openMetaMask();
-          }
-        } catch (error) {
-          console.error("Ошибка подключения:", error);
-          document.getElementById('wallet-status').innerHTML = `
-            <p>Статус: <span class="status-error">Ошибка подключения!</span></p>
-            <p>${error.message || 'Проверьте расширение MetaMask'}</p>
-          `;
-        }
-      });
-      
-      // Проверка существующего подключения
-      checkWalletConnection();
+      connectBtn.addEventListener('click', connectMetaMask);
     }
     
     if (disconnectBtn) disconnectBtn.addEventListener('click', disconnectWallet);
     if (copyBtn) copyBtn.addEventListener('click', copyAddress);
     if (viewTransactionsBtn) viewTransactionsBtn.addEventListener('click', viewTransactions);
+    
+    // Проверяем, есть ли уже подключенный кошелек
+    checkWalletConnection();
+  }
+
+  function openMetaMask() {
+    // Проверяем, что MetaMask (window.ethereum) доступен
+    if (typeof window.ethereum === 'undefined') {
+      // Если MetaMask не установлен, предлагаем установить
+      alert('MetaMask не обнаружен. Пожалуйста, установите расширение из https://metamask.io/download/');
+      return;
+    }
+  
+    try {
+      // Вызваем стандартный поп‑ап MetaMask для подключения аккаунта
+      window.ethereum.request({ method: 'eth_requestAccounts' })
+        .then((accounts) => {
+          if (accounts.length > 0) {
+            // Если пользователь согласился — отображаем инфу о кошельке
+            displayWalletInfo(accounts[0]);
+            setupEventListeners();
+          }
+        })
+        .catch((err) => {
+          console.error('Пользователь отклонил подключение или произошла ошибка:', err);
+        });
+    } catch (e) {
+      console.error('Ошибка при вызове MetaMask:', e);
+    }
   }
 
   // Проверка существующего подключения
