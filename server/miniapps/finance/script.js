@@ -703,28 +703,53 @@ document.addEventListener('DOMContentLoaded', () => {
     checkWalletConnection();
   }
 
- function openMetaMask() {
+function openMetaMask() {
   try {
-    // Попытка открыть через Ethereum API
-    if (typeof window.ethereum !== 'undefined') {
-      window.ethereum.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] });
+    // Если MetaMask вообще не установлен, ничего не делаем
+    if (typeof window.ethereum === 'undefined') {
+      console.warn('MetaMask не найден');
       return;
     }
-    
-    // Deeplink для мобильных устройств
-    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
-      window.open('https://metamask.app.link/', '_blank');
-      return;
-    }
-    
-    // Для десктопных браузеров
-    if (typeof window.open !== 'undefined') {
-      window.open('chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html', '_blank');
-    }
+
+    // 1) Сначала проверяем, подключён ли уже аккаунт
+    window.ethereum.request({ method: 'eth_accounts' })
+      .then(accounts => {
+        if (accounts.length === 0) {
+          // Если аккаунт не подключён, сначала откроем окно подтверждения подключения
+          return window.ethereum.request({ method: 'eth_requestAccounts' })
+            .then(() => {
+              // Как только пользователь подключится, сразу открываем интерфейс MetaMask
+              openMetaMaskUI();
+            })
+            .catch(err => {
+              console.error('Пользователь отменил подключение или произошла ошибка:', err);
+            });
+        } else {
+          // Если аккаунт уже подключён — просто открываем UI
+          openMetaMaskUI();
+        }
+      })
+      .catch(err => {
+        console.error('Ошибка при проверке подключённых аккаунтов:', err);
+      });
   } catch (e) {
     console.error('Ошибка открытия MetaMask:', e);
   }
 }
+
+// Функция, которая открывает «полноценный» интерфейс расширения MetaMask
+function openMetaMaskUI() {
+  // Здесь нужно подставить ID вашего расширения. 
+  // Пример для Chrome: chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html
+  const EXTENSION_ID = 'nkbihfbeogaeaoehlefnkodbefgpgknn'; // замените на свой ID
+  const url = `chrome-extension://${EXTENSION_ID}/home.html`;
+
+  // Для Firefox путь может быть чуть другим (иногда popup.html), проверьте в своих расширениях
+  // const url = `moz-extension://${EXTENSION_ID}/popup.html`;
+
+  window.open(url, '_blank');
+}
+
   // Проверка существующего подключения
   async function checkWalletConnection() {
     if (typeof window.ethereum === 'undefined') return;
