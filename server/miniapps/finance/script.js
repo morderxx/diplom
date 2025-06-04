@@ -678,8 +678,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const copyBtn = document.getElementById('copy-address');
     const viewTransactionsBtn = document.getElementById('view-transactions');
     
-    // Обработчик для кнопки открытия MetaMask
-    openBtn.addEventListener('click', openMetaMask);
+
+    openBtn.addEventListener('click', () => {
+      openMetaMask();
+      
+      // Дополнительная проверка через 1 секунду
+      setTimeout(async () => {
+        if (typeof window.ethereum !== 'undefined') {
+          const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+          if (accounts.length > 0 && !document.getElementById('wallet-details').classList.contains('hidden')) {
+            // Кошелек подключен и UI открыт - ничего не делаем
+          } else {
+            // Если интерфейс не открылся - показываем инструкцию
+            alert('Если MetaMask не открылся автоматически, пожалуйста, нажмите на иконку расширения в вашем браузере');
+          }
+        }
+      }, 1000);
+    });
     
     // Проверяем, установлен ли MetaMask
     if (typeof window.ethereum === 'undefined') {
