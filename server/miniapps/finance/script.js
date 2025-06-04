@@ -21,19 +21,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // API ключ для CurrencyFreaks
   const CURRENCY_API_KEY = '24f59325463e418ca66aee20d46a0925';
-  const METAMASK_EXTENSION_ID = 'nkbihfbeogaeaoehlefnkodbefgpgknn';
-
+  
   // Кэши
   const exchangeRatesCache = { rates: null, timestamp: 0 };
   const cryptoUsdPricesCache = { prices: null, timestamp: 0 };
-
+  
   // Надежный прокси
   const CORS_PROXY = "https://api.allorigins.win/raw?url=";
 
   // Глобальные переменные для графиков
   let cryptoChart = null;
   let volatilityChart = null;
-
+  
   // Кэш исторических данных
   const historyCache = {};
 
@@ -66,7 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
       </form>
       <div id="exchange-result" class="exchange-result"></div>
     `;
-
+    
     const selFrom = document.getElementById('from');
     const selTo = document.getElementById('to');
     selFrom.innerHTML = selTo.innerHTML = '';
@@ -76,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
       selFrom.add(new Option(c, c));
       selTo.add(new Option(c, c));
     });
-
+    
     // Крипта
     Object.keys(cryptoMap).forEach(c => {
       selFrom.add(new Option(c, c));
@@ -100,25 +99,25 @@ document.addEventListener('DOMContentLoaded', () => {
     if (exchangeRatesCache.rates && (now - exchangeRatesCache.timestamp) < 600000) {
       return exchangeRatesCache.rates;
     }
-
+    
     try {
       const response = await fetch(
         `https://api.currencyfreaks.com/latest?apikey=${CURRENCY_API_KEY}`
       );
-
+      
       if (!response.ok) throw new Error('Ошибка получения курсов валют');
-
+      
       const data = await response.json();
-
+      
       // Добавляем BYN, если его нет (примерный курс)
       if (!data.rates.BYN) {
         data.rates.BYN = 3.25; // Примерный курс BYN к USD
       }
-
+      
       // Сохраняем в кэш
       exchangeRatesCache.rates = data.rates;
       exchangeRatesCache.timestamp = now;
-
+      
       return data.rates;
     } catch (error) {
       console.error('Ошибка получения курсов валют:', error);
@@ -129,28 +128,28 @@ document.addEventListener('DOMContentLoaded', () => {
   // Получение цен криптовалют в USD с кэшированием
   async function getCryptoUsdPrices() {
     const now = Date.now();
-
+    
     // Проверка кэша
     if (cryptoUsdPricesCache.prices && (now - cryptoUsdPricesCache.timestamp) < 300000) {
       return cryptoUsdPricesCache.prices;
     }
-
+    
     try {
       // Получаем все цены одним запросом
       const coinIds = Object.values(cryptoMap).join(',');
       const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coinIds}&vs_currencies=usd`;
       const proxyUrl = CORS_PROXY + encodeURIComponent(url);
-
+      
       const response = await fetch(proxyUrl);
-
+      
       if (!response.ok) throw new Error('Ошибка получения курсов криптовалют');
-
+      
       const data = await response.json();
-
+      
       // Сохраняем в кэш
       cryptoUsdPricesCache.prices = data;
       cryptoUsdPricesCache.timestamp = now;
-
+      
       return data;
     } catch (error) {
       console.error('Ошибка получения курсов криптовалют:', error);
@@ -168,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
       out.textContent = 'Введите корректную сумму';
       return;
     }
-
+    
     out.textContent = 'Загрузка…';
     out.classList.remove('error');
 
@@ -184,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!rates || !rates[f] || !rates[t]) {
           throw new Error('Курсы валют недоступны');
         }
-
+        
         // Конвертация через USD как базовую валюту
         const rateFrom = rates[f];
         const rateTo = rates[t];
@@ -197,16 +196,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!cryptoPrices) {
           throw new Error('Курсы криптовалют недоступны');
         }
-
+        
         const idF = cryptoMap[f];
         const idT = cryptoMap[t];
         const priceF = cryptoPrices[idF]?.usd;
         const priceT = cryptoPrices[idT]?.usd;
-
+        
         if (!priceF || !priceT) {
           throw new Error('Курсы криптовалют недоступны');
         }
-
+        
         result = a * (priceF / priceT);
       }
 
@@ -214,19 +213,19 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (isCrypto(f) && isFiat(t)) {
         const cryptoPrices = await getCryptoUsdPrices();
         const rates = await getExchangeRates();
-
+        
         if (!cryptoPrices || !rates || !rates[t]) {
           throw new Error('Курсы недоступны');
         }
-
+        
         const idF = cryptoMap[f];
         const cryptoUsd = cryptoPrices[idF]?.usd;
         const fiatRate = rates[t]; // Кол-во USD за 1 единицу фиата
-
+        
         if (!cryptoUsd) {
           throw new Error('Курс криптовалюты недоступен');
         }
-
+        
         // 1 крипта = X USD
         // 1 USD = 1 / fiatRate фиата
         // Итого: X * (1 / fiatRate) фиата за 1 крипту
@@ -237,19 +236,19 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (isFiat(f) && isCrypto(t)) {
         const rates = await getExchangeRates();
         const cryptoPrices = await getCryptoUsdPrices();
-
+        
         if (!rates || !rates[f] || !cryptoPrices) {
           throw new Error('Курсы недоступны');
         }
-
+        
         const idT = cryptoMap[t];
         const cryptoUsd = cryptoPrices[idT]?.usd;
         const fiatRate = rates[f]; // Кол-во USD за 1 единицу фиата
-
+        
         if (!cryptoUsd) {
           throw new Error('Курс криптовалюты недоступен');
         }
-
+        
         // 1 фиат = fiatRate USD
         // 1 крипта = Y USD
         // Итого: (fiatRate) / Y крипты за 1 фиат
@@ -261,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (!isFinite(result)) throw new Error('Некорректный результат');
-
+      
       // Форматирование результата
       let formattedResult;
       if (result > 1000) {
@@ -271,7 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         formattedResult = result.toFixed(8);
       }
-
+      
       out.innerHTML = `<strong>${a} ${f}</strong> = <strong>${formattedResult} ${t}</strong>`;
     } catch (err) {
       console.error('Ошибка конвертации:', err);
@@ -282,198 +281,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ——— Прочие вкладки ——————————————————
   function showWallet() {
-    content.innerHTML = `
-      <div class="wallet-dapp" style="padding:20px; background:#f9f9f9; border-radius:8px;">
-        <h3>dApp: Управление кошельком</h3>
-        
-        <!-- Подключение и статус -->
-        <div id="wallet-connection">
-          <button id="btn-connect">Подключить MetaMask</button>
-          <p id="connection-status">Статус: не подключено</p>
-          <p id="wallet-address"></p>
-        </div>
-        
-        <!-- Баланс ETH -->
-        <div id="wallet-balance" style="display:none; margin-top:10px;">
-          <h4>Баланс:</h4>
-          <p id="eth-balance"></p>
-        </div>
-        
-        <!-- Форма отправки транзакции -->
-        <div id="send-tx" style="display:none; margin-top:20px;">
-          <h4>Отправить ETH</h4>
-          <label>
-            Кому (адрес):<br>
-            <input type="text" id="tx-to" placeholder="0x...">
-          </label><br><br>
-          <label>
-            Сумма (ETH):<br>
-            <input type="number" id="tx-amount" placeholder="0.01" step="any">
-          </label><br><br>
-          <button id="btn-send-tx">Отправить</button>
-          <p id="tx-status" style="color:#f39c12; margin-top:10px;"></p>
-        </div>
-        
-        <!-- Подпись сообщения (опционально) -->
-        <div id="sign-message" style="display:none; margin-top:20px;">
-          <h4>Подписать сообщение</h4>
-          <textarea id="msg-to-sign" rows="3" placeholder="Ваше сообщение"></textarea><br><br>
-          <button id="btn-sign">Подписать</button>
-          <p id="signature-result" style="word-break:break-all; margin-top:10px;"></p>
-        </div>
-      </div>
-    `;
-
-    // Ссылки на элементы
-    const btnConnect     = document.getElementById('btn-connect');
-    const connStatus     = document.getElementById('connection-status');
-    const walletAddressP = document.getElementById('wallet-address');
-    const balanceBlock   = document.getElementById('wallet-balance');
-    const ethBalanceP    = document.getElementById('eth-balance');
-    const sendTxBlock    = document.getElementById('send-tx');
-    const btnSendTx      = document.getElementById('btn-send-tx');
-    const txToInput      = document.getElementById('tx-to');
-    const txAmountInput  = document.getElementById('tx-amount');
-    const txStatusP      = document.getElementById('tx-status');
-    const signMsgBlock   = document.getElementById('sign-message');
-    const btnSign        = document.getElementById('btn-sign');
-    const msgToSignInput = document.getElementById('msg-to-sign');
-    const sigResultP     = document.getElementById('signature-result');
-
-    let currentAccount = null;
-
-    // Обработчик “Подключить MetaMask”
-    btnConnect.addEventListener('click', async () => {
-      if (!isMetaMaskInstalled()) {
-        alert('MetaMask не найден! Установите расширение и попробуйте снова.');
-        return;
-      }
-
-      try {
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        if (accounts.length === 0) {
-          connStatus.textContent = 'Статус: не подключено';
-          return;
-        }
-        currentAccount = accounts[0];
-        connStatus.textContent = 'Статус: подключено';
-        walletAddressP.textContent = `Адрес: ${currentAccount}`;
-
-        balanceBlock.style.display = 'block';
-        sendTxBlock.style.display  = 'block';
-        signMsgBlock.style.display = 'block';
-
-        await updateBalance();
-        window.ethereum.on('accountsChanged', handleAccountsChanged);
-        window.ethereum.on('chainChanged', handleChainChanged);
-      } catch (err) {
-        console.error('Ошибка при запросе аккаунтов', err);
-        connStatus.textContent = 'Статус: ошибка подключения';
-      }
-    });
-
-    // Получение баланса и обновление UI
-    async function updateBalance() {
-      if (!currentAccount) return;
-      try {
-        const balanceWei = await window.ethereum.request({
-          method: 'eth_getBalance',
-          params: [currentAccount, 'latest']
-        });
-        const balanceEth = Number(BigInt(balanceWei) / BigInt(1e14)) / 10000;
-        ethBalanceP.textContent = `${balanceEth.toFixed(4)} ETH`;
-      } catch (err) {
-        console.error('Ошибка при получении баланса', err);
-        ethBalanceP.textContent = 'Не удалось получить баланс';
-      }
-    }
-
-    // Отправка простой ETH‑транзакции
-    btnSendTx.addEventListener('click', async () => {
-      txStatusP.textContent = '';
-      const to   = txToInput.value.trim();
-      const sum  = txAmountInput.value.trim();
-      if (!/^0x[a-fA-F0-9]{40}$/.test(to)) {
-        txStatusP.textContent = 'Ошибка: некорректный адрес назначения.';
-        return;
-      }
-      if (isNaN(sum) || parseFloat(sum) <= 0) {
-        txStatusP.textContent = 'Ошибка: введите сумму больше 0.';
-        return;
-      }
-      if (!currentAccount) {
-        txStatusP.textContent = 'Сначала подключитесь.';
-        return;
-      }
-
-      try {
-        const weiValue = '0x' + (BigInt(Math.round(parseFloat(sum) * 1e18))).toString(16);
-        const txParams = {
-          from: currentAccount,
-          to: to,
-          value: weiValue
-        };
-        const txHash = await window.ethereum.request({
-          method: 'eth_sendTransaction',
-          params: [txParams]
-        });
-        txStatusP.style.color = '#4e73df';
-        txStatusP.textContent = `Транзакция отправлена, hash: ${txHash}`;
-        setTimeout(updateBalance, 15000);
-      } catch (err) {
-        console.error('Ошибка отправки транзакции', err);
-        txStatusP.style.color = '#e74a3b';
-        txStatusP.textContent = `Ошибка при отправке: ${err.message || err}`;
-      }
-    });
-
-    // Подпись произвольного сообщения
-    btnSign.addEventListener('click', async () => {
-      sigResultP.textContent = '';
-      const message = msgToSignInput.value.trim();
-      if (!message) {
-        sigResultP.textContent = 'Введите сообщение для подписи.';
-        return;
-      }
-      if (!currentAccount) {
-        sigResultP.textContent = 'Сначала подключитесь.';
-        return;
-      }
-      try {
-        const signature = await window.ethereum.request({
-          method: 'personal_sign',
-          params: [message, currentAccount]
-        });
-        sigResultP.style.color = '#1cc88a';
-        sigResultP.textContent = `Подпись: ${signature}`;
-      } catch (err) {
-        console.error('Ошибка подписи', err);
-        sigResultP.style.color = '#e74a3b';
-        sigResultP.textContent = `Ошибка при подписи: ${err.message || err}`;
-      }
-    });
-
-    // Слушатели изменений аккаунта/сети
-    function handleAccountsChanged(accounts) {
-      if (accounts.length === 0) {
-        connStatus.textContent = 'Статус: не подключено';
-        walletAddressP.textContent = '';
-        balanceBlock.style.display = 'none';
-        sendTxBlock.style.display  = 'none';
-        signMsgBlock.style.display = 'none';
-        currentAccount = null;
-      } else {
-        currentAccount = accounts[0];
-        walletAddressP.textContent = `Адрес: ${currentAccount}`;
-        updateBalance();
-      }
-    }
-
-    function handleChainChanged(_chainId) {
-      updateBalance();
-    }
+    content.innerHTML = `<h3>Кошелёк</h3><p>Баланс и история транзакций…</p>`;
   }
-
+  
   async function showStats() {
     content.innerHTML = `
       <div class="stats-container">
@@ -507,15 +317,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Инициализация контролов
     initAssetSelector();
-
+    
     // Загрузка данных и построение графика
     await loadAndDrawChart();
-
+    
     // Обработчики событий
     document.getElementById('update-chart').addEventListener('click', async () => {
       await loadAndDrawChart();
     });
-
+    
     document.getElementById('asset-type').addEventListener('change', () => {
       initAssetSelector();
       loadAndDrawChart();
@@ -527,7 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const assetType = document.getElementById('asset-type').value;
     const container = document.getElementById('asset-selector');
     container.innerHTML = '';
-
+    
     if (assetType === 'crypto') {
       // Только основные криптовалюты
       const topCryptos = ['BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA'];
@@ -587,13 +397,13 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadAndDrawChart() {
     const assetType = document.getElementById('asset-type').value;
     const selectedAssets = getSelectedAssets();
-
+    
     // Скрыть старые ошибки
     hideErrors();
-
+    
     // Показать загрузчик
     toggleLoader(true);
-
+    
     try {
       let data;
       if (assetType === 'crypto') {
@@ -614,20 +424,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // Загрузка данных для криптовалют
   async function loadCryptoData(assets) {
     const result = {};
-
+    
     for (const asset of assets) {
       const coinId = cryptoMap[asset];
       if (!coinId) continue;
-
+      
       try {
         // Упрощенный запрос к CoinGecko
         const url = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=30&interval=daily`;
-
+        
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Ошибка API: ${response.status}`);
-
+        
         const data = await response.json();
-
+        
         // Упрощенная обработка данных
         if (data.prices && Array.isArray(data.prices)) {
           result[asset] = {
@@ -647,7 +457,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
       }
     }
-
+    
     return result;
   }
 
@@ -656,32 +466,32 @@ document.addEventListener('DOMContentLoaded', () => {
     // Получаем текущие курсы
     const rates = await getExchangeRates();
     if (!rates) throw new Error('Не удалось получить курсы валют');
-
+    
     const result = {};
     const now = Date.now();
     const oneDay = 24 * 60 * 60 * 1000;
-
+    
     currencies.forEach(currency => {
       // Базовый курс относительно USD
       const baseRate = rates[currency] ? parseFloat(rates[currency]) : 1;
-
+      
       // Генерация исторических данных с правильными временными метками
       const prices = [];
       const timestamps = [];
-
+      
       // Создаем дату с фиксированным временем (12:00 UTC)
       const baseDate = new Date();
       baseDate.setHours(12, 0, 0, 0);
-
+      
       for (let i = 30; i >= 0; i--) {
         const date = new Date(baseDate.getTime() - i * oneDay);
         timestamps.push(date.getTime());
-
+        
         // Реалистичные колебания курса (±1%)
         const fluctuation = 1 + (Math.random() - 0.5) * 0.02;
         prices.push(baseRate * fluctuation);
       }
-
+      
       result[currency] = {
         prices,
         timestamps,
@@ -689,7 +499,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentRate: baseRate
       };
     });
-
+    
     return result;
   }
 
@@ -697,38 +507,38 @@ document.addEventListener('DOMContentLoaded', () => {
   function drawPriceChart(data, assetType) {
     const canvas = document.getElementById('price-chart');
     if (!canvas) return;
-
+    
     // Уничтожаем предыдущий график если существует
     if (cryptoChart) {
       cryptoChart.destroy();
       cryptoChart = null;
     }
-
+    
     const ctx = canvas.getContext('2d');
     const assets = Object.keys(data);
-
+    
     // Проверка наличия данных
-    const hasData = assets.some(asset =>
+    const hasData = assets.some(asset => 
       !data[asset].error && data[asset].prices?.length > 0
     );
-
+    
     if (!hasData) {
       showChartError('Нет данных для построения графика');
       return;
     }
-
+    
     const colors = ['#4e73df', '#1cc88a', '#f6c23e', '#e74a3b', '#858796', '#36b9cc'];
     const datasets = [];
-
+    
     assets.forEach((asset, i) => {
       const assetData = data[asset];
       if (assetData.error) return;
-
+      
       // Сортируем данные по времени
       const sortedData = assetData.timestamps
         .map((ts, idx) => ({ x: ts, y: assetData.prices[idx] }))
         .sort((a, b) => a.x - b.x);
-
+      
       datasets.push({
         label: asset,
         data: sortedData,
@@ -740,10 +550,10 @@ document.addEventListener('DOMContentLoaded', () => {
         tension: 0.1 // Уменьшаем сглаживание
       });
     });
-
+    
     // Определяем единицы измерения
     const yAxisLabel = assetType === 'crypto' ? 'Цена (USD)' : 'Курс к USD';
-
+    
     // Создаем новый график
     cryptoChart = new Chart(ctx, {
       type: 'line',
@@ -798,8 +608,243 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Проверка, установлен ли MetaMask
-  function isMetaMaskInstalled() {
-    return typeof window.ethereum !== 'undefined' && window.ethereum.isMetaMask;
+   // ======== НОВЫЙ ФУНКЦИОНАЛ ДЛЯ ВКЛАДКИ "КОШЕЛЁК" ========
+  async function showWallet() {
+    content.innerHTML = `
+      <div class="wallet-container">
+        <h3>Ваш криптокошелёк</h3>
+        
+        <div class="wallet-header">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask" class="metamask-logo">
+          <h4>Подключите MetaMask для управления вашими активами</h4>
+        </div>
+        
+        <div class="wallet-info">
+          <p>Подключите свой кошелёк, чтобы просматривать баланс, историю транзакций и управлять своими криптоактивами напрямую через браузер.</p>
+          
+          <div class="wallet-status" id="wallet-status">
+            <p>Статус: <span class="status-disconnected">Не подключено</span></p>
+          </div>
+          
+          <div class="wallet-connect-buttons">
+            <button id="connect-metamask" class="connect-btn">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask">
+              Подключить MetaMask
+            </button>
+            
+            <button id="open-metamask" class="open-btn" title="Открыть расширение MetaMask">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"></path>
+              </svg>
+              Открыть MetaMask
+            </button>
+          </div>
+          
+          <div class="wallet-details hidden" id="wallet-details">
+            <div class="wallet-address">
+              <strong>Адрес кошелька:</strong>
+              <span id="wallet-address"></span>
+              <button id="copy-address">Копировать</button>
+            </div>
+            
+            <div class="wallet-balance">
+              <h4>Баланс:</h4>
+              <div id="balance-details"></div>
+            </div>
+            
+            <div class="wallet-actions">
+              <button id="view-transactions">Посмотреть транзакции</button>
+              <button id="disconnect-wallet">Отключить кошелёк</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="wallet-features">
+          <h4>Возможности с подключенным кошельком:</h4>
+          <ul>
+            <li>Просмотр баланса в реальном времени</li>
+            <li>История всех транзакций</li>
+            <li>Быстрый доступ к DeFi платформам</li>
+            <li>Управление NFT коллекциями</li>
+            <li>Безопасное хранение ключей</li>
+          </ul>
+        </div>
+      </div>
+    `;
+    
+    const connectBtn = document.getElementById('connect-metamask');
+    const openBtn = document.getElementById('open-metamask');
+    const disconnectBtn = document.getElementById('disconnect-wallet');
+    const copyBtn = document.getElementById('copy-address');
+    const viewTransactionsBtn = document.getElementById('view-transactions');
+    
+    // Обработчик для кнопки открытия MetaMask
+    openBtn.addEventListener('click', openMetaMask);
+    
+    // Проверяем, установлен ли MetaMask
+    if (typeof window.ethereum === 'undefined') {
+      document.getElementById('wallet-status').innerHTML = `
+        <p>Статус: <span class="status-error">MetaMask не обнаружен!</span></p>
+        <p class="install-hint">Установите расширение MetaMask для доступа к функциям кошелька</p>
+        <a href="https://metamask.io/download/" target="_blank" class="install-link">
+          Установить MetaMask
+        </a>
+      `;
+      connectBtn.disabled = true;
+    } else {
+      connectBtn.addEventListener('click', connectMetaMask);
+    }
+    
+    if (disconnectBtn) disconnectBtn.addEventListener('click', disconnectWallet);
+    if (copyBtn) copyBtn.addEventListener('click', copyAddress);
+    if (viewTransactionsBtn) viewTransactionsBtn.addEventListener('click', viewTransactions);
+    
+    // Проверяем, есть ли уже подключенный кошелек
+    checkWalletConnection();
+  }
+
+ function openMetaMask() {
+  try {
+    // Попытка открыть через Ethereum API
+    if (typeof window.ethereum !== 'undefined') {
+      window.ethereum.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] });
+      return;
+    }
+    
+    // Deeplink для мобильных устройств
+    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      window.open('https://metamask.app.link/', '_blank');
+      return;
+    }
+    
+    // Для десктопных браузеров
+    if (typeof window.open !== 'undefined') {
+      window.open('chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html', '_blank');
+    }
+  } catch (e) {
+    console.error('Ошибка открытия MetaMask:', e);
+  }
+}
+  // Проверка существующего подключения
+  async function checkWalletConnection() {
+    if (typeof window.ethereum === 'undefined') return;
+    
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+      if (accounts.length > 0) {
+        displayWalletInfo(accounts[0]);
+      }
+    } catch (error) {
+      console.error("Ошибка при проверке подключения:", error);
+    }
+  }
+  
+  // Подключение к MetaMask
+  async function connectMetaMask() {
+    if (typeof window.ethereum === 'undefined') return;
+    
+    try {
+      const accounts = await window.ethereum.request({ 
+        method: 'eth_requestAccounts' 
+      });
+      
+      if (accounts.length > 0) {
+        displayWalletInfo(accounts[0]);
+        setupEventListeners();
+      }
+    } catch (error) {
+      console.error("Ошибка подключения:", error);
+      document.getElementById('wallet-status').innerHTML = `
+        <p>Статус: <span class="status-error">Ошибка подключения!</span></p>
+        <p>${error.message || 'Проверьте расширение MetaMask'}</p>
+      `;
+    }
+  }
+  
+  // Отображение информации о кошельке
+  async function displayWalletInfo(account) {
+    document.getElementById('wallet-status').innerHTML = `
+      <p>Статус: <span class="status-connected">Подключено</span></p>
+    `;
+    
+    // Форматируем адрес для отображения
+    const formattedAddress = `${account.substring(0, 6)}...${account.substring(account.length - 4)}`;
+    document.getElementById('wallet-address').textContent = formattedAddress;
+    document.getElementById('wallet-address').dataset.full = account;
+    
+    // Показываем детали кошелька
+    document.getElementById('wallet-details').classList.remove('hidden');
+    
+    // Получаем баланс
+    try {
+      const balance = await window.ethereum.request({ 
+        method: 'eth_getBalance',
+        params: [account, 'latest']
+      });
+      
+      // Конвертируем из wei в ETH
+      const ethBalance = parseInt(balance) / 1e18;
+      document.getElementById('balance-details').innerHTML = `
+        <div class="balance-item">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/0/05/Ethereum_logo_2014.svg" alt="ETH">
+          <span>${ethBalance.toFixed(4)} ETH</span>
+        </div>
+        <div class="balance-value">$${(ethBalance * 3500).toFixed(2)} USD</div>
+      `;
+    } catch (error) {
+      console.error("Ошибка получения баланса:", error);
+      document.getElementById('balance-details').innerHTML = `
+        <p class="balance-error">Не удалось получить баланс</p>
+      `;
+    }
+  }
+  
+  // Отключение кошелька
+  function disconnectWallet() {
+    document.getElementById('wallet-status').innerHTML = `
+      <p>Статус: <span class="status-disconnected">Не подключено</span></p>
+    `;
+    document.getElementById('wallet-details').classList.add('hidden');
+  }
+  
+  // Копирование адреса в буфер обмена
+  function copyAddress() {
+    const address = document.getElementById('wallet-address').dataset.full;
+    navigator.clipboard.writeText(address)
+      .then(() => {
+        const copyBtn = document.getElementById('copy-address');
+        copyBtn.textContent = 'Скопировано!';
+        setTimeout(() => {
+          copyBtn.textContent = 'Копировать';
+        }, 2000);
+      })
+      .catch(err => {
+        console.error('Ошибка копирования:', err);
+      });
+  }
+  
+  // Просмотр транзакций
+  function viewTransactions() {
+    const address = document.getElementById('wallet-address').dataset.full;
+    const url = `https://etherscan.io/address/${address}`;
+    window.open(url, '_blank');
+  }
+  
+  // Настройка обработчиков событий
+  function setupEventListeners() {
+    // Обработка изменения аккаунтов
+    window.ethereum.on('accountsChanged', (accounts) => {
+      if (accounts.length === 0) {
+        disconnectWallet();
+      } else {
+        displayWalletInfo(accounts[0]);
+      }
+    });
+    
+    // Обработка изменения сети
+    window.ethereum.on('chainChanged', (chainId) => {
+      // При изменении сети перезагружаем информацию
+      window.location.reload();
+    });
   }
 });
