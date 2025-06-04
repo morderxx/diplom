@@ -715,29 +715,55 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function openMetaMask() {
   try {
-    // Проверяем, установлен ли MetaMask
-    if (typeof window.ethereum !== 'undefined') {
-      // Создаем iframe для обхода политики безопасности
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      document.body.appendChild(iframe);
-      
-      // Пытаемся открыть через внутренний URL расширения
-      const extensionId = 'nkbihfbeogaeaoehlefnkodbefgpgknn';
-      iframe.src = `chrome-extension://${extensionId}/home.html`;
-      
-      // Если не сработало - открываем новое окно
-      setTimeout(() => {
-        if (!iframe.contentWindow || iframe.contentWindow.closed) {
-          window.open(`chrome-extension://${extensionId}/home.html`, '_blank');
-        }
-      }, 100);
+    // Пытаемся определить браузер
+    const isChrome = navigator.userAgent.includes('Chrome');
+    const isFirefox = navigator.userAgent.includes('Firefox');
+    
+    if (isChrome) {
+      openChromeMetaMask();
+    } else if (isFirefox) {
+      openFirefoxMetaMask();
     } else {
-      // Если MetaMask не установлен - просто открываем страницу
-      window.open('https://metamask.io/', '_blank');
+      // Для других браузеров используем универсальный метод
+      openUniversalMetaMask();
     }
   } catch (e) {
     console.error('Ошибка открытия MetaMask:', e);
+  }
+}
+
+function openChromeMetaMask() {
+  const extensionId = 'nkbihfbeogaeaoehlefnkodbefgpgknn';
+  const url = `chrome-extension://${extensionId}/home.html`;
+  
+  // Пробуем через iframe
+  const iframe = document.createElement('iframe');
+  iframe.style.display = 'none';
+  iframe.src = url;
+  document.body.appendChild(iframe);
+  
+  // Если не сработало - открываем в новом окне
+  setTimeout(() => {
+    if (!iframe.contentWindow || iframe.contentWindow.closed) {
+      window.open(url, '_blank', 'width=400,height=600');
+    }
+  }, 100);
+}
+
+function openFirefoxMetaMask() {
+  // Для Firefox используем другой URL
+  const url = 'moz-extension://*/home.html';
+  window.open(url, '_blank', 'width=400,height=600');
+}
+
+function openUniversalMetaMask() {
+  // Универсальный метод для всех браузеров
+  if (typeof window.ethereum !== 'undefined') {
+    window.ethereum.request({ 
+      method: 'wallet_showHomeScreen' 
+    });
+  } else {
+    window.open('https://metamask.io/', '_blank');
   }
 }
   
