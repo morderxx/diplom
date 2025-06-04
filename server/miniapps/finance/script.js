@@ -1,7 +1,17 @@
 document.addEventListener('DOMContentLoaded', () => {
   const content = document.getElementById('finance-content');
   const tabs = document.querySelectorAll('.finance-nav button');
-
+  // В начале скрипта
+  const ALLOWED_DOMAINS = [
+    'diplom-production-8971.up.railway.app',
+    'localhost',
+    '127.0.0.1'
+  ];
+  
+  if (!ALLOWED_DOMAINS.includes(window.location.hostname)) {
+    console.error('Домен не разрешен для работы с MetaMask');
+    // Показать предупреждение пользователю
+  }
   // Фиатные коды и карта крипто→ID CoinGecko
   const fiatCodes = ['USD', 'EUR', 'RUB', 'GBP', 'JPY', 'CNY', 'CHF', 'CAD', 'BYN'];
   const cryptoMap = {
@@ -703,38 +713,21 @@ document.addEventListener('DOMContentLoaded', () => {
     checkWalletConnection();
   }
 
-function openMetaMask() {
-  try {
-    // Определяем тип устройства
-    const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-    
-    if (isMobile) {
-      // Для мобильных устройств
-      window.open('https://metamask.app.link/', '_blank');
-    } else {
-      // Для десктопных браузеров
-      if (typeof window.ethereum !== 'undefined') {
-        // Используем официальный метод MetaMask для открытия интерфейса
-        window.ethereum.request({
-          method: 'wallet_requestSnaps',
-          params: {
-            'npm:metamask': {}
-          }
-        }).then(() => {
-          // После открытия запрашиваем аккаунты
-          window.ethereum.request({ method: 'eth_requestAccounts' });
-        });
+  function openMetaMask() {
+    try {
+      const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+      
+      if (isMobile) {
+        window.open('https://metamask.app.link/', '_blank');
       } else {
-        // Если MetaMask не установлен
-        window.open('https://metamask.io/download/', '_blank');
+        // Самый надежный способ - открыть через иконку расширения
+        showMetaMaskInstructions();
       }
+    } catch (e) {
+      console.error('Ошибка открытия MetaMask:', e);
+      showMetaMaskInstructions();
     }
-  } catch (e) {
-    console.error('Ошибка открытия MetaMask:', e);
-    // Показываем инструкцию пользователю
-    showMetaMaskInstructions();
   }
-}
   // Проверка существующего подключения
   async function checkWalletConnection() {
     if (typeof window.ethereum === 'undefined') return;
