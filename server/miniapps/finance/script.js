@@ -703,26 +703,37 @@ document.addEventListener('DOMContentLoaded', () => {
     checkWalletConnection();
   }
 
- function openMetaMask() {
+function openMetaMask() {
   try {
-    // Попытка открыть через Ethereum API
+    // Для всех платформ используем универсальный метод открытия интерфейса
     if (typeof window.ethereum !== 'undefined') {
-      window.ethereum.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] });
+      // Метод, гарантированно открывающий интерфейс MetaMask
+      window.ethereum.request({ 
+        method: 'wallet_requestSnaps', 
+        params: {
+          'npm:metamask': {}
+        }
+      }).catch(error => {
+        console.log("Ошибка открытия интерфейса:", error);
+        fallbackOpen();
+      });
       return;
     }
     
-    // Deeplink для мобильных устройств
-    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
-      window.open('https://metamask.app.link/', '_blank');
-      return;
-    }
-    
-    // Для десктопных браузеров
-    if (typeof window.open !== 'undefined') {
-      window.open('chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html', '_blank');
-    }
+    fallbackOpen();
   } catch (e) {
     console.error('Ошибка открытия MetaMask:', e);
+    fallbackOpen();
+  }
+  
+  function fallbackOpen() {
+    // Универсальный фолбэк
+    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      window.open('https://metamask.app.link/', '_blank');
+    } else {
+      // Открываем страницу установки с инструкцией
+      window.open('https://metamask.io/download/', '_blank');
+    }
   }
 }
   // Проверка существующего подключения
@@ -740,26 +751,37 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   
   // Подключение к MetaMask
-  async function connectMetaMask() {
-    if (typeof window.ethereum === 'undefined') return;
+async function connectMetaMask() {
+  if (typeof window.ethereum === 'undefined') {
+    showMetaMaskNotInstalled();
+    return;
+  }
+
+  try {
+    const accounts = await window.ethereum.request({ 
+      method: 'eth_requestAccounts' 
+    });
     
-    try {
-      const accounts = await window.ethereum.request({ 
-        method: 'eth_requestAccounts' 
-      });
-      
-      if (accounts.length > 0) {
-        displayWalletInfo(accounts[0]);
-        setupEventListeners();
-      }
-    } catch (error) {
-      console.error("Ошибка подключения:", error);
-      document.getElementById('wallet-status').innerHTML = `
-        <p>Статус: <span class="status-error">Ошибка подключения!</span></p>
-        <p>${error.message || 'Проверьте расширение MetaMask'}</p>
+    if (accounts.length > 0) {
+      displayWalletInfo(accounts[0]);
+      setupEventListeners();
+    }
+  } catch (error) {
+    console.error("Ошибка подключения:", error);
+    document.getElementById('wallet-status').innerHTML = `
+      <p>Статус: <span class="status-error">Ошибка подключения!</span></p>
+      <p>${error.message || 'Проверьте расширение MetaMask'}</p>
+    `;
+    
+    // Предлагаем открыть интерфейс вручную
+    if (error.code === 4001) {
+      document.getElementById('wallet-status').innerHTML += `
+        <button class="retry-btn" id="manual-open">Открыть MetaMask вручную</button>
       `;
+      document.getElementById('manual-open').addEventListener('click', openMetaMask);
     }
   }
+}
   
   // Отображение информации о кошельке
   async function displayWalletInfo(account) {
