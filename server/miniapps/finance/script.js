@@ -703,6 +703,28 @@ document.addEventListener('DOMContentLoaded', () => {
     checkWalletConnection();
   }
 
+ function openMetaMask() {
+  try {
+    // Попытка открыть через Ethereum API
+    if (typeof window.ethereum !== 'undefined') {
+      window.ethereum.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] });
+      return;
+    }
+    
+    // Deeplink для мобильных устройств
+    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      window.open('https://metamask.app.link/', '_blank');
+      return;
+    }
+    
+    // Для десктопных браузеров
+    if (typeof window.open !== 'undefined') {
+      window.open('chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html', '_blank');
+    }
+  } catch (e) {
+    console.error('Ошибка открытия MetaMask:', e);
+  }
+}
   // Проверка существующего подключения
   async function checkWalletConnection() {
     if (typeof window.ethereum === 'undefined') return;
@@ -718,66 +740,27 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   
   // Подключение к MetaMask
-// ... предыдущий код ...
-
-async function connectMetaMask() {
-  if (typeof window.ethereum === 'undefined') return;
-  
-  try {
-    // Открываем MetaMask в текущей вкладке вместо нового окна
-    await window.ethereum.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] });
+  async function connectMetaMask() {
+    if (typeof window.ethereum === 'undefined') return;
     
-    // Даем время на обработку запроса
-    setTimeout(async () => {
-      try {
-        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-        
-        if (accounts.length > 0) {
-          displayWalletInfo(accounts[0]);
-          setupEventListeners();
-          
-          // Сохраняем состояние подключения
-          localStorage.setItem('walletConnected', 'true');
-          localStorage.setItem('walletAddress', accounts[0]);
-          
-          // Показываем основной интерфейс
-          document.querySelector('.wallet-container').classList.add('connected');
-        }
-      } catch (error) {
-        console.error("Ошибка получения аккаунтов:", error);
+    try {
+      const accounts = await window.ethereum.request({ 
+        method: 'eth_requestAccounts' 
+      });
+      
+      if (accounts.length > 0) {
+        displayWalletInfo(accounts[0]);
+        setupEventListeners();
       }
-    }, 1000);
-  } catch (error) {
-    console.error("Ошибка подключения:", error);
-    document.getElementById('wallet-status').innerHTML = `
-      <p>Статус: <span class="status-error">Ошибка подключения!</span></p>
-      <p>${error.message || 'Проверьте расширение MetaMask'}</p>
-    `;
+    } catch (error) {
+      console.error("Ошибка подключения:", error);
+      document.getElementById('wallet-status').innerHTML = `
+        <p>Статус: <span class="status-error">Ошибка подключения!</span></p>
+        <p>${error.message || 'Проверьте расширение MetaMask'}</p>
+      `;
+    }
   }
-}
-
-// Обновленная функция открытия MetaMask
-function openMetaMask() {
-  try {
-    // Открываем MetaMask в текущей вкладке
-    window.ethereum.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] });
-  } catch (e) {
-    console.error('Ошибка открытия MetaMask:', e);
-  }
-}
-
-// ... остальной код ...
-
-  function checkWalletConnection() {
-  const isConnected = localStorage.getItem('walletConnected') === 'true';
-  const address = localStorage.getItem('walletAddress');
   
-  if (isConnected && address) {
-    displayWalletInfo(address);
-    setupEventListeners();
-    document.querySelector('.wallet-container').classList.add('connected');
-  }
-}
   // Отображение информации о кошельке
   async function displayWalletInfo(account) {
     document.getElementById('wallet-status').innerHTML = `
