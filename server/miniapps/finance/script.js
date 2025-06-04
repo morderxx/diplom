@@ -705,24 +705,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
  function openMetaMask() {
   try {
-    // Попытка открыть через Ethereum API
+    // Если MetaMask доступен
     if (typeof window.ethereum !== 'undefined') {
-      window.ethereum.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] });
+      // Открываем интерфейс кошелька напрямую
+      window.ethereum.request({
+        method: 'wallet_requestSnaps',
+        params: {
+          'npm:metamask': { version: 'latest' }
+        }
+      }).then(() => {
+        // После открытия запрашиваем доступ только если не подключены
+        if (!window.ethereum.selectedAddress) {
+          window.ethereum.request({ method: 'eth_requestAccounts' });
+        }
+      }).catch(error => {
+        console.error('Ошибка открытия MetaMask:', error);
+        // Альтернативный метод открытия
+        openMetaMaskFallback();
+      });
       return;
     }
     
-    // Deeplink для мобильных устройств
-    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
-      window.open('https://metamask.app.link/', '_blank');
-      return;
-    }
-    
-    // Для десктопных браузеров
-    if (typeof window.open !== 'undefined') {
-      window.open('chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html', '_blank');
-    }
+    // Если MetaMask не обнаружен
+    openMetaMaskFallback();
   } catch (e) {
-    console.error('Ошибка открытия MetaMask:', e);
+    console.error('Общая ошибка:', e);
+    openMetaMaskFallback();
+  }
+}
+
+function openMetaMaskFallback() {
+  // Deeplink для мобильных устройств
+  if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+    window.open('https://metamask.app.link/', '_blank');
+    return;
+  }
+  
+  // Для десктопных браузеров
+  try {
+    window.open('chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html', '_blank');
+  } catch (e) {
+    // Если не сработало, открываем страницу установки
+    window.open('https://metamask.io/download/', '_blank');
   }
 }
   // Проверка существующего подключения
