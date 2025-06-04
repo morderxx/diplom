@@ -714,33 +714,38 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 async function openMetaMask() {
-  // Проверяем, установлен ли провайдер (MetaMask) в браузере
-  if (typeof window.ethereum === 'undefined') {
-    alert('MetaMask не найден. Установите расширение MetaMask и обновите страницу.');
-    return;
-  }
+    const extensionId = 'nkbihfbeogaeaoehlefnkodbefgpgknn';
+  const metamaskURL = `chrome-extension://${extensionId}/home.html`;
+  const newWin = window.open(metamaskURL, '_blank', 'width=360,height=640');
 
-  try {
-    // 1) Инициируем popup MetaMask для запроса доступа к аккаунтам
-    await window.ethereum.request({ method: 'eth_requestAccounts' });
-  } catch (err) {
-    // Если пользователь закрыл окно или произошла другая ошибка — показываем предупреждение
-    console.error('Пользователь отклонил запрос или произошла ошибка при eth_requestAccounts:', err);
-    return;
-  }
-
-  // 2) После успешного открытия popup пытаемся показать домашний экран MetaMask
-  try {
-    await window.ethereum.request({ method: 'wallet_showHomeScreen' });
-    // Если ничего не упало — MetaMask должна переключиться на свой home.html.
-    // В реальности браузер/версия MetaMask может игнорировать этот вызов.
-  } catch (e) {
-    console.warn('wallet_showHomeScreen не поддерживается в этой версии MetaMask или заблокирован.', e);
-    // 3) Фоллбэк: показываем пользователю инструкцию «открыть вручную»
+  // 2) Если MetaMask не установлено или окно не открылось, дадим понятное сообщение.
+  if (!newWin) {
     alert(
-      'Не удалось автоматически открыть домашнюю страницу MetaMask.\n' +
-      'Чтобы посмотреть кошелёк, нажмите иконку MetaMask (лисичка) в правом верхнем углу браузера.'
+      'Не удалось открыть окно MetaMask автоматически.\n' +
+      'Возможно, браузер заблокировал popup или MetaMask не установлено.\n' +
+      'Откройте MetaMask вручную и повторите попытку.'
     );
+    return;
+  }
+
+  // 3) Ждём не блокирующе 200 мс, чтобы дать браузеру загрузить окно расширения (по желанию)
+  await new Promise((res) => setTimeout(res, 200));
+
+  // 4) Проверяем, есть ли провайдер (MetaMask) и просим подключиться.
+  if (typeof window.ethereum === 'undefined') {
+    alert('MetaMask не найден. Установите расширение и обновите страницу.');
+    return;
+  }
+
+  try {
+    // Это откроет pop‑up MetaMask (список аккаунтов)
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    console.log('Подключённый аккаунт:', accounts[0]);
+  } catch (err) {
+    console.error('Пользователь отказался или случилась ошибка при eth_requestAccounts:', err);
+    // Закрываем окно MetaMask, если пользователь отменил подключение (по желанию)
+    try { newWin.close(); } catch (_) {}
+    return;
   }
 }
 
