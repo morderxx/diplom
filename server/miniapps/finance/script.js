@@ -278,6 +278,11 @@ document.addEventListener('DOMContentLoaded', () => {
       out.classList.add('error');
     }
   }
+
+  // ——— Прочие вкладки ——————————————————
+  function showWallet() {
+    content.innerHTML = `<h3>Кошелёк</h3><p>Баланс и история транзакций…</p>`;
+  }
   
   async function showStats() {
     content.innerHTML = `
@@ -698,32 +703,28 @@ document.addEventListener('DOMContentLoaded', () => {
     checkWalletConnection();
   }
 
-  function openMetaMask() {
-    // Проверяем, что MetaMask (window.ethereum) доступен
-    if (typeof window.ethereum === 'undefined') {
-      // Если MetaMask не установлен, предлагаем установить
-      alert('MetaMask не обнаружен. Пожалуйста, установите расширение из https://metamask.io/download/');
+ function openMetaMask() {
+  try {
+    // Попытка открыть через Ethereum API
+    if (typeof window.ethereum !== 'undefined') {
+      window.ethereum.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] });
       return;
     }
-  
-    try {
-      // Вызваем стандартный поп‑ап MetaMask для подключения аккаунта
-      window.ethereum.request({ method: 'eth_requestAccounts' })
-        .then((accounts) => {
-          if (accounts.length > 0) {
-            // Если пользователь согласился — отображаем инфу о кошельке
-            displayWalletInfo(accounts[0]);
-            setupEventListeners();
-          }
-        })
-        .catch((err) => {
-          console.error('Пользователь отклонил подключение или произошла ошибка:', err);
-        });
-    } catch (e) {
-      console.error('Ошибка при вызове MetaMask:', e);
+    
+    // Deeplink для мобильных устройств
+    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      window.open('https://metamask.app.link/', '_blank');
+      return;
     }
+    
+    // Для десктопных браузеров
+    if (typeof window.open !== 'undefined') {
+      window.open('chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html', '_blank');
+    }
+  } catch (e) {
+    console.error('Ошибка открытия MetaMask:', e);
   }
-
+}
   // Проверка существующего подключения
   async function checkWalletConnection() {
     if (typeof window.ethereum === 'undefined') return;
