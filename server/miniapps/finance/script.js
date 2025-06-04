@@ -703,26 +703,64 @@ document.addEventListener('DOMContentLoaded', () => {
     checkWalletConnection();
   }
 
- function openMetaMask() {
+function openMetaMask() {
   try {
-    // Попытка открыть через Ethereum API
+    // Основной метод для открытия MetaMask через Ethereum API
     if (typeof window.ethereum !== 'undefined') {
-      window.ethereum.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] });
+      // Попытка открыть интерфейс через специфические методы
+      if (window.ethereum._metamask) {
+        window.ethereum._metamask.isUnlocked().then(unlocked => {
+          if (unlocked) {
+            // Метод для открытия UI кошелька (поддерживается в последних версиях)
+            window.ethereum.request({ 
+              method: 'wallet_requestSnaps', 
+              params: {} 
+            }).catch(() => {
+              fallbackOpen();
+            });
+          } else {
+            window.ethereum.request({ method: 'eth_requestAccounts' });
+          }
+        });
+      } else {
+        fallbackOpen();
+      }
       return;
     }
     
-    // Deeplink для мобильных устройств
-    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
-      window.open('https://metamask.app.link/', '_blank');
-      return;
-    }
-    
-    // Для десктопных браузеров
-    if (typeof window.open !== 'undefined') {
-      window.open('chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html', '_blank');
-    }
+    fallbackOpen();
   } catch (e) {
     console.error('Ошибка открытия MetaMask:', e);
+    fallbackOpen();
+  }
+  
+  function fallbackOpen() {
+    // Мобильные устройства
+    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      window.open('https://metamask.app.link/', '_blank');
+    } 
+    // Десктопные браузеры
+    else {
+      try {
+        // Попытка открыть через известные URL расширений
+        const extensions = {
+          chrome: 'chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html',
+          firefox: 'moz-extension://{uuid}/home.html',
+          brave: 'chrome-extension://odbfpeeihdkbihmopkbjmoonfanlbfcl/home.html',
+          edge: 'chrome-extension://ejbalbakoplchlghecdalmeeeajnimhm/home.html'
+        };
+        
+        const isBrave = navigator.brave && await navigator.brave.isBrave();
+        const extensionUrl = isBrave ? extensions.brave : 
+          navigator.userAgent.includes('Firefox') ? extensions.firefox :
+          navigator.userAgent.includes('Edg') ? extensions.edge : extensions.chrome;
+        
+        window.open(extensionUrl, '_blank');
+      } catch (e) {
+        // Последний fallback
+        alert('Пожалуйста, откройте MetaMask вручную через панель расширений вашего браузера');
+      }
+    }
   }
 }
   // Проверка существующего подключения
