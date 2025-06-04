@@ -636,7 +636,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
             </svg>
-            Открыть кошелек MetaMask
+            Открыть кошелек
             </button>
           </div>
           
@@ -703,35 +703,37 @@ document.addEventListener('DOMContentLoaded', () => {
     checkWalletConnection();
   }
 
-function openMetaMask() {
-  try {
-    // Определяем тип устройства
-    const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-    
-    if (isMobile) {
-      // Для мобильных устройств
-      window.open('https://metamask.app.link/', '_blank');
-    } else {
-      // Для десктопных браузеров
+  function openMetaMask() {
+    try {
+      // Определяем тип устройства
+      const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+      
+      if (isMobile) {
+        // Для мобильных устройств
+        window.open('https://metamask.app.link/', '_blank');
+      } else {
+        // Для десктопных браузеров
+        if (typeof window.ethereum !== 'undefined') {
+          // Открываем интерфейс кошелька напрямую
+          window.open('chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html', '_blank');
+        } else {
+          // Если MetaMask не установлен
+          window.open('https://metamask.io/download/', '_blank');
+        }
+      }
+    } catch (e) {
+      console.error('Ошибка открытия MetaMask:', e);
+      // Альтернативный способ
       if (typeof window.ethereum !== 'undefined') {
-        // Прямое открытие интерфейса кошелька
         window.ethereum.request({ 
           method: 'wallet_requestSnaps',
           params: {
             'npm:metamask': {}
           }
-        }).catch(console.error);
-      } else {
-        // Если MetaMask не установлен, открываем страницу установки
-        window.open('https://metamask.io/download/', '_blank');
+        });
       }
     }
-  } catch (e) {
-    console.error('Ошибка открытия MetaMask:', e);
-    // Альтернативный способ открытия
-    window.open('chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html', '_blank');
   }
-}
   // Проверка существующего подключения
   async function checkWalletConnection() {
     if (typeof window.ethereum === 'undefined') return;
