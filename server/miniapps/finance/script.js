@@ -608,7 +608,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-   // ======== НОВЫЙ ФУНКЦИОНАЛ ДЛЯ ВКЛАДКИ "КОШЕЛЁК" ========
+   // ======== ОБНОВЛЕННАЯ ВКЛАДКА "КОШЕЛЁК" ========
   async function showWallet() {
     content.innerHTML = `
       <div class="wallet-container">
@@ -638,6 +638,17 @@ document.addEventListener('DOMContentLoaded', () => {
               </svg>
               Открыть MetaMask
             </button>
+          </div>
+          
+          <div id="wallet-open-status" class="wallet-open-status"></div>
+          
+          <div class="manual-open-hint hidden" id="manual-hint">
+            <p>Если MetaMask не открылся автоматически:</p>
+            <ol>
+              <li>Найдите иконку MetaMask (🦊) в панели расширений браузера</li>
+              <li>Нажмите на иконку чтобы открыть интерфейс кошелька</li>
+              <li>При необходимости разблокируйте кошелек паролем</li>
+            </ol>
           </div>
           
           <div class="wallet-details hidden" id="wallet-details">
@@ -678,22 +689,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const copyBtn = document.getElementById('copy-address');
     const viewTransactionsBtn = document.getElementById('view-transactions');
     
-
+    // Обработчики кнопок
     openBtn.addEventListener('click', () => {
       openMetaMask();
-      
-      // Дополнительная проверка через 1 секунду
-      setTimeout(async () => {
-        if (typeof window.ethereum !== 'undefined') {
-          const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-          if (accounts.length > 0 && !document.getElementById('wallet-details').classList.contains('hidden')) {
-            // Кошелек подключен и UI открыт - ничего не делаем
-          } else {
-            // Если интерфейс не открылся - показываем инструкцию
-            alert('Если MetaMask не открылся автоматически, пожалуйста, нажмите на иконку расширения в вашем браузере');
-          }
-        }
-      }, 1000);
+      startWalletCheck();
     });
     
     // Проверяем, установлен ли MetaMask
@@ -706,6 +705,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </a>
       `;
       connectBtn.disabled = true;
+      openBtn.disabled = true;
     } else {
       connectBtn.addEventListener('click', connectMetaMask);
     }
@@ -718,66 +718,109 @@ document.addEventListener('DOMContentLoaded', () => {
     checkWalletConnection();
   }
 
-function openMetaMask() {
-  try {
-    // Основной метод для открытия MetaMask через Ethereum API
-    if (typeof window.ethereum !== 'undefined') {
-      // Попытка открыть интерфейс через специфические методы
-      if (window.ethereum._metamask) {
-        window.ethereum._metamask.isUnlocked().then(unlocked => {
-          if (unlocked) {
-            // Метод для открытия UI кошелька (поддерживается в последних версиях)
-            window.ethereum.request({ 
-              method: 'wallet_requestSnaps', 
-              params: {} 
-            }).catch(() => {
-              fallbackOpen();
-            });
-          } else {
-            window.ethereum.request({ method: 'eth_requestAccounts' });
-          }
-        });
-      } else {
-        fallbackOpen();
+  // ФУНКЦИЯ ОТКРЫТИЯ METAMASK С ИСПРАВЛЕНИЯМИ
+  function openMetaMask() {
+    const statusHint = document.getElementById('wallet-open-status');
+    statusHint.textContent = 'Открытие MetaMask...';
+    statusHint.style.display = 'block';
+    
+    try {
+      // Основной метод для открытия через Ethereum API
+      if (typeof window.ethereum !== 'undefined') {
+        // Попробуем использовать специфические методы MetaMask
+        if (window.ethereum._metamask) {
+          window.ethereum._metamask.isUnlocked().then(unlocked => {
+            if (unlocked) {
+              // Метод для открытия UI кошелька
+              window.ethereum.request({ 
+                method: 'wallet_requestSnaps', 
+                params: {} 
+              }).catch(() => {
+                fallbackOpen();
+              });
+            } else {
+              // Если кошелек заблокирован, запрашиваем разблокировку
+              window.ethereum.request({ method: 'eth_requestAccounts' })
+                .then(() => fallbackOpen())
+                .catch(fallbackOpen);
+            }
+          });
+        } else {
+          fallbackOpen();
+        }
+        return;
       }
-      return;
+      
+      // Если не обнаружен Ethereum провайдер
+      fallbackOpen();
+    } catch (e) {
+      console.error('Ошибка открытия MetaMask:', e);
+      fallbackOpen();
     }
     
-    fallbackOpen();
-  } catch (e) {
-    console.error('Ошибка открытия MetaMask:', e);
-    fallbackOpen();
-  }
-  
-  function fallbackOpen() {
-    // Мобильные устройства
-    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
-      window.open('https://metamask.app.link/', '_blank');
-    } 
-    // Десктопные браузеры
-    else {
-      try {
-        // Попытка открыть через известные URL расширений
-        const extensions = {
-          chrome: 'chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html',
-          firefox: 'moz-extension://{uuid}/home.html',
-          brave: 'chrome-extension://odbfpeeihdkbihmopkbjmoonfanlbfcl/home.html',
-          edge: 'chrome-extension://ejbalbakoplchlghecdalmeeeajnimhm/home.html'
-        };
-        
-        const isBrave = navigator.brave && await navigator.brave.isBrave();
-        const extensionUrl = isBrave ? extensions.brave : 
-          navigator.userAgent.includes('Firefox') ? extensions.firefox :
-          navigator.userAgent.includes('Edg') ? extensions.edge : extensions.chrome;
-        
-        window.open(extensionUrl, '_blank');
-      } catch (e) {
-        // Последний fallback
-        alert('Пожалуйста, откройте MetaMask вручную через панель расширений вашего браузера');
+    // Fallback методы открытия
+    function fallbackOpen() {
+      statusHint.textContent = 'Используем альтернативные методы...';
+      
+      // Мобильные устройства
+      if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+        window.location.href = 'https://metamask.app.link/';
+        setTimeout(() => {
+          window.location.href = 'metamask://';
+        }, 500);
+      } 
+      // Десктопные браузеры
+      else {
+        try {
+          // Пытаемся открыть через известные URL расширений
+          const extensions = {
+            chrome: 'chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html',
+            firefox: 'moz-extension://{uuid}/home.html',
+            brave: 'chrome-extension://odbfpeeihdkbihmopkbjmoonfanlbfcl/home.html',
+            edge: 'chrome-extension://ejbalbakoplchlghecdalmeeeajnimhm/home.html'
+          };
+          
+          let extensionUrl;
+          if (navigator.userAgent.includes('Firefox')) {
+            extensionUrl = extensions.firefox;
+          } else if (navigator.userAgent.includes('Edg')) {
+            extensionUrl = extensions.edge;
+          } else if (navigator.brave && navigator.brave.isBrave()) {
+            extensionUrl = extensions.brave;
+          } else {
+            extensionUrl = extensions.chrome;
+          }
+          
+          window.open(extensionUrl, '_blank');
+        } catch (e) {
+          console.error('Ошибка fallback открытия:', e);
+          showManualHint();
+        }
       }
+      showManualHint();
+    }
+    
+    function showManualHint() {
+      statusHint.textContent = 'Если MetaMask не открылся, следуйте инструкции ниже';
+      document.getElementById('manual-hint').classList.remove('hidden');
     }
   }
-}
+
+  // Периодическая проверка состояния кошелька
+  let walletCheckInterval;
+  function startWalletCheck() {
+    clearInterval(walletCheckInterval);
+    walletCheckInterval = setInterval(async () => {
+      if (typeof window.ethereum !== 'undefined') {
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        if (accounts.length > 0) {
+          document.getElementById('wallet-open-status').style.display = 'none';
+          clearInterval(walletCheckInterval);
+        }
+      }
+    }, 1000);
+  }
+
   // Проверка существующего подключения
   async function checkWalletConnection() {
     if (typeof window.ethereum === 'undefined') return;
@@ -896,7 +939,6 @@ function openMetaMask() {
     
     // Обработка изменения сети
     window.ethereum.on('chainChanged', (chainId) => {
-      // При изменении сети перезагружаем информацию
       window.location.reload();
     });
   }
