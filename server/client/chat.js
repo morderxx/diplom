@@ -178,7 +178,9 @@ const addConfirmBtn        = document.getElementById('add-confirm-btn');
 const modal      = document.getElementById('modal');
 const frame      = document.getElementById('modal-frame');
 const closeBtn   = document.getElementById('modal-close');
-
+const gameModal = document.getElementById('game-modal');
+const gameFrame = document.getElementById('game-frame');
+const closeGameBtn = document.querySelector('.close-game');
 // Храним полный список пользователей (никнеймы) и выбранных
 let allUsers = [];
 const selectedUsers = new Set();
@@ -1345,6 +1347,39 @@ closeBtn.addEventListener('click', () => {
   // НЕ трогаем frame.src — iframe остаётся загруженным, и код календаря продолжает работать
 });
 
+// Функция открытия игры
+function openGame(path) {
+  // Если уже открыта другая игра - очищаем
+  if (gameFrame.src && !gameFrame.src.endsWith(path)) {
+    gameFrame.src = '';
+  }
+  
+  gameFrame.src = path;
+  gameModal.style.display = 'flex';
+  
+  // Блокируем скролл основного контента
+  document.body.style.overflow = 'hidden';
+}
+
+// Закрытие игрового модального окна
+closeGameBtn.addEventListener('click', () => {
+  gameModal.style.display = 'none';
+  gameFrame.src = '';
+  document.body.style.overflow = '';
+});
+
+// Закрытие при клике вне окна
+window.addEventListener('click', (event) => {
+  if (event.target === gameModal) {
+    gameModal.style.display = 'none';
+    gameFrame.src = '';
+    document.body.style.overflow = '';
+  }
+});
+
+// Привязываем кнопку запуска игры
+document.getElementById('btn-strike-game')
+  .addEventListener('click', () => openGame('/miniapps/strikegame/index.html'));
   // Initialization
   loadRooms();
   loadUsers();
