@@ -608,7 +608,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-   // ======== НОВЫЙ ФУНКЦИОНАЛ ДЛЯ ВКЛАДКИ "КОШЕЛЁК" ========
+   // ======== ИСПРАВЛЕННЫЙ ФУНКЦИОНАЛ ДЛЯ ВКЛАДКИ "КОШЕЛЁК" ========
   async function showWallet() {
     content.innerHTML = `
       <div class="wallet-container">
@@ -631,13 +631,6 @@ document.addEventListener('DOMContentLoaded', () => {
               <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask">
               Подключить MetaMask
             </button>
-            
-            <button id="open-metamask" class="open-btn" title="Открыть расширение MetaMask">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"></path>
-              </svg>
-              Открыть MetaMask
-            </button>
           </div>
           
           <div class="wallet-details hidden" id="wallet-details">
@@ -653,8 +646,18 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             
             <div class="wallet-actions">
-              <button id="view-transactions">Посмотреть транзакции</button>
-              <button id="disconnect-wallet">Отключить кошелёк</button>
+              <button id="send-payment" class="action-btn payment-btn">
+                💸 Сделать платеж
+              </button>
+              <button id="switch-network" class="action-btn network-btn">
+                🔁 Изменить сеть
+              </button>
+              <button id="view-transactions" class="action-btn">
+                📋 Посмотреть транзакции
+              </button>
+              <button id="disconnect-wallet" class="action-btn disconnect-btn">
+                🚫 Отключить кошелёк
+              </button>
             </div>
           </div>
         </div>
@@ -663,23 +666,84 @@ document.addEventListener('DOMContentLoaded', () => {
           <h4>Возможности с подключенным кошельком:</h4>
           <ul>
             <li>Просмотр баланса в реальном времени</li>
+            <li>Отправка криптовалютных платежей</li>
+            <li>Переключение между сетями Ethereum</li>
             <li>История всех транзакций</li>
-            <li>Быстрый доступ к DeFi платформам</li>
-            <li>Управление NFT коллекциями</li>
             <li>Безопасное хранение ключей</li>
           </ul>
+        </div>
+        
+        <!-- Модальное окно для отправки платежа -->
+        <div id="payment-modal" class="modal hidden">
+          <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h3>Отправка платежа</h3>
+            <form id="payment-form">
+              <div class="form-group">
+                <label for="recipient-address">Адрес получателя:</label>
+                <input type="text" id="recipient-address" placeholder="0x..." required>
+              </div>
+              
+              <div class="form-group">
+                <label for="payment-amount">Сумма (ETH):</label>
+                <input type="number" id="payment-amount" min="0.0001" step="0.0001" required>
+              </div>
+              
+              <div class="form-group">
+                <label for="gas-limit">Лимит газа (опционально):</label>
+                <input type="number" id="gas-limit" value="21000">
+              </div>
+              
+              <div class="form-group">
+                <label for="gas-price">Цена газа (Gwei, опционально):</label>
+                <input type="number" id="gas-price" step="0.1">
+              </div>
+              
+              <button type="submit" id="send-transaction-btn">Отправить</button>
+            </form>
+            <div id="transaction-status" class="status-message"></div>
+          </div>
+        </div>
+        
+        <!-- Модальное окно для смены сети -->
+        <div id="network-modal" class="modal hidden">
+          <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h3>Выбор сети</h3>
+            <div class="networks-list">
+              <div class="network-option" data-chain-id="1">
+                <img src="https://cryptologos.cc/logos/ethereum-eth-logo.png" alt="Ethereum">
+                <span>Ethereum Mainnet</span>
+              </div>
+              <div class="network-option" data-chain-id="5">
+                <img src="https://cryptologos.cc/logos/ethereum-eth-logo.png" alt="Goerli">
+                <span>Goerli Testnet</span>
+              </div>
+              <div class="network-option" data-chain-id="137">
+                <img src="https://cryptologos.cc/logos/polygon-matic-logo.png" alt="Polygon">
+                <span>Polygon Mainnet</span>
+              </div>
+              <div class="network-option" data-chain-id="80001">
+                <img src="https://cryptologos.cc/logos/polygon-matic-logo.png" alt="Mumbai">
+                <span>Mumbai Testnet</span>
+              </div>
+              <div class="network-option" data-chain-id="56">
+                <img src="https://cryptologos.cc/logos/binance-coin-bnb-logo.png" alt="Binance">
+                <span>Binance Smart Chain</span>
+              </div>
+            </div>
+            <div id="network-status" class="status-message"></div>
+          </div>
         </div>
       </div>
     `;
     
     const connectBtn = document.getElementById('connect-metamask');
-    const openBtn = document.getElementById('open-metamask');
     const disconnectBtn = document.getElementById('disconnect-wallet');
     const copyBtn = document.getElementById('copy-address');
     const viewTransactionsBtn = document.getElementById('view-transactions');
-    
-    // Обработчик для кнопки открытия MetaMask
-    openBtn.addEventListener('click', openMetaMask);
+    const sendPaymentBtn = document.getElementById('send-payment');
+    const switchNetworkBtn = document.getElementById('switch-network');
     
     // Проверяем, установлен ли MetaMask
     if (typeof window.ethereum === 'undefined') {
@@ -699,32 +763,248 @@ document.addEventListener('DOMContentLoaded', () => {
     if (copyBtn) copyBtn.addEventListener('click', copyAddress);
     if (viewTransactionsBtn) viewTransactionsBtn.addEventListener('click', viewTransactions);
     
+    // Обработчики для новых кнопок
+    if (sendPaymentBtn) sendPaymentBtn.addEventListener('click', openPaymentModal);
+    if (switchNetworkBtn) switchNetworkBtn.addEventListener('click', openNetworkModal);
+    
     // Проверяем, есть ли уже подключенный кошелек
     checkWalletConnection();
+    
+    // Инициализация модальных окон
+    initModals();
   }
 
- function openMetaMask() {
-  try {
-    // Попытка открыть через Ethereum API
-    if (typeof window.ethereum !== 'undefined') {
-      window.ethereum.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] });
-      return;
+  // Инициализация модальных окон
+  function initModals() {
+    // Закрытие модальных окон
+    document.querySelectorAll('.close-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.modal').forEach(modal => {
+          modal.classList.add('hidden');
+        });
+      });
+    });
+    
+    // Закрытие при клике вне модального окна
+    window.addEventListener('click', (event) => {
+      if (event.target.classList.contains('modal')) {
+        event.target.classList.add('hidden');
+      }
+    });
+    
+    // Обработчик отправки платежа
+    const paymentForm = document.getElementById('payment-form');
+    if (paymentForm) {
+      paymentForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await sendPayment();
+      });
     }
     
-    // Deeplink для мобильных устройств
-    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
-      window.open('https://metamask.app.link/', '_blank');
-      return;
-    }
-    
-    // Для десктопных браузеров
-    if (typeof window.open !== 'undefined') {
-      window.open('chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html', '_blank');
-    }
-  } catch (e) {
-    console.error('Ошибка открытия MetaMask:', e);
+    // Обработчики выбора сети
+    document.querySelectorAll('.network-option').forEach(option => {
+      option.addEventListener('click', async () => {
+        const chainId = option.dataset.chainId;
+        await switchNetwork(chainId);
+      });
+    });
   }
-}
+
+  // Открытие модального окна для платежа
+  function openPaymentModal() {
+    const modal = document.getElementById('payment-modal');
+    modal.classList.remove('hidden');
+    document.getElementById('transaction-status').textContent = '';
+  }
+
+  // Открытие модального окна для смены сети
+  function openNetworkModal() {
+    const modal = document.getElementById('network-modal');
+    modal.classList.remove('hidden');
+    document.getElementById('network-status').textContent = '';
+  }
+
+  // Отправка платежа
+  async function sendPayment() {
+    const statusEl = document.getElementById('transaction-status');
+    statusEl.textContent = 'Отправка транзакции...';
+    statusEl.className = 'status-message processing';
+    
+    try {
+      const recipient = document.getElementById('recipient-address').value;
+      const amount = document.getElementById('payment-amount').value;
+      const gasLimit = document.getElementById('gas-limit').value || '21000';
+      const gasPrice = document.getElementById('gas-price').value;
+      
+      if (!recipient || !amount) {
+        throw new Error('Заполните все обязательные поля');
+      }
+      
+      // Получаем текущий аккаунт
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+      if (accounts.length === 0) {
+        throw new Error('Кошелёк не подключен');
+      }
+      
+      const from = accounts[0];
+      
+      // Параметры транзакции
+      const transactionParams = {
+        from,
+        to: recipient,
+        value: ethers.utils.parseEther(amount).toHexString(),
+        gas: gasLimit,
+        gasPrice: gasPrice ? ethers.utils.parseUnits(gasPrice, 'gwei').toHexString() : undefined
+      };
+      
+      // Отправляем транзакцию
+      const txHash = await window.ethereum.request({
+        method: 'eth_sendTransaction',
+        params: [transactionParams]
+      });
+      
+      statusEl.innerHTML = `
+        <p class="success">Транзакция успешно отправлена!</p>
+        <p>Хеш транзакции: <a href="https://etherscan.io/tx/${txHash}" target="_blank">${txHash.substring(0, 12)}...</a></p>
+      `;
+      statusEl.className = 'status-message success';
+      
+      // Обновляем баланс после отправки
+      setTimeout(() => {
+        displayWalletInfo(from);
+      }, 5000);
+      
+    } catch (error) {
+      console.error('Ошибка отправки платежа:', error);
+      statusEl.textContent = error.message || 'Ошибка при отправке транзакции';
+      statusEl.className = 'status-message error';
+    }
+  }
+
+  // Смена сети
+  async function switchNetwork(chainId) {
+    const statusEl = document.getElementById('network-status');
+    statusEl.textContent = 'Переключение сети...';
+    statusEl.className = 'status-message processing';
+    
+    try {
+      // Попытка переключения
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: `0x${Number(chainId).toString(16)}` }]
+      });
+      
+      statusEl.textContent = 'Сеть успешно изменена!';
+      statusEl.className = 'status-message success';
+      
+      // Обновляем информацию о сети
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+      
+    } catch (switchError) {
+      // Если сеть не добавлена, добавляем её
+      if (switchError.code === 4902) {
+        try {
+          await addNetwork(chainId);
+          statusEl.textContent = 'Сеть успешно добавлена и активирована!';
+          statusEl.className = 'status-message success';
+          
+          // Обновляем информацию о сети
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+          
+        } catch (addError) {
+          console.error('Ошибка добавления сети:', addError);
+          statusEl.textContent = addError.message || 'Ошибка при добавлении сети';
+          statusEl.className = 'status-message error';
+        }
+      } else {
+        console.error('Ошибка переключения сети:', switchError);
+        statusEl.textContent = switchError.message || 'Ошибка при переключении сети';
+        statusEl.className = 'status-message error';
+      }
+    }
+  }
+
+  // Добавление новой сети
+  async function addNetwork(chainId) {
+    const networkConfig = getNetworkConfig(chainId);
+    
+    if (!networkConfig) {
+      throw new Error('Конфигурация для данной сети не найдена');
+    }
+    
+    await window.ethereum.request({
+      method: 'wallet_addEthereumChain',
+      params: [networkConfig]
+    });
+  }
+
+  // Конфигурации сетей
+  function getNetworkConfig(chainId) {
+    const networks = {
+      '1': {
+        chainId: '0x1',
+        chainName: 'Ethereum Mainnet',
+        nativeCurrency: {
+          name: 'Ether',
+          symbol: 'ETH',
+          decimals: 18
+        },
+        rpcUrls: ['https://mainnet.infura.io/v3/'],
+        blockExplorerUrls: ['https://etherscan.io']
+      },
+      '5': {
+        chainId: '0x5',
+        chainName: 'Goerli Testnet',
+        nativeCurrency: {
+          name: 'Goerli Ether',
+          symbol: 'ETH',
+          decimals: 18
+        },
+        rpcUrls: ['https://goerli.infura.io/v3/'],
+        blockExplorerUrls: ['https://goerli.etherscan.io']
+      },
+      '137': {
+        chainId: '0x89',
+        chainName: 'Polygon Mainnet',
+        nativeCurrency: {
+          name: 'MATIC',
+          symbol: 'MATIC',
+          decimals: 18
+        },
+        rpcUrls: ['https://polygon-rpc.com/'],
+        blockExplorerUrls: ['https://polygonscan.com']
+      },
+      '80001': {
+        chainId: '0x13881',
+        chainName: 'Mumbai Testnet',
+        nativeCurrency: {
+          name: 'MATIC',
+          symbol: 'MATIC',
+          decimals: 18
+        },
+        rpcUrls: ['https://rpc-mumbai.maticvigil.com/'],
+        blockExplorerUrls: ['https://mumbai.polygonscan.com']
+      },
+      '56': {
+        chainId: '0x38',
+        chainName: 'Binance Smart Chain',
+        nativeCurrency: {
+          name: 'Binance Coin',
+          symbol: 'BNB',
+          decimals: 18
+        },
+        rpcUrls: ['https://bsc-dataseed.binance.org/'],
+        blockExplorerUrls: ['https://bscscan.com']
+      }
+    };
+    
+    return networks[chainId];
+  }
+
   // Проверка существующего подключения
   async function checkWalletConnection() {
     if (typeof window.ethereum === 'undefined') return;
