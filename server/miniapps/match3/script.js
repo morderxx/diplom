@@ -1,10 +1,10 @@
 // Конфигурация уровней
 const levels = [
-    { id: 1, targetScore: 1000, moves: 20, colors: 4, size: 7 },
-    { id: 2, targetScore: 2000, moves: 20, colors: 5, size: 8 },
-    { id: 3, targetScore: 3000, moves: 25, colors: 5, size: 9 },
-    { id: 4, targetScore: 5000, moves: 25, colors: 6, size: 9 },
-    { id: 5, targetScore: 8000, moves: 30, colors: 6, size: 10 }
+    { id: 1, targetScore: 1000, moves: 20, colors: 4, size: 6 },
+    { id: 2, targetScore: 2000, moves: 20, colors: 5, size: 7 },
+    { id: 3, targetScore: 3000, moves: 25, colors: 5, size: 8 },
+    { id: 4, targetScore: 5000, moves: 25, colors: 6, size: 8 },
+    { id: 5, targetScore: 8000, moves: 30, colors: 6, size: 8 }
 ];
 
 // Состояние игры
@@ -515,12 +515,9 @@ function shiftGemsDown() {
                         cell.innerHTML = '';
                         cell.appendChild(gem.element);
                         
-                        // Получаем высоту ячейки для точной анимации
-                        const cellHeight = cell.offsetHeight || 45;
-                        
                         // Анимация падения
-                        gem.element.style.transition = 'transform 0.4s ease';
-                        gem.element.style.transform = `translateY(-${(row - r) * cellHeight}px)`;
+                        gem.element.style.transition = 'transform 0.5s ease';
+                        gem.element.style.transform = `translateY(${(r - row) * 45}px)`; // Исправлено под новый размер
                         
                         setTimeout(() => {
                             gem.element.style.transform = '';
