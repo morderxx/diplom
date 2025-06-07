@@ -43,6 +43,10 @@ let offsetX, offsetY;
 let tileSize = TILE_SIZE;
 let animations = [];
 
+// Добавим константы для адаптации
+const BASE_WIDTH = 800;
+const BASE_HEIGHT = 900;
+
 class Particle {
     constructor(x, y, color) {
         this.x = x;
@@ -362,8 +366,9 @@ class Button {
 function init() {
     canvas = document.getElementById("gameCanvas");
     ctx = canvas.getContext("2d");
-    canvas.width = 800;
-    canvas.height = 900;
+    
+    // Инициализация размера
+    resizeCanvas();
     
     // Инициализация звездного фона
     for (let i = 0; i < 100; i++) {
@@ -378,6 +383,71 @@ function init() {
     }
     
     // Инициализация кнопок
+    createButtons();
+    
+    // Инициализация игрового поля
+    initializeBoard();
+    
+    // Обработчики событий
+    canvas.addEventListener("mousedown", handleMouseDown);
+    canvas.addEventListener("mousemove", handleMouseMove);
+    canvas.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("resize", resizeCanvas);
+    
+    requestAnimationFrame(gameLoop);
+}
+
+function resizeCanvas() {
+    const container = document.getElementById("game-container");
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+    
+    // Соотношение сторон оригинальной игры
+    const targetRatio = BASE_WIDTH / BASE_HEIGHT;
+    
+    // Вычисляем размеры для canvas
+    let canvasWidth, canvasHeight;
+    
+    if (containerWidth / containerHeight > targetRatio) {
+        canvasHeight = containerHeight;
+        canvasWidth = containerHeight * targetRatio;
+    } else {
+        canvasWidth = containerWidth;
+        canvasHeight = containerWidth / targetRatio;
+    }
+    
+    // Устанавливаем размеры
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+    canvas.style.width = canvasWidth + "px";
+    canvas.style.height = canvasHeight + "px";
+    
+    // Пересчитываем размер плитки
+    tileSize = (canvasWidth * TILE_SIZE) / BASE_WIDTH;
+    
+    // Пересоздаем кнопки при изменении размера
+    createButtons();
+    
+    // Обновляем позиции плиток
+    if (board.length > 0) {
+        offsetX = (canvas.width - boardSize * tileSize) / 2;
+        offsetY = 150 * (canvas.height / BASE_HEIGHT);
+        
+        for (let row = 0; row < boardSize; row++) {
+            for (let col = 0; col < boardSize; col++) {
+                if (board[row][col]) {
+                    board[row][col].x = offsetX + col * tileSize;
+                    board[row][col].y = offsetY + row * tileSize;
+                    board[row][col].targetX = board[row][col].x;
+                    board[row][col].targetY = board[row][col].y;
+                    board[row][col].animating = false;
+                }
+            }
+        }
+    }
+}
+
+function createButtons() {
     menuButtons = [
         new Button(canvas.width/2 - 150, canvas.height/2 - 60, 300, 80, "НАЧАТЬ ИГРУ", 
                   [60, 140, 200], [100, 180, 255]),
@@ -391,22 +461,12 @@ function init() {
         new Button(canvas.width/2 - 150, canvas.height/2 + 100, 300, 80, "В МЕНЮ", 
                   [180, 100, 200], [220, 140, 255])
     ];
-    
-    // Инициализация игрового поля
-    initializeBoard();
-    
-    // Обработчики событий
-    canvas.addEventListener("mousedown", handleMouseDown);
-    canvas.addEventListener("mousemove", handleMouseMove);
-    canvas.addEventListener("mouseup", handleMouseUp);
-    
-    requestAnimationFrame(gameLoop);
 }
 
 function initializeBoard() {
     boardSize = LEVELS[currentLevel].boardSize;
     offsetX = (canvas.width - boardSize * tileSize) / 2;
-    offsetY = 150;
+    offsetY = 150 * (canvas.height / BASE_HEIGHT);
     
     // Создаем пустое поле
     board = Array.from({length: boardSize}, () => Array(boardSize).fill(null));
@@ -505,38 +565,38 @@ function draw() {
     
     // Отрисовка UI
     ctx.fillStyle = "rgba(30, 25, 50, 0.85)";
-    ctx.fillRect(0, 0, canvas.width, 140);
+    ctx.fillRect(0, 0, canvas.width, 140 * (canvas.height / BASE_HEIGHT));
     ctx.strokeStyle = "rgba(80, 70, 120, 1)";
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(0, 140);
-    ctx.lineTo(canvas.width, 140);
+    ctx.moveTo(0, 140 * (canvas.height / BASE_HEIGHT));
+    ctx.lineTo(canvas.width, 140 * (canvas.height / BASE_HEIGHT));
     ctx.stroke();
     
-    ctx.font = "bold 60px Arial";
+    ctx.font = "bold " + Math.round(60 * (canvas.height / BASE_HEIGHT)) + "px Arial";
     ctx.fillStyle = "#d4b4ff";
     ctx.textAlign = "center";
-    ctx.fillText("ТРИ В РЯД", canvas.width/2, 70);
+    ctx.fillText("ТРИ В РЯД", canvas.width/2, 70 * (canvas.height / BASE_HEIGHT));
     
     // Отображаем состояние игры
     if (gameState === "menu") {
-        ctx.font = "bold 60px Arial";
+        ctx.font = "bold " + Math.round(60 * (canvas.height / BASE_HEIGHT)) + "px Arial";
         ctx.fillStyle = "#d4b4ff";
         ctx.textAlign = "center";
-        ctx.fillText("Главное меню", canvas.width/2, 300);
+        ctx.fillText("Главное меню", canvas.width/2, 300 * (canvas.height / BASE_HEIGHT));
         
         // Кнопки меню
         menuButtons.forEach(button => button.draw());
     } else if (gameState === "playing") {
         // Игровая информация
-        ctx.font = "36px Arial";
+        ctx.font = Math.round(36 * (canvas.height / BASE_HEIGHT)) + "px Arial";
         ctx.fillStyle = "#ffffc8";
         ctx.textAlign = "left";
-        ctx.fillText(`ОЧКИ: ${score}`, 50, 80);
+        ctx.fillText(`ОЧКИ: ${score}`, 50 * (canvas.width / BASE_WIDTH), 80 * (canvas.height / BASE_HEIGHT));
         
         ctx.fillStyle = "#ffc864";
         ctx.textAlign = "right";
-        ctx.fillText(`Уровень: ${currentLevel + 1}/10`, canvas.width - 50, 80);
+        ctx.fillText(`Уровень: ${currentLevel + 1}/10`, canvas.width - 50 * (canvas.width / BASE_WIDTH), 80 * (canvas.height / BASE_HEIGHT));
         
         // Прогресс уровня
         const targetScore = LEVELS[currentLevel].score;
@@ -544,32 +604,33 @@ function draw() {
         
         ctx.fillStyle = "rgba(60, 60, 90, 1)";
         ctx.beginPath();
-        ctx.roundRect(50, 110, 200, 20, 10);
+        const progressHeight = 20 * (canvas.height / BASE_HEIGHT);
+        ctx.roundRect(50 * (canvas.width / BASE_WIDTH), 110 * (canvas.height / BASE_HEIGHT), 200 * (canvas.width / BASE_WIDTH), progressHeight, 10);
         ctx.fill();
         
         ctx.fillStyle = "rgba(100, 200, 100, 1)";
         ctx.beginPath();
-        ctx.roundRect(50, 110, 200 * progress, 20, 10);
+        ctx.roundRect(50 * (canvas.width / BASE_WIDTH), 110 * (canvas.height / BASE_HEIGHT), 200 * (canvas.width / BASE_WIDTH) * progress, progressHeight, 10);
         ctx.fill();
         
         ctx.strokeStyle = "rgba(80, 70, 120, 1)";
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.roundRect(50, 110, 200, 20, 10);
+        ctx.roundRect(50 * (canvas.width / BASE_WIDTH), 110 * (canvas.height / BASE_HEIGHT), 200 * (canvas.width / BASE_WIDTH), progressHeight, 10);
         ctx.stroke();
         
         // Отображение цели
         ctx.fillStyle = "#c8c8ff";
         ctx.textAlign = "left";
-        ctx.fillText(`Цель: ${levelScore}/${targetScore}`, 260, 120);
+        ctx.fillText(`Цель: ${levelScore}/${targetScore}`, 260 * (canvas.width / BASE_WIDTH), 120 * (canvas.height / BASE_HEIGHT));
         
         // Отрисовка комбо
         if (combo > 1) {
             const comboAlpha = Math.min(255, comboTimer * 4);
-            ctx.font = "bold 72px Arial";
+            ctx.font = "bold " + Math.round(72 * (canvas.height / BASE_HEIGHT)) + "px Arial";
             ctx.fillStyle = `rgba(255, 220, 100, ${comboAlpha/255})`;
             ctx.textAlign = "center";
-            ctx.fillText(`x${combo} КОМБО!`, canvas.width/2, 550);
+            ctx.fillText(`x${combo} КОМБО!`, canvas.width/2, 550 * (canvas.height / BASE_HEIGHT));
         }
         
         // Отрисовка сетки
@@ -589,26 +650,26 @@ function draw() {
             ctx.stroke();
         }
     } else if (gameState === "level_complete") {
-        ctx.font = "bold 60px Arial";
+        ctx.font = "bold " + Math.round(60 * (canvas.height / BASE_HEIGHT)) + "px Arial";
         ctx.fillStyle = "#d4b4ff";
         ctx.textAlign = "center";
-        ctx.fillText(`Уровень ${currentLevel + 1} пройден!`, canvas.width/2, 300);
+        ctx.fillText(`Уровень ${currentLevel + 1} пройден!`, canvas.width/2, 300 * (canvas.height / BASE_HEIGHT));
         
-        ctx.font = "36px Arial";
+        ctx.font = Math.round(36 * (canvas.height / BASE_HEIGHT)) + "px Arial";
         ctx.fillStyle = "#ffffc8";
-        ctx.fillText(`Набрано очков: ${levelScore}`, canvas.width/2, 370);
+        ctx.fillText(`Набрано очков: ${levelScore}`, canvas.width/2, 370 * (canvas.height / BASE_HEIGHT));
         
         // Кнопки
         levelCompleteButtons.forEach(button => button.draw());
     } else if (gameState === "game_over") {
-        ctx.font = "bold 60px Arial";
+        ctx.font = "bold " + Math.round(60 * (canvas.height / BASE_HEIGHT)) + "px Arial";
         ctx.fillStyle = "#d4b4ff";
         ctx.textAlign = "center";
-        ctx.fillText("ИГРА ПРОЙДЕНА!", canvas.width/2, 300);
+        ctx.fillText("ИГРА ПРОЙДЕНА!", canvas.width/2, 300 * (canvas.height / BASE_HEIGHT));
         
-        ctx.font = "36px Arial";
+        ctx.font = Math.round(36 * (canvas.height / BASE_HEIGHT)) + "px Arial";
         ctx.fillStyle = "#ffffc8";
-        ctx.fillText(`Общий счет: ${score}`, canvas.width/2, 370);
+        ctx.fillText(`Общий счет: ${score}`, canvas.width/2, 370 * (canvas.height / BASE_HEIGHT));
         
         // Кнопка возврата в меню
         const menuButton = new Button(
@@ -679,8 +740,10 @@ function update() {
 
 function handleMouseDown(e) {
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
     
     if (gameState === "menu") {
         menuButtons.forEach(button => {
@@ -711,8 +774,10 @@ function handleMouseDown(e) {
 
 function handleMouseMove(e) {
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
     
     if (gameState === "menu") {
         menuButtons.forEach(button => button.checkHover(x, y));
@@ -728,8 +793,10 @@ function handleMouseMove(e) {
 function handleMouseUp(e) {
     if (gameState === "playing" && draggingTile) {
         const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
         handleDrop(x, y);
     }
 }
@@ -772,8 +839,8 @@ function handleClick(x, y) {
             // Рассчитываем смещение внутри плитки
             const tile = draggingTile;
             tile.dragging = true;
-            tile.dragOffsetX = (x - offsetX) % tileSize - tileSize/2;
-            tile.dragOffsetY = (y - offsetY) % tileSize - tileSize/2;
+            tile.dragOffsetX = (x - offsetX) - col * tileSize - tileSize/2;
+            tile.dragOffsetY = (y - offsetY) - row * tileSize - tileSize/2;
             
             // Анимация
             tile.scale = 1.1;
