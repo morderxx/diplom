@@ -1,3 +1,5 @@
+[file name]: game.js
+[file content begin]
 // Константы игры
 const WIDTH = 1000;
 const HEIGHT = 700;
@@ -64,7 +66,8 @@ const fonts = {
     title: { size: 64, weight: "bold" },
     large: { size: 42, weight: "bold" },
     medium: { size: 32, weight: "normal" },
-    small: { size: 24, weight: "normal" }
+    small: { size: 24, weight: "normal" },
+    smaller: { size: 20, weight: "normal" } // Добавлен меньший размер шрифта
 };
 
 // Инициализация игры
@@ -274,12 +277,12 @@ function generateWave() {
         // Ускоренный спавн врагов
         enemyQueue.push({
             type: type,
-            delay: i * (30 - Math.min(25, wave)) // Значительно ускорено появление
+            delay: i * (15 - Math.min(10, wave)) // Значительно ускорено появление
         });
     }
     
-    // Босс каждые 5 волн
-    if (wave % 5 === 0) {
+    // Босс каждые 3 волны
+    if (wave % 3 === 0) {
         enemyQueue.push({
             type: 4, // Босс
             delay: enemyQueue[enemyQueue.length - 1].delay + 100
@@ -439,26 +442,29 @@ function render() {
 // Отрисовка интерфейса
 function drawHUD() {
     // Счет
-    drawText(`Счет: ${player.score}`, 20, 20, "white", "medium");
+    drawText(`Счет: ${player.score}`, 20, 40, "white", "smaller");
     
     // Ресурсы
-    drawText(`Ресурсы: ${resources}`, 20, 60, YELLOW, "medium");
+    drawText(`Ресурсы: ${resources}`, 20, 70, YELLOW, "smaller");
     
     // Уровень
     const levelText = `Уровень: ${level}`;
-    drawText(levelText, WIDTH - ctx.measureText(levelText).width - 20, 20, "white", "medium");
+    const levelTextWidth = ctx.measureText(levelText).width;
+    drawText(levelText, WIDTH - levelTextWidth - 20, 40, "white", "smaller");
     
     // Волна
     const waveText = `Волна: ${wave}`;
-    drawText(waveText, WIDTH - ctx.measureText(waveText).width - 20, 60, "white", "medium");
+    const waveTextWidth = ctx.measureText(waveText).width;
+    drawText(waveText, WIDTH - waveTextWidth - 20, 70, "white", "smaller");
     
     // Оставшиеся враги
     const enemiesText = `Врагов: ${waveEnemiesCount - waveEnemiesKilled}`;
-    drawText(enemiesText, WIDTH - ctx.measureText(enemiesText).width - 20, 100, "white", "medium");
+    const enemiesTextWidth = ctx.measureText(enemiesText).width;
+    drawText(enemiesText, WIDTH - enemiesTextWidth - 20, 100, "white", "smaller");
     
     // Индикатор босса
     if (bossActive) {
-        drawText("БОСС БИТВА!", WIDTH/2 - ctx.measureText("БОСС БИТВА!").width/2, 50, RED, "large");
+        drawText("БОСС БИТВА!", WIDTH/2 - ctx.measureText("БОСС БИТВА!").width/2, 60, RED, "medium");
     }
 }
 
@@ -520,10 +526,6 @@ function drawMenu() {
     drawText("Стрелки - Движение", WIDTH/2, 500, WHITE, "small", true);
     drawText("Пробел - Стрельба", WIDTH/2, 530, WHITE, "small", true);
     drawText("ESC - Пауза", WIDTH/2, 560, WHITE, "small", true);
-    
-    // Новые возможности
-    drawText("Новые возможности:", WIDTH/2, 620, ORANGE, "medium", true);
-    drawText("Защита баз • Система улучшений • Волновой бой", WIDTH/2, 660, ORANGE, "small", true);
 }
 
 // Отрисовка экрана паузы
@@ -600,7 +602,7 @@ function updateCamera() {
 // Спавн врага
 function spawnEnemy(type) {
     const x = Math.random() * (WIDTH - 100) + 50;
-    enemies.push(new Enemy(x, -50, type, level));
+    enemies.push(new Enemy(x, -50, type, level, wave)); // Добавлен параметр wave
 }
 
 // Спавн босса
@@ -1006,13 +1008,13 @@ class Base {
                     nearestEnemy.x - baseCenterX
                 );
                 
-                const speed = 7;
+                const speed = 10; // Увеличена скорость пули
                 bullets.push(new Bullet(
                     baseCenterX,
                     baseCenterY,
                     Math.cos(angle) * speed,
                     Math.sin(angle) * speed,
-                    GREEN,
+                    YELLOW, // Изменен цвет на желтый для лучшей видимости
                     7 * this.turretLevel // Усиленный урон
                 ));
                 
@@ -1124,20 +1126,37 @@ class Player {
     
     shoot() {
         if (this.shootCooldown <= 0) {
-            // Оружие 1 уровня
+            // Оружие 1 уровня - одиночный лазер
             if (this.weaponLevel === 1) {
                 bullets.push(new Bullet(this.x, this.y - 30, 0, -10, BLUE, 10 * this.damageMultiplier));
             }
-            // Оружие 2 уровня
+            // Оружие 2 уровня - двойной лазер
             else if (this.weaponLevel === 2) {
                 bullets.push(new Bullet(this.x - 15, this.y - 20, 0, -10, BLUE, 10 * this.damageMultiplier));
                 bullets.push(new Bullet(this.x + 15, this.y - 20, 0, -10, BLUE, 10 * this.damageMultiplier));
             }
-            // Оружие 3+ уровня
-            else {
+            // Оружие 3 уровня - тройной лазер
+            else if (this.weaponLevel === 3) {
                 bullets.push(new Bullet(this.x - 20, this.y - 20, -1, -9, CYAN, 12 * this.damageMultiplier));
                 bullets.push(new Bullet(this.x, this.y - 30, 0, -10, BLUE, 15 * this.damageMultiplier));
                 bullets.push(new Bullet(this.x + 20, this.y - 20, 1, -9, CYAN, 12 * this.damageMultiplier));
+            }
+            // Оружие 4 уровня - пятерной лазер
+            else if (this.weaponLevel === 4) {
+                bullets.push(new Bullet(this.x - 25, this.y - 15, -2, -8, CYAN, 12 * this.damageMultiplier));
+                bullets.push(new Bullet(this.x - 10, this.y - 25, -1, -9, BLUE, 14 * this.damageMultiplier));
+                bullets.push(new Bullet(this.x, this.y - 30, 0, -10, BLUE, 16 * this.damageMultiplier));
+                bullets.push(new Bullet(this.x + 10, this.y - 25, 1, -9, BLUE, 14 * this.damageMultiplier));
+                bullets.push(new Bullet(this.x + 25, this.y - 15, 2, -8, CYAN, 12 * this.damageMultiplier));
+            }
+            // Оружие 5 уровня - семилучевой лазер
+            else if (this.weaponLevel === 5) {
+                bullets.push(new Bullet(this.x - 30, this.y - 10, -3, -7, PURPLE, 15 * this.damageMultiplier));
+                bullets.push(new Bullet(this.x - 15, this.y - 20, -1.5, -8.5, CYAN, 14 * this.damageMultiplier));
+                bullets.push(new Bullet(this.x, this.y - 25, 0, -9, BLUE, 16 * this.damageMultiplier));
+                bullets.push(new Bullet(this.x, this.y - 35, 0, -10, BLUE, 16 * this.damageMultiplier));
+                bullets.push(new Bullet(this.x + 15, this.y - 20, 1.5, -8.5, CYAN, 14 * this.damageMultiplier));
+                bullets.push(new Bullet(this.x + 30, this.y - 10, 3, -7, PURPLE, 15 * this.damageMultiplier));
             }
             
             this.shootCooldown = (10 - Math.min(3, this.weaponLevel)) / this.fireRateMultiplier;
@@ -1201,8 +1220,6 @@ class Player {
             ctx.fillStyle = YELLOW;
             ctx.fillRect(this.x - 28 + i * 15, this.y + 45, 10, 3);
         }
-        
-        // УБРАН ИНДИКАТОР УРОНА (DMG) - БАГ ИСПРАВЛЕН
     }
 }
 
@@ -1243,11 +1260,12 @@ class Bullet {
 
 // Класс врага
 class Enemy {
-    constructor(x, y, type, level) {
+    constructor(x, y, type, level, wave) {
         this.x = x;
         this.y = y;
         this.type = type;
         this.level = level;
+        this.wave = wave; // Добавлено поле волны
         this.setupEnemy();
         this.shootCooldown = 0;
         this.particles = [];
@@ -1257,8 +1275,11 @@ class Enemy {
     }
     
     setupEnemy() {
+        // Базовые характеристики с учетом уровня и волны
+        const healthMultiplier = 1 + (this.level * 0.1) + (this.wave * 0.2);
+        
         if (this.type === 0) { // Маленький враг
-            this.health = 20 + this.level * 5;
+            this.health = Math.floor((20 + this.level * 5) * healthMultiplier);
             this.maxHealth = this.health;
             this.speed = Math.random() * 1 + 1 + this.level * 0.1;
             this.scoreValue = 10;
@@ -1268,7 +1289,7 @@ class Enemy {
             this.damage = 10;
             this.behavior = "basic";
         } else if (this.type === 1) { // Быстрый враг
-            this.health = 30 + this.level * 6;
+            this.health = Math.floor((30 + this.level * 6) * healthMultiplier);
             this.maxHealth = this.health;
             this.speed = Math.random() * 1.5 + 1.5 + this.level * 0.15;
             this.scoreValue = 15;
@@ -1279,7 +1300,7 @@ class Enemy {
             this.behavior = "evasive";
             this.evasiveTimer = 0;
         } else if (this.type === 2) { // Танк
-            this.health = 150 + this.level * 20;
+            this.health = Math.floor((150 + this.level * 20) * healthMultiplier);
             this.maxHealth = this.health;
             this.speed = Math.random() * 0.3 + 0.3 + this.level * 0.03;
             this.scoreValue = 30;
@@ -1289,7 +1310,7 @@ class Enemy {
             this.damage = 25;
             this.behavior = "tank";
         } else if (this.type === 3) { // Бомбардировщик
-            this.health = 40 + this.level * 8;
+            this.health = Math.floor((40 + this.level * 8) * healthMultiplier);
             this.maxHealth = this.health;
             this.speed = Math.random() * 0.8 + 0.8 + this.level * 0.08;
             this.scoreValue = 25;
@@ -1300,7 +1321,7 @@ class Enemy {
             this.behavior = "bomber";
             this.bombTimer = 0;
         } else { // Босс
-            this.health = 500 + this.level * 200;
+            this.health = Math.floor((500 + this.level * 200) * healthMultiplier);
             this.maxHealth = this.health;
             this.speed = 0.5;
             this.scoreValue = 500 + this.level * 100;
@@ -1774,3 +1795,4 @@ class Explosion {
 
 // Запуск игры
 window.onload = init;
+[file content end]
