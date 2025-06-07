@@ -294,7 +294,34 @@ body {
     border-radius: 20px;
     box-shadow: 0 0 40px rgba(120, 50, 255, 0.5);
     border: 2px solid #6a4cff;
-    
+    /* Добавляем центрирование содержимого: */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    /* Добавляем прокрутку при переполнении */
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+/* Опционально: для дополнительного центрирования текстовых элементов */
+.screen-title,
+.screen-text,
+.tutorial,
+.celebration {
+    text-align: center;
+    width: 100%;
+}
+
+/* Для контейнера кнопок */
+.levels-container,
+.button-group {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+    margin: 20px 0;
 }
 
 .screen-title {
