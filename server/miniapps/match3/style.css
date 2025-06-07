@@ -286,7 +286,22 @@ body {
     display: none;
 }
 
-
+.screen-content {
+    height: 100%;
+    max-width: 100%;
+    padding: 30px;
+    background: rgba(20, 15, 45, 0.8);
+    border-radius: 20px;
+    box-shadow: 0 0 40px rgba(120, 50, 255, 0.5);
+    border: 2px solid #6a4cff;
+    
+    /* Новые стили для центрирования */
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Вертикальное центрирование */
+    align-items: center;     /* Горизонтальное центрирование */
+    text-align: center;      /* Центрирование текста внутри элементов */
+}
 
 .screen-title {
     font-size: 42px;
