@@ -287,65 +287,46 @@ body {
 }
 
 .screen-content {
-    height: 100%;
+    height: auto;
+    min-height: 100%;
     max-width: 100%;
-    padding: 30px;
+    padding: 20px;
     background: rgba(20, 15, 45, 0.8);
     border-radius: 20px;
     box-shadow: 0 0 40px rgba(120, 50, 255, 0.5);
     border: 2px solid #6a4cff;
-    /* Добавляем центрирование содержимого: */
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     text-align: center;
-    /* Добавляем прокрутку при переполнении */
-    overflow-y: auto;
+    overflow: hidden;
     box-sizing: border-box;
-}
-
-/* Опционально: для дополнительного центрирования текстовых элементов */
-.screen-title,
-.screen-text,
-.tutorial,
-.celebration {
-    text-align: center;
-    width: 100%;
-}
-
-/* Для контейнера кнопок */
-.levels-container,
-.button-group {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 15px;
-    margin: 20px 0;
+    margin: auto;
 }
 
 .screen-title {
-    font-size: 42px;
+    font-size: 36px;
     background: linear-gradient(45deg, #9d7aff, #6a4cff, #00eaff);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     text-shadow: 0 0 15px rgba(106, 76, 255, 0.4);
     font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif;
 }
 
 .screen-text {
-    font-size: 22px;
-    margin-bottom: 30px;
+    font-size: 18px;
+    margin-bottom: 20px;
     max-width: 90%;
     line-height: 1.5;
     color: #e0d6ff;
 }
 
 .celebration {
-    font-size: 60px;
-    margin-bottom: 20px;
+    font-size: 48px;
+    margin-bottom: 15px;
     color: #FFD700;
     text-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
     animation: pulse 1.5s infinite;
@@ -356,12 +337,12 @@ body {
     color: white;
     border: none;
     border-radius: 50px;
-    padding: 16px 35px;
-    font-size: 18px;
+    padding: 14px 30px;
+    font-size: 16px;
     font-weight: 600;
     cursor: pointer;
-    margin: 10px;
-    min-width: 260px;
+    margin: 8px;
+    min-width: 220px;
     transition: all 0.3s ease;
     box-shadow: 0 5px 20px rgba(106, 76, 255, 0.5);
     display: flex;
@@ -408,14 +389,19 @@ body {
     max-width: 600px;
     gap: 12px;
     margin-top: 20px;
+    max-height: 50vh;
+    overflow-y: auto;
+    width: 100%;
+    padding: 5px;
+    box-sizing: border-box;
 }
 
 /* Инструкция */
 .tutorial {
     background: rgba(30, 20, 60, 0.6);
     border-radius: 15px;
-    padding: 20px;
-    margin: 20px 0;
+    padding: 15px;
+    margin: 15px 0;
     max-width: 600px;
     text-align: left;
     border: 1px solid rgba(106, 76, 255, 0.3);
@@ -527,16 +513,36 @@ body {
     }
     
     .level-btn, .action-btn {
-        padding: 14px 25px;
-        font-size: 16px;
-        min-width: 220px;
+        padding: 12px 20px;
+        min-width: 100%;
+        font-size: 15px;
     }
     
     .screen-title {
-        font-size: 32px;
+        font-size: 28px;
     }
     
     .screen-text {
+        font-size: 16px;
+    }
+    
+    .celebration {
+        font-size: 40px;
+    }
+    
+    .tutorial {
+        padding: 12px;
+    }
+    
+    .tutorial-title {
         font-size: 18px;
+    }
+    
+    .tutorial-list {
+        font-size: 14px;
+    }
+    
+    .screen-content {
+        padding: 15px;
     }
 }
