@@ -1380,6 +1380,8 @@ window.addEventListener('click', (event) => {
 // Привязываем кнопку запуска игры
 document.getElementById('btn-strike-game')
   .addEventListener('click', () => openGame('/miniapps/strikegame/index.html'));
+document.getElementById('btn-match3-game')
+  .addEventListener('click', () => openGame('/miniapps/match3/index.html'));
   // Initialization
   loadRooms();
   loadUsers();
