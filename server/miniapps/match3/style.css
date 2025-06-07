@@ -297,6 +297,12 @@ button:active {
     margin-bottom: 8px;
 }
 
+.level-card.locked {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 /* Адаптивность */
 @media (max-width: 600px) {
     .levels-grid {
