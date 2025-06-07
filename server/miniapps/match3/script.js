@@ -414,25 +414,24 @@ class Button {
 
 class Match3Game {
     LEVELS = [
-        {score: 500, boardSize: 8},
-        {score: 1000, boardSize: 8},
-        {score: 2000, boardSize: 8},
-        {score: 3500, boardSize: 9},
-        {score: 5000, boardSize: 9},
-        {score: 7000, boardSize: 9},
-        {score: 10000, boardSize: 10},
-        {score: 14000, boardSize: 10},
-        {score: 18000, boardSize: 10},
-        {score: 25000, boardSize: 10},
+        {score: 500, boardSize: 6},
+        {score: 1000, boardSize: 6},
+        {score: 2000, boardSize: 7},
+        {score: 3500, boardSize: 7},
+        {score: 5000, boardSize: 8},
+        {score: 7000, boardSize: 8},
+        {score: 10000, boardSize: 8},
+        {score: 14000, boardSize: 9},
+        {score: 18000, boardSize: 9},
+        {score: 25000, boardSize: 9},
     ];
     
     constructor(canvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
-        this.width = canvas.width = 800;
-        this.height = canvas.height = 900;
-        this.tileSize = 65;
-        this.boardSize = 8;
+        this.resizeCanvas();
+        this.tileSize = 55;
+        this.boardSize = 6;
         this.offsetX = (this.width - this.boardSize * this.tileSize) / 2;
         this.offsetY = 150;
         
@@ -487,10 +486,21 @@ class Match3Game {
         this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
         this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
         this.canvas.addEventListener('mouseout', this.handleMouseUp.bind(this));
+        window.addEventListener('resize', this.resizeCanvas.bind(this));
+    }
+    
+    resizeCanvas() {
+        this.width = this.canvas.width = this.canvas.parentElement.clientWidth;
+        this.height = this.canvas.height = this.canvas.parentElement.clientHeight;
+        
+        if (this.boardSize) {
+            this.offsetX = (this.width - this.boardSize * this.tileSize) / 2;
+        }
     }
     
     initializeBoard() {
         this.boardSize = this.LEVELS[this.currentLevel].boardSize;
+        this.tileSize = Math.min(55, Math.floor(Math.min(this.width, this.height) * 0.9 / this.boardSize));
         this.offsetX = (this.width - this.boardSize * this.tileSize) / 2;
         
         // Создаем пустое поле
@@ -826,13 +836,77 @@ class Match3Game {
         }
     }
     
-    handleMouseUp() {
+    handleMouseUp(event) {
         if (this.draggingTile) {
+            const rect = this.canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
             const tile = this.draggingTile;
             tile.dragging = false;
             tile.scale = 1.0;
-            this.resetHighlights();
             
+            // Определяем направление перетаскивания
+            const dragX = x - this.offsetX - tile.col * this.tileSize;
+            const dragY = y - this.offsetY - tile.row * this.tileSize;
+            
+            let newCol = tile.col;
+            let newRow = tile.row;
+            
+            if (Math.abs(dragX) > Math.abs(dragY) && Math.abs(dragX) > this.tileSize / 4) {
+                newCol = tile.col + (dragX > 0 ? 1 : -1);
+            } else if (Math.abs(dragY) > this.tileSize / 4) {
+                newRow = tile.row + (dragY > 0 ? 1 : -1);
+            }
+            
+            // Проверка на выход за границы
+            if (newRow < 0 || newRow >= this.boardSize || newCol < 0 || newCol >= this.boardSize) {
+                // Возвращаем плитку на место
+                tile.animating = true;
+                this.resetHighlights();
+                this.draggingTile = null;
+                this.combo = 1;
+                return;
+            }
+            
+            // Меняем плитки местами
+            const neighbor = this.board[newRow][newCol];
+            if (neighbor) {
+                // Обмен позициями
+                this.board[tile.row][tile.col] = neighbor;
+                this.board[newRow][newCol] = tile;
+                
+                // Обновление координат
+                tile.row = newRow;
+                tile.col = newCol;
+                neighbor.row = this.dragStartRow;
+                neighbor.col = this.dragStartCol;
+                
+                // Анимация перемещения
+                tile.animating = true;
+                neighbor.animating = true;
+                
+                // Проверка совпадений после обмена
+                setTimeout(() => {
+                    if (!this.findMatches()) {
+                        // Если совпадений нет, возвращаем плитки обратно
+                        this.board[tile.row][tile.col] = tile;
+                        this.board[neighbor.row][neighbor.col] = neighbor;
+                        
+                        const tempRow = tile.row;
+                        const tempCol = tile.col;
+                        tile.row = neighbor.row;
+                        tile.col = neighbor.col;
+                        neighbor.row = tempRow;
+                        neighbor.col = tempCol;
+                        
+                        tile.animating = true;
+                        neighbor.animating = true;
+                    }
+                }, 300);
+            }
+            
+            this.resetHighlights();
             this.draggingTile = null;
             this.combo = 1;
         }
@@ -916,8 +990,45 @@ class Match3Game {
     }
     
     hasPossibleMoves() {
-        // Упрощенная проверка возможных ходов
-        return true;
+        // Проверка возможных ходов
+        for (let row = 0; row < this.boardSize; row++) {
+            for (let col = 0; col < this.boardSize; col++) {
+                // Проверка горизонтальных свапов
+                if (col < this.boardSize - 1) {
+                    // Меняем местами
+                    const temp = this.board[row][col];
+                    this.board[row][col] = this.board[row][col+1];
+                    this.board[row][col+1] = temp;
+                    
+                    // Проверяем есть ли совпадения
+                    const hasMatch = this.findMatches();
+                    
+                    // Возвращаем на место
+                    this.board[row][col+1] = this.board[row][col];
+                    this.board[row][col] = temp;
+                    
+                    if (hasMatch) return true;
+                }
+                
+                // Проверка вертикальных свапов
+                if (row < this.boardSize - 1) {
+                    // Меняем местами
+                    const temp = this.board[row][col];
+                    this.board[row][col] = this.board[row+1][col];
+                    this.board[row+1][col] = temp;
+                    
+                    // Проверяем есть ли совпадения
+                    const hasMatch = this.findMatches();
+                    
+                    // Возвращаем на место
+                    this.board[row+1][col] = this.board[row][col];
+                    this.board[row][col] = temp;
+                    
+                    if (hasMatch) return true;
+                }
+            }
+        }
+        return false;
     }
     
     createParticles(x, y, color, count = 50) {
