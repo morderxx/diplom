@@ -218,6 +218,7 @@ function drawWaveBreakScreen() {
     drawText("УЛУЧШЕНИЯ:",WIDTH/2,280,CYAN,"large",true);
     const items=["Здоровье баз","Щиты баз","Турели баз","Урон игрока","Скорость стрельбы","Щиты игрока","Скорость игрока"];
     items.forEach((t,i)=>{ drawText(`${i+1}. ${t}`,200,330+i*50,WHITE,"small"); drawText(`(${Object.values(upgrades)[i]}) - ${Object.values(upgradeCosts)[i]}`,700,330+i*50,YELLOW,"small");});
+    drawText("",WIDTH/2,HEIGHT-50,GREEN,"small",true);
     drawText("Нажмите ENTER для следующей волны",WIDTH/2,HEIGHT-50,GREEN,"small",true);
 }
 
