@@ -1,1776 +1,1130 @@
-// Константы игры
-const WIDTH = 1000;
-const HEIGHT = 700;
-const BLACK = "#000000";
-const WHITE = "#FFFFFF";
-const RED = "#FF3232";
-const GREEN = "#32FF64";
-const BLUE = "#3296FF";
-const YELLOW = "#FFFF00";
-const PURPLE = "#B432E6";
-const CYAN = "#00FFFF";
-const DARK_BLUE = "#0A0A28";
-const ORANGE = "#FFA500";
+document.addEventListener('DOMContentLoaded', () => {
+  const content = document.getElementById('finance-content');
+  const tabs = document.querySelectorAll('.finance-nav button');
 
-// Состояние игры
-let gameState = "menu"; // menu, playing, pause, game_over, level_complete, wave_break
-let canvas, ctx;
-let keys = {};
-let stars = [];
-let player;
-let enemies = [];
-let bullets = [];
-let powerups = [];
-let explosions = [];
-let particles = [];
-let level = 1;
-let wave = 1;
-let score = 0;
-let resources = 200; // Увеличено стартовое количество ресурсов
-let enemySpawnTimer = 0;
-let boss = null;
-let bossActive = false;
-let bossDefeated = false;
-let levelTransitionTimer = 0;
-let shakeTimer = 0;
-let shakeIntensity = 0;
-let cameraOffset = [0, 0];
-let lastTime = 0;
-let deltaTime = 0;
-let bases = [];
-let enemyQueue = [];
-let waveEnemiesCount = 0;
-let waveEnemiesKilled = 0;
-let waveBreakTimer = 180;
-let upgrades = {
-    baseHealth: 1,
-    baseShield: 0,
-    baseTurret: 0,
-    playerDamage: 1,
-    playerFireRate: 1,
-    playerShield: 0
-};
-let upgradeCosts = {
-    baseHealth: 50,
-    baseShield: 75,
-    baseTurret: 100,
-    playerDamage: 60,
-    playerFireRate: 70,
-    playerShield: 80
-};
+  // Фиатные коды и карта крипто→ID CoinGecko
+  const fiatCodes = ['USD', 'EUR', 'RUB', 'GBP', 'JPY', 'CNY', 'CHF', 'CAD', 'BYN'];
+  const cryptoMap = {
+    BTC: 'bitcoin',
+    ETH: 'ethereum',
+    LTC: 'litecoin',
+    DOGE: 'dogecoin',
+    BNB: 'binancecoin',
+    USDT: 'tether',
+    XRP: 'ripple',
+    ADA: 'cardano',
+    SOL: 'solana',
+    DOT: 'polkadot',
+    AVAX: 'avalanche',
+    MATIC: 'matic-network'
+  };
 
-// Шрифты
-const fonts = {
-    title: { size: 64, weight: "bold" },
-    large: { size: 42, weight: "bold" },
-    medium: { size: 32, weight: "normal" },
-    small: { size: 24, weight: "normal" }
-};
+  // API ключ для CurrencyFreaks
+  const CURRENCY_API_KEY = '24f59325463e418ca66aee20d46a0925';
+  
+  // Кэши
+  const exchangeRatesCache = { rates: null, timestamp: 0 };
+  const cryptoUsdPricesCache = { prices: null, timestamp: 0 };
+  
+  // Надежный прокси
+  const CORS_PROXY = "https://api.allorigins.win/raw?url=";
 
-// Инициализация игры
-function init() {
-    canvas = document.getElementById("gameCanvas");
-    ctx = canvas.getContext("2d");
+  // Глобальные переменные для графиков
+  let cryptoChart = null;
+  let volatilityChart = null;
+  
+  // Кэш исторических данных
+  const historyCache = {};
+
+  // Таб-переключатель
+  tabs.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabs.forEach(x => x.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.dataset.tab;
+      if (tab === 'exchange') showExchange();
+      else if (tab === 'wallet') showWallet();
+      else if (tab === 'stats') showStats();
+    });
+  });
+
+  // Стартовая вкладка
+  showExchange();
+
+  // ——— Конвертер —————————————————————————————
+  async function showExchange() {
+    content.innerHTML = `
+      <h3>Конвертер валют и крипты</h3>
+      <form id="exchange-form" class="exchange-form">
+        <label>Из <select id="from"></select></label>
+        <label>В  <select id="to"></select></label>
+        <label style="grid-column:span 2">
+          Сумма <input type="number" id="amount" value="1" min="0" step="any" required>
+        </label>
+        <button>Конвертировать</button>
+      </form>
+      <div id="exchange-result" class="exchange-result"></div>
+    `;
     
-    // Создание звезд
-    for (let i = 0; i < 200; i++) {
-        stars.push(new Star());
+    const selFrom = document.getElementById('from');
+    const selTo = document.getElementById('to');
+    selFrom.innerHTML = selTo.innerHTML = '';
+
+    // Фиаты
+    fiatCodes.forEach(c => {
+      selFrom.add(new Option(c, c));
+      selTo.add(new Option(c, c));
+    });
+    
+    // Крипта
+    Object.keys(cryptoMap).forEach(c => {
+      selFrom.add(new Option(c, c));
+      selTo.add(new Option(c, c));
+    });
+
+    selFrom.value = 'USD';
+    selTo.value = 'BTC';
+
+    document.getElementById('exchange-form')
+      .addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await doConvert();
+      });
+  }
+
+  // Получение курсов валют с кэшированием
+  async function getExchangeRates() {
+    // Используем кэш, если данные свежие (менее 10 минут)
+    const now = Date.now();
+    if (exchangeRatesCache.rates && (now - exchangeRatesCache.timestamp) < 600000) {
+      return exchangeRatesCache.rates;
     }
     
-    // Инициализация игрока
-    player = new Player();
+    try {
+      const response = await fetch(
+        `https://api.currencyfreaks.com/latest?apikey=${CURRENCY_API_KEY}`
+      );
+      
+      if (!response.ok) throw new Error('Ошибка получения курсов валют');
+      
+      const data = await response.json();
+      
+      // Добавляем BYN, если его нет (примерный курс)
+      if (!data.rates.BYN) {
+        data.rates.BYN = 3.25; // Примерный курс BYN к USD
+      }
+      
+      // Сохраняем в кэш
+      exchangeRatesCache.rates = data.rates;
+      exchangeRatesCache.timestamp = now;
+      
+      return data.rates;
+    } catch (error) {
+      console.error('Ошибка получения курсов валют:', error);
+      return null;
+    }
+  }
+
+  // Получение цен криптовалют в USD с кэшированием
+  async function getCryptoUsdPrices() {
+    const now = Date.now();
     
-    // Создание баз
-    createBases();
+    // Проверка кэша
+    if (cryptoUsdPricesCache.prices && (now - cryptoUsdPricesCache.timestamp) < 300000) {
+      return cryptoUsdPricesCache.prices;
+    }
+    
+    try {
+      // Получаем все цены одним запросом
+      const coinIds = Object.values(cryptoMap).join(',');
+      const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coinIds}&vs_currencies=usd`;
+      const proxyUrl = CORS_PROXY + encodeURIComponent(url);
+      
+      const response = await fetch(proxyUrl);
+      
+      if (!response.ok) throw new Error('Ошибка получения курсов криптовалют');
+      
+      const data = await response.json();
+      
+      // Сохраняем в кэш
+      cryptoUsdPricesCache.prices = data;
+      cryptoUsdPricesCache.timestamp = now;
+      
+      return data;
+    } catch (error) {
+      console.error('Ошибка получения курсов криптовалют:', error);
+      return null;
+    }
+  }
+
+  async function doConvert() {
+    const f = document.getElementById('from').value.toUpperCase();
+    const t = document.getElementById('to').value.toUpperCase();
+    const a = parseFloat(document.getElementById('amount').value);
+    const out = document.getElementById('exchange-result');
+
+    if (!a || a <= 0) {
+      out.textContent = 'Введите корректную сумму';
+      return;
+    }
+    
+    out.textContent = 'Загрузка…';
+    out.classList.remove('error');
+
+    const isFiat = c => fiatCodes.includes(c);
+    const isCrypto = c => Object.keys(cryptoMap).includes(c);
+
+    try {
+      let result;
+
+      // 1) Fiat → Fiat через CurrencyFreaks
+      if (isFiat(f) && isFiat(t)) {
+        const rates = await getExchangeRates();
+        if (!rates || !rates[f] || !rates[t]) {
+          throw new Error('Курсы валют недоступны');
+        }
+        
+        // Конвертация через USD как базовую валюту
+        const rateFrom = rates[f];
+        const rateTo = rates[t];
+        result = a * (rateTo / rateFrom);
+      }
+
+      // 2) Crypto → Crypto через USD
+      else if (isCrypto(f) && isCrypto(t)) {
+        const cryptoPrices = await getCryptoUsdPrices();
+        if (!cryptoPrices) {
+          throw new Error('Курсы криптовалют недоступны');
+        }
+        
+        const idF = cryptoMap[f];
+        const idT = cryptoMap[t];
+        const priceF = cryptoPrices[idF]?.usd;
+        const priceT = cryptoPrices[idT]?.usd;
+        
+        if (!priceF || !priceT) {
+          throw new Error('Курсы криптовалют недоступны');
+        }
+        
+        result = a * (priceF / priceT);
+      }
+
+      // 3) Crypto → Fiat через USD
+      else if (isCrypto(f) && isFiat(t)) {
+        const cryptoPrices = await getCryptoUsdPrices();
+        const rates = await getExchangeRates();
+        
+        if (!cryptoPrices || !rates || !rates[t]) {
+          throw new Error('Курсы недоступны');
+        }
+        
+        const idF = cryptoMap[f];
+        const cryptoUsd = cryptoPrices[idF]?.usd;
+        const fiatRate = rates[t]; // Кол-во USD за 1 единицу фиата
+        
+        if (!cryptoUsd) {
+          throw new Error('Курс криптовалюты недоступен');
+        }
+        
+        // 1 крипта = X USD
+        // 1 USD = 1 / fiatRate фиата
+        // Итого: X * (1 / fiatRate) фиата за 1 крипту
+        result = a * cryptoUsd / fiatRate;
+      }
+
+      // 4) Fiat → Crypto через USD
+      else if (isFiat(f) && isCrypto(t)) {
+        const rates = await getExchangeRates();
+        const cryptoPrices = await getCryptoUsdPrices();
+        
+        if (!rates || !rates[f] || !cryptoPrices) {
+          throw new Error('Курсы недоступны');
+        }
+        
+        const idT = cryptoMap[t];
+        const cryptoUsd = cryptoPrices[idT]?.usd;
+        const fiatRate = rates[f]; // Кол-во USD за 1 единицу фиата
+        
+        if (!cryptoUsd) {
+          throw new Error('Курс криптовалюты недоступен');
+        }
+        
+        // 1 фиат = fiatRate USD
+        // 1 крипта = Y USD
+        // Итого: (fiatRate) / Y крипты за 1 фиат
+        result = a * fiatRate / cryptoUsd;
+      }
+
+      else {
+        throw new Error('Неподдерживаемая пара валют');
+      }
+
+      if (!isFinite(result)) throw new Error('Некорректный результат');
+      
+      // Форматирование результата
+      let formattedResult;
+      if (result > 1000) {
+        formattedResult = result.toFixed(2);
+      } else if (result > 0.01) {
+        formattedResult = result.toFixed(4);
+      } else {
+        formattedResult = result.toFixed(8);
+      }
+      
+      out.innerHTML = `<strong>${a} ${f}</strong> = <strong>${formattedResult} ${t}</strong>`;
+    } catch (err) {
+      console.error('Ошибка конвертации:', err);
+      out.textContent = err.message || 'Ошибка при конвертации. Попробуйте позже.';
+      out.classList.add('error');
+    }
+  }
+
+  // ——— Прочие вкладки ——————————————————
+  function showWallet() {
+    content.innerHTML = `<h3>Кошелёк</h3><p>Баланс и история транзакций…</p>`;
+  }
+  
+  async function showStats() {
+    content.innerHTML = `
+      <div class="stats-container">
+        <h3>Упрощенная финансовая аналитика</h3>
+        
+        <div class="stats-controls">
+          <div class="control-group">
+            <label>Тип актива:</label>
+            <select id="asset-type">
+              <option value="crypto">Криптовалюты</option>
+              <option value="currency">Фиатные валюты</option>
+            </select>
+          </div>
+          
+          <div class="control-group">
+            <label>Выбор активов:</label>
+            <div id="asset-selector" class="asset-selector"></div>
+          </div>
+          
+          <button id="update-chart" class="update-btn">Обновить график</button>
+        </div>
+        
+        <div class="chart-container">
+          <h4>Динамика цен за 30 дней</h4>
+          <canvas id="price-chart"></canvas>
+          <div class="chart-loader">Загрузка данных...</div>
+          <div class="chart-error hidden"></div>
+        </div>
+      </div>
+    `;
+
+    // Инициализация контролов
+    initAssetSelector();
+    
+    // Загрузка данных и построение графика
+    await loadAndDrawChart();
     
     // Обработчики событий
-    window.addEventListener("keydown", e => keys[e.key] = true);
-    window.addEventListener("keyup", e => keys[e.key] = false);
+    document.getElementById('update-chart').addEventListener('click', async () => {
+      await loadAndDrawChart();
+    });
     
-    // Запуск игрового цикла
-    requestAnimationFrame(gameLoop);
-}
+    document.getElementById('asset-type').addEventListener('change', () => {
+      initAssetSelector();
+      loadAndDrawChart();
+    });
+  }
 
-// Создание оборонительных баз
-function createBases() {
-    bases = [];
-    const baseWidth = 100;
-    const baseSpacing = (WIDTH - baseWidth * 3) / 4;
+  // Инициализация выбора активов
+  function initAssetSelector() {
+    const assetType = document.getElementById('asset-type').value;
+    const container = document.getElementById('asset-selector');
+    container.innerHTML = '';
     
-    for (let i = 0; i < 3; i++) {
-        bases.push(new Base(
-            baseSpacing * (i + 1) + baseWidth * i,
-            HEIGHT - 80,
-            baseWidth,
-            40
-        ));
-    }
-}
-
-// Игровой цикл
-function gameLoop(timestamp) {
-    // Расчет времени между кадрами
-    deltaTime = (timestamp - lastTime) / 16.666;
-    lastTime = timestamp;
-    
-    // Обработка ввода
-    handleInput();
-    
-    // Обновление состояния игры
-    update();
-    
-    // Отрисовка игры
-    render();
-    
-    requestAnimationFrame(gameLoop);
-}
-
-// Обработка пользовательского ввода
-function handleInput() {
-    if (gameState === "menu") {
-        if (keys["Enter"]) {
-            resetGame();
-            gameState = "playing";
-            keys["Enter"] = false;
-        }
-    }
-    else if (gameState === "playing") {
-        if (keys["Escape"]) {
-            gameState = "pause";
-            keys["Escape"] = false;
-        }
-        
-        // Движение игрока
-        let dx = (keys["ArrowRight"] ? 1 : 0) - (keys["ArrowLeft"] ? 1 : 0);
-        let dy = (keys["ArrowDown"] ? 1 : 0) - (keys["ArrowUp"] ? 1 : 0);
-        player.move(dx, dy);
-        
-        // Стрельба
-        if (keys[" "]) {
-            player.shoot();
-        }
-    }
-    else if (gameState === "pause") {
-        if (keys["Escape"]) {
-            gameState = "playing";
-            keys["Escape"] = false;
-        }
-        else if (keys["m"]) {
-            gameState = "menu";
-            keys["m"] = false;
-        }
-    }
-    else if (gameState === "game_over") {
-        if (keys["Enter"]) {
-            resetGame();
-            gameState = "playing";
-            keys["Enter"] = false;
-        }
-    }
-    else if (gameState === "wave_break") {
-        // Выбор улучшений
-        if (keys["1"]) {
-            buyUpgrade("baseHealth");
-            keys["1"] = false;
-        }
-        if (keys["2"]) {
-            buyUpgrade("baseShield");
-            keys["2"] = false;
-        }
-        if (keys["3"]) {
-            buyUpgrade("baseTurret");
-            keys["3"] = false;
-        }
-        if (keys["4"]) {
-            buyUpgrade("playerDamage");
-            keys["4"] = false;
-        }
-        if (keys["5"]) {
-            buyUpgrade("playerFireRate");
-            keys["5"] = false;
-        }
-        if (keys["6"]) {
-            buyUpgrade("playerShield");
-            keys["6"] = false;
-        }
-        if (keys["Enter"]) {
-            startNextWave();
-            keys["Enter"] = false;
-        }
-    }
-}
-
-// Покупка улучшения
-function buyUpgrade(type) {
-    if (resources >= upgradeCosts[type]) {
-        resources -= upgradeCosts[type];
-        upgrades[type]++;
-        upgradeCosts[type] = Math.floor(upgradeCosts[type] * 1.5);
-        
-        // Применение улучшения
-        if (type === "baseHealth") {
-            bases.forEach(base => {
-                base.maxHealth = 150 + 100 * upgrades.baseHealth; // Усиленное улучшение
-                base.health = base.maxHealth;
-            });
-        }
-        else if (type === "baseShield") {
-            bases.forEach(base => {
-                base.maxShield = 75 * upgrades.baseShield; // Усиленное улучшение
-                base.shield = base.maxShield;
-            });
-        }
-        else if (type === "playerDamage") {
-            player.damageMultiplier = 1 + 0.4 * upgrades.playerDamage; // Усиленное улучшение
-        }
-        else if (type === "playerFireRate") {
-            player.fireRateMultiplier = 1 + 0.25 * upgrades.playerFireRate; // Усиленное улучшение
-        }
-        else if (type === "playerShield") {
-            player.maxShield = 60 * upgrades.playerShield; // Усиленное улучшение
-            player.shield = player.maxShield;
-        }
-    }
-}
-
-// Начать следующую волну
-function startNextWave() {
-    wave++;
-    waveEnemiesKilled = 0;
-    gameState = "playing";
-    generateWave();
-}
-
-// Генерация волны врагов
-function generateWave() {
-    enemyQueue = [];
-    waveEnemiesCount = 8 + wave * 3; // Меньше врагов в начале
-    
-    // Состав волны
-    for (let i = 0; i < waveEnemiesCount; i++) {
-        // На высоких волнах более сильные враги
-        let type;
-        const r = Math.random();
-        
-        if (wave < 3) {
-            type = 0; // Только обычные враги
-        } 
-        else if (wave < 6) {
-            if (r < 0.7) type = 0;
-            else type = 1; // Быстрые враги
-        }
-        else if (wave < 9) {
-            if (r < 0.5) type = 0;
-            else if (r < 0.8) type = 1;
-            else type = 2; // Танки
-        }
-        else {
-            if (r < 0.4) type = 0;
-            else if (r < 0.7) type = 1;
-            else if (r < 0.9) type = 2;
-            else type = 3; // Бомбардировщики
-        }
-        
-        // Ускоренный спавн врагов
-        enemyQueue.push({
-            type: type,
-            delay: i * (30 - Math.min(25, wave)) // Значительно ускорено появление
-        });
-    }
-    
-    // Босс каждые 5 волн
-    if (wave % 5 === 0) {
-        enemyQueue.push({
-            type: 4, // Босс
-            delay: enemyQueue[enemyQueue.length - 1].delay + 100
-        });
-        waveEnemiesCount++;
-    }
-    
-    enemySpawnTimer = 0;
-}
-
-// Обновление состояния игры
-function update() {
-    // Обновление эффекта тряски камеры
-    updateCamera();
-    
-    // Обновление звезд
-    stars.forEach(star => star.update());
-    
-    if (gameState !== "playing") return;
-    
-    // Обновление игрока
-    player.update();
-    
-    // Обновление баз
-    bases.forEach(base => base.update());
-    
-    // Спавн врагов из очереди
-    if (enemyQueue.length > 0) {
-        enemySpawnTimer += deltaTime;
-        const nextEnemy = enemyQueue[0];
-        
-        if (enemySpawnTimer >= nextEnemy.delay) {
-            spawnEnemy(nextEnemy.type);
-            enemyQueue.shift();
-            enemySpawnTimer = 0;
-        }
-    }
-    // Волна завершена
-    else if (enemies.length === 0 && !bossActive) {
-        if (waveEnemiesKilled >= waveEnemiesCount) {
-            gameState = "wave_break";
-            resources += 80 + wave * 30; // Больше ресурсов за волну
-            waveBreakTimer = 180;
-        }
-    }
-    
-    // Обновление врагов
-    enemies.forEach(enemy => enemy.update());
-    
-    // Обновление босса
-    if (bossActive) {
-        boss.update();
-    }
-    
-    // Обновление пуль
-    bullets.forEach(bullet => bullet.update());
-    
-    // Обновление улучшений
-    powerups.forEach(powerup => powerup.update());
-    
-    // Обновление взрывов
-    explosions.forEach(explosion => explosion.update());
-    
-    // Обновление частиц
-    particles.forEach(particle => particle.update());
-    
-    // Очистка массивов
-    bullets = bullets.filter(bullet => bullet.active);
-    enemies = enemies.filter(enemy => enemy.active);
-    powerups = powerups.filter(powerup => powerup.active);
-    explosions = explosions.filter(explosion => explosion.active);
-    particles = particles.filter(particle => particle.active);
-    bases = bases.filter(base => base.health > 0);
-    
-    // Проверка уничтожения всех баз
-    if (bases.length === 0) {
-        gameState = "game_over";
-    }
-    
-    // Проверка столкновений
-    checkCollisions();
-    
-    // Переход на следующий уровень после босса
-    if (bossDefeated) {
-        levelTransitionTimer -= deltaTime;
-        if (levelTransitionTimer <= 0) {
-            level++;
-            bossDefeated = false;
-            player.health = player.maxHealth;
-            player.shield = player.maxShield;
-        }
-    }
-}
-
-// Отрисовка игры
-function render() {
-    // Очистка холста
-    ctx.fillStyle = DARK_BLUE;
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    
-    // Применение смещения камеры
-    ctx.save();
-    ctx.translate(cameraOffset[0], cameraOffset[1]);
-    
-    // Отрисовка звезд
-    stars.forEach(star => star.draw());
-    
-    if (gameState === "playing") {
-        // Отрисовка баз
-        bases.forEach(base => base.draw());
-        
-        // Отрисовка врагов
-        enemies.forEach(enemy => enemy.draw());
-        
-        // Отрисовка босса
-        if (bossActive) {
-            boss.draw();
-        }
-        
-        // Отрисовка пуль
-        bullets.forEach(bullet => bullet.draw());
-        
-        // Отрисовка улучшений
-        powerups.forEach(powerup => powerup.draw());
-        
-        // Отрисовка взрывов
-        explosions.forEach(explosion => explosion.draw());
-        
-        // Отрисовка частиц
-        particles.forEach(particle => particle.draw());
-        
-        // Отрисовка игрока
-        player.draw();
-        
-        // Отрисовка интерфейса
-        drawHUD();
-    }
-    else if (gameState === "menu") {
-        drawMenu();
-    }
-    else if (gameState === "pause") {
-        drawPauseScreen();
-    }
-    else if (gameState === "game_over") {
-        drawGameOverScreen();
-    }
-    else if (bossDefeated) {
-        drawLevelTransition();
-    }
-    else if (gameState === "wave_break") {
-        drawWaveBreakScreen();
-    }
-    
-    ctx.restore();
-}
-
-// Отрисовка интерфейса
-function drawHUD() {
-    // Счет
-    drawText(`Счет: ${player.score}`, 20, 20, "white", "medium");
-    
-    // Ресурсы
-    drawText(`Ресурсы: ${resources}`, 20, 60, YELLOW, "medium");
-    
-    // Уровень
-    const levelText = `Уровень: ${level}`;
-    drawText(levelText, WIDTH - ctx.measureText(levelText).width - 20, 20, "white", "medium");
-    
-    // Волна
-    const waveText = `Волна: ${wave}`;
-    drawText(waveText, WIDTH - ctx.measureText(waveText).width - 20, 60, "white", "medium");
-    
-    // Оставшиеся враги
-    const enemiesText = `Врагов: ${waveEnemiesCount - waveEnemiesKilled}`;
-    drawText(enemiesText, WIDTH - ctx.measureText(enemiesText).width - 20, 100, "white", "medium");
-    
-    // Индикатор босса
-    if (bossActive) {
-        drawText("БОСС БИТВА!", WIDTH/2 - ctx.measureText("БОСС БИТВА!").width/2, 50, RED, "large");
-    }
-}
-
-// Отрисовка экрана перерыва
-function drawWaveBreakScreen() {
-    // Полупрозрачный фон
-    ctx.fillStyle = "rgba(0, 0, 40, 0.9)";
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    
-    // Заголовок
-    drawText(`ВОЛНА ${wave} ЗАВЕРШЕНА!`, WIDTH/2, 100, GREEN, "title", true);
-    
-    // Заработанные ресурсы
-    drawText(`+${80 + wave * 30} Ресурсов`, WIDTH/2, 170, YELLOW, "large", true);
-    
-    // Всего ресурсов
-    drawText(`Всего ресурсов: ${resources}`, WIDTH/2, 220, YELLOW, "medium", true);
-    
-    // Меню улучшений
-    drawText("УЛУЧШЕНИЯ:", WIDTH/2, 280, CYAN, "large", true);
-    
-    // Улучшения баз
-    drawText("1. Здоровье баз", 200, 330, WHITE, "medium");
-    drawText(`(${upgrades.baseHealth}) - ${upgradeCosts.baseHealth}`, 700, 330, YELLOW, "medium");
-    
-    drawText("2. Щиты баз", 200, 380, WHITE, "medium");
-    drawText(`(${upgrades.baseShield}) - ${upgradeCosts.baseShield}`, 700, 380, YELLOW, "medium");
-    
-    drawText("3. Турели баз", 200, 430, WHITE, "medium");
-    drawText(`(${upgrades.baseTurret}) - ${upgradeCosts.baseTurret}`, 700, 430, YELLOW, "medium");
-    
-    // Улучшения игрока
-    drawText("4. Урон игрока", 200, 480, WHITE, "medium");
-    drawText(`(${upgrades.playerDamage}) - ${upgradeCosts.playerDamage}`, 700, 480, YELLOW, "medium");
-    
-    drawText("5. Скорость стрельбы", 200, 530, WHITE, "medium");
-    drawText(`(${upgrades.playerFireRate}) - ${upgradeCosts.playerFireRate}`, 700, 530, YELLOW, "medium");
-    
-    drawText("6. Щиты игрока", 200, 580, WHITE, "medium");
-    drawText(`(${upgrades.playerShield}) - ${upgradeCosts.playerShield}`, 700, 580, YELLOW, "medium");
-    
-    // Подсказка продолжения
-    drawText("Нажмите ENTER для перехода к следующей волне", WIDTH/2, HEIGHT - 50, GREEN, "medium", true);
-}
-
-// Отрисовка меню
-function drawMenu() {
-    // Заголовок
-    drawText("ГАЛАКТИЧЕСКИЙ ЗАЩИТНИК", WIDTH/2, 150, CYAN, "title", true);
-    
-    // Подзаголовок
-    drawText("Защитите базы от инопланетного вторжения!", WIDTH/2, 230, YELLOW, "medium", true);
-    
-    // Подсказка начала
-    drawText("Нажмите ENTER чтобы начать", WIDTH/2, 350, GREEN, "large", true);
-    
-    // Управление
-    drawText("Управление:", WIDTH/2, 450, WHITE, "medium", true);
-    drawText("Стрелки - Движение", WIDTH/2, 500, WHITE, "small", true);
-    drawText("Пробел - Стрельба", WIDTH/2, 530, WHITE, "small", true);
-    drawText("ESC - Пауза", WIDTH/2, 560, WHITE, "small", true);
-    
-    // Новые возможности
-    drawText("Новые возможности:", WIDTH/2, 620, ORANGE, "medium", true);
-    drawText("Защита баз • Система улучшений • Волновой бой", WIDTH/2, 660, ORANGE, "small", true);
-}
-
-// Отрисовка экрана паузы
-function drawPauseScreen() {
-    // Полупрозрачный фон
-    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    
-    // Текст паузы
-    drawText("ПАУЗА", WIDTH/2, 200, YELLOW, "large", true);
-    
-    // Инструкции
-    drawText("Нажмите ESC для продолжения", WIDTH/2, 300, GREEN, "medium", true);
-    drawText("Нажмите M для выхода в меню", WIDTH/2, 350, BLUE, "medium", true);
-}
-
-// Отрисовка экрана проигрыша
-function drawGameOverScreen() {
-    // Полупрозрачный фон
-    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    
-    // Текст проигрыша
-    drawText("ИГРА ОКОНЧЕНА", WIDTH/2, 200, RED, "title", true);
-    
-    // Счет
-    drawText(`Финальный счет: ${player.score}`, WIDTH/2, 300, WHITE, "large", true);
-    
-    // Достигнутая волна
-    drawText(`Достигнутая волна: ${wave}`, WIDTH/2, 350, YELLOW, "large", true);
-    
-    // Подсказка рестарта
-    drawText("Нажмите ENTER для перезапуска", WIDTH/2, 450, GREEN, "medium", true);
-}
-
-// Отрисовка перехода на следующий уровень
-function drawLevelTransition() {
-    // Полупрозрачный фон
-    const alpha = 0.7 * (levelTransitionTimer / 180);
-    ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    
-    // Текст завершения уровня
-    drawText(`УРОВЕНЬ ${level} ЗАВЕРШЕН!`, WIDTH/2, HEIGHT/2 - 50, GREEN, "title", true);
-    
-    // Текст следующего уровня
-    drawText(`Подготовка к уровню ${level + 1}...`, WIDTH/2, HEIGHT/2 + 50, YELLOW, "medium", true);
-}
-
-// Вспомогательная функция отрисовки текста
-function drawText(text, x, y, color, fontType, center = false) {
-    ctx.fillStyle = color;
-    ctx.font = `${fonts[fontType].weight} ${fonts[fontType].size}px Arial`;
-    
-    if (center) {
-        const textWidth = ctx.measureText(text).width;
-        ctx.fillText(text, x - textWidth/2, y);
+    if (assetType === 'crypto') {
+      // Только основные криптовалюты
+      const topCryptos = ['BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA'];
+      topCryptos.forEach(crypto => {
+        const id = `asset-${crypto}`;
+        container.innerHTML += `
+          <div class="asset-option">
+            <input type="checkbox" id="${id}" value="${crypto}" checked>
+            <label for="${id}">${crypto}</label>
+          </div>
+        `;
+      });
     } else {
-        ctx.fillText(text, x, y);
+      // Основные фиатные валюты
+      const topFiats = ['USD', 'EUR', 'RUB', 'GBP', 'JPY', 'CNY'];
+      topFiats.forEach(currency => {
+        const id = `asset-${currency}`;
+        container.innerHTML += `
+          <div class="asset-option">
+            <input type="checkbox" id="${id}" value="${currency}" checked>
+            <label for="${id}">${currency}</label>
+          </div>
+        `;
+      });
     }
-}
+  }
 
-// Обновление эффекта тряски камеры
-function updateCamera() {
-    if (shakeTimer > 0) {
-        cameraOffset[0] = Math.random() * shakeIntensity * 2 - shakeIntensity;
-        cameraOffset[1] = Math.random() * shakeIntensity * 2 - shakeIntensity;
-        shakeTimer -= deltaTime;
+  // Получение выбранных активов
+  function getSelectedAssets() {
+    const assetType = document.getElementById('asset-type').value;
+    const checkboxes = document.querySelectorAll('#asset-selector input:checked');
+    return Array.from(checkboxes).map(cb => cb.value);
+  }
+
+  // Показать/скрыть загрузчик
+  function toggleLoader(show) {
+    const loader = document.querySelector('.chart-loader');
+    if (loader) loader.style.display = show ? 'block' : 'none';
+  }
+
+  // Показать ошибку
+  function showChartError(message) {
+    const errorEl = document.querySelector('.chart-error');
+    if (errorEl) {
+      errorEl.textContent = message;
+      errorEl.classList.remove('hidden');
+    }
+  }
+
+  // Скрыть ошибки
+  function hideErrors() {
+    const errorEl = document.querySelector('.chart-error');
+    if (errorEl) errorEl.classList.add('hidden');
+  }
+
+  // Загрузка данных и построение графика
+  async function loadAndDrawChart() {
+    const assetType = document.getElementById('asset-type').value;
+    const selectedAssets = getSelectedAssets();
+    
+    // Скрыть старые ошибки
+    hideErrors();
+    
+    // Показать загрузчик
+    toggleLoader(true);
+    
+    try {
+      let data;
+      if (assetType === 'crypto') {
+        data = await loadCryptoData(selectedAssets);
+      } else {
+        data = await loadCurrencyData(selectedAssets);
+      }
+      drawPriceChart(data, assetType);
+    } catch (error) {
+      console.error('Ошибка загрузки данных:', error);
+      showChartError('Не удалось загрузить данные. Попробуйте позже или выберите другие активы.');
+    } finally {
+      // Скрыть загрузчик
+      toggleLoader(false);
+    }
+  }
+
+  // Загрузка данных для криптовалют
+  async function loadCryptoData(assets) {
+    const result = {};
+    
+    for (const asset of assets) {
+      const coinId = cryptoMap[asset];
+      if (!coinId) continue;
+      
+      try {
+        // Упрощенный запрос к CoinGecko
+        const url = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=30&interval=daily`;
+        
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Ошибка API: ${response.status}`);
+        
+        const data = await response.json();
+        
+        // Упрощенная обработка данных
+        if (data.prices && Array.isArray(data.prices)) {
+          result[asset] = {
+            prices: data.prices.map(p => p[1]),
+            timestamps: data.prices.map(p => p[0]),
+            name: asset
+          };
+        } else {
+          throw new Error('Некорректный формат данных');
+        }
+      } catch (error) {
+        console.error(`Ошибка загрузки данных для ${asset}:`, error);
+        result[asset] = {
+          error: true,
+          message: `Не удалось загрузить данные для ${asset}`,
+          name: asset
+        };
+      }
+    }
+    
+    return result;
+  }
+
+  // Загрузка данных для валют (исправленная версия)
+  async function loadCurrencyData(currencies) {
+    // Получаем текущие курсы
+    const rates = await getExchangeRates();
+    if (!rates) throw new Error('Не удалось получить курсы валют');
+    
+    const result = {};
+    const now = Date.now();
+    const oneDay = 24 * 60 * 60 * 1000;
+    
+    currencies.forEach(currency => {
+      // Базовый курс относительно USD
+      const baseRate = rates[currency] ? parseFloat(rates[currency]) : 1;
+      
+      // Генерация исторических данных с правильными временными метками
+      const prices = [];
+      const timestamps = [];
+      
+      // Создаем дату с фиксированным временем (12:00 UTC)
+      const baseDate = new Date();
+      baseDate.setHours(12, 0, 0, 0);
+      
+      for (let i = 30; i >= 0; i--) {
+        const date = new Date(baseDate.getTime() - i * oneDay);
+        timestamps.push(date.getTime());
+        
+        // Реалистичные колебания курса (±1%)
+        const fluctuation = 1 + (Math.random() - 0.5) * 0.02;
+        prices.push(baseRate * fluctuation);
+      }
+      
+      result[currency] = {
+        prices,
+        timestamps,
+        name: currency,
+        currentRate: baseRate
+      };
+    });
+    
+    return result;
+  }
+
+  // Построение графика цен (исправленная версия)
+  function drawPriceChart(data, assetType) {
+    const canvas = document.getElementById('price-chart');
+    if (!canvas) return;
+    
+    // Уничтожаем предыдущий график если существует
+    if (cryptoChart) {
+      cryptoChart.destroy();
+      cryptoChart = null;
+    }
+    
+    const ctx = canvas.getContext('2d');
+    const assets = Object.keys(data);
+    
+    // Проверка наличия данных
+    const hasData = assets.some(asset => 
+      !data[asset].error && data[asset].prices?.length > 0
+    );
+    
+    if (!hasData) {
+      showChartError('Нет данных для построения графика');
+      return;
+    }
+    
+    const colors = ['#4e73df', '#1cc88a', '#f6c23e', '#e74a3b', '#858796', '#36b9cc'];
+    const datasets = [];
+    
+    assets.forEach((asset, i) => {
+      const assetData = data[asset];
+      if (assetData.error) return;
+      
+      // Сортируем данные по времени
+      const sortedData = assetData.timestamps
+        .map((ts, idx) => ({ x: ts, y: assetData.prices[idx] }))
+        .sort((a, b) => a.x - b.x);
+      
+      datasets.push({
+        label: asset,
+        data: sortedData,
+        borderColor: colors[i % colors.length],
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: colors[i % colors.length],
+        fill: false,
+        tension: 0.1 // Уменьшаем сглаживание
+      });
+    });
+    
+    // Определяем единицы измерения
+    const yAxisLabel = assetType === 'crypto' ? 'Цена (USD)' : 'Курс к USD';
+    
+    // Создаем новый график
+    cryptoChart = new Chart(ctx, {
+      type: 'line',
+      data: { datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        aspectRatio: 2,
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
+        scales: {
+          x: {
+            type: 'time',
+            time: {
+              unit: 'day',
+              tooltipFormat: 'dd MMM yyyy',
+              displayFormats: { day: 'dd MMM' }
+            },
+            title: { display: true, text: 'Дата' },
+            ticks: {
+              autoSkip: true,
+              maxTicksLimit: 10
+            }
+          },
+          y: {
+            beginAtZero: false,
+            title: { display: true, text: yAxisLabel },
+            ticks: {
+              callback: function(value) {
+                return value.toLocaleString('ru-RU', {
+                  minimumFractionDigits: 4,
+                  maximumFractionDigits: 4
+                });
+              }
+            }
+          }
+        },
+        plugins: {
+          legend: { position: 'top' },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const value = context.parsed.y;
+                return `${context.dataset.label}: ${value.toFixed(4)}`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+   // ======== ИСПРАВЛЕННЫЙ ФУНКЦИОНАЛ ДЛЯ ВКЛАДКИ "КОШЕЛЁК" ========
+  async function showWallet() {
+    content.innerHTML = `
+      <div class="wallet-container">
+        <h3>Ваш криптокошелёк</h3>
+        
+        <div class="wallet-header">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask" class="metamask-logo">
+          <h4>Подключите MetaMask для управления вашими активами</h4>
+        </div>
+        
+        <div class="wallet-info">
+          <p>Подключите свой кошелёк, чтобы просматривать баланс, историю транзакций и управлять своими криптоактивами напрямую через браузер.</p>
+          
+          <div class="wallet-status" id="wallet-status">
+            <p>Статус: <span class="status-disconnected">Не подключено</span></p>
+          </div>
+          
+          <div class="wallet-connect-buttons">
+            <button id="connect-metamask" class="connect-btn">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask">
+              Подключить MetaMask
+            </button>
+          </div>
+          
+          <div class="wallet-details hidden" id="wallet-details">
+            <div class="wallet-address">
+              <strong>Адрес кошелька:</strong>
+              <span id="wallet-address"></span>
+              <button id="copy-address">Копировать</button>
+            </div>
+            
+            <div class="wallet-balance">
+              <h4>Баланс:</h4>
+              <div id="balance-details"></div>
+            </div>
+            
+            <div class="wallet-actions">
+              <button id="send-payment" class="action-btn payment-btn">
+                💸 Сделать платеж
+              </button>
+              <button id="switch-network" class="action-btn network-btn">
+                🔁 Изменить сеть
+              </button>
+              <button id="view-transactions" class="action-btn">
+                📋 Посмотреть транзакции
+              </button>
+              <button id="disconnect-wallet" class="action-btn disconnect-btn">
+                🚫 Отключить кошелёк
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="wallet-features">
+          <h4>Возможности с подключенным кошельком:</h4>
+          <ul>
+            <li>Просмотр баланса в реальном времени</li>
+            <li>Отправка криптовалютных платежей</li>
+            <li>Переключение между сетями Ethereum</li>
+            <li>История всех транзакций</li>
+            <li>Безопасное хранение ключей</li>
+          </ul>
+        </div>
+        
+        <!-- Модальное окно для отправки платежа -->
+        <div id="payment-modal" class="modal hidden">
+          <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h3>Отправка платежа</h3>
+            <form id="payment-form">
+              <div class="form-group">
+                <label for="recipient-address">Адрес получателя:</label>
+                <input type="text" id="recipient-address" placeholder="0x..." required>
+              </div>
+              
+              <div class="form-group">
+                <label for="payment-amount">Сумма (ETH):</label>
+                <input type="number" id="payment-amount" min="0.0001" step="0.0001" required>
+              </div>
+              
+              <div class="form-group">
+                <label for="gas-limit">Лимит газа (опционально):</label>
+                <input type="number" id="gas-limit" value="21000">
+              </div>
+              
+              <div class="form-group">
+                <label for="gas-price">Цена газа (Gwei, опционально):</label>
+                <input type="number" id="gas-price" step="0.1">
+              </div>
+              
+              <button type="submit" id="send-transaction-btn">Отправить</button>
+            </form>
+            <div id="transaction-status" class="status-message"></div>
+          </div>
+        </div>
+        
+        <!-- Модальное окно для смены сети -->
+        <div id="network-modal" class="modal hidden">
+          <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h3>Выбор сети</h3>
+            <div class="networks-list">
+              <div class="network-option" data-chain-id="1">
+                <img src="https://cryptologos.cc/logos/ethereum-eth-logo.png" alt="Ethereum">
+                <span>Ethereum Mainnet</span>
+              </div>
+              <div class="network-option" data-chain-id="5">
+                <img src="https://cryptologos.cc/logos/ethereum-eth-logo.png" alt="Goerli">
+                <span>Goerli Testnet</span>
+              </div>
+              <div class="network-option" data-chain-id="137">
+                <img src="https://cryptologos.cc/logos/polygon-matic-logo.png" alt="Polygon">
+                <span>Polygon Mainnet</span>
+              </div>
+              <div class="network-option" data-chain-id="80001">
+                <img src="https://cryptologos.cc/logos/polygon-matic-logo.png" alt="Mumbai">
+                <span>Mumbai Testnet</span>
+              </div>
+              <div class="network-option" data-chain-id="56">
+                <img src="https://cryptologos.cc/logos/binance-coin-bnb-logo.png" alt="Binance">
+                <span>Binance Smart Chain</span>
+              </div>
+            </div>
+            <div id="network-status" class="status-message"></div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    const connectBtn = document.getElementById('connect-metamask');
+    const disconnectBtn = document.getElementById('disconnect-wallet');
+    const copyBtn = document.getElementById('copy-address');
+    const viewTransactionsBtn = document.getElementById('view-transactions');
+    const sendPaymentBtn = document.getElementById('send-payment');
+    const switchNetworkBtn = document.getElementById('switch-network');
+    
+    // Проверяем, установлен ли MetaMask
+    if (typeof window.ethereum === 'undefined') {
+      document.getElementById('wallet-status').innerHTML = `
+        <p>Статус: <span class="status-error">MetaMask не обнаружен!</span></p>
+        <p class="install-hint">Установите расширение MetaMask для доступа к функциям кошелька</p>
+        <a href="https://metamask.io/download/" target="_blank" class="install-link">
+          Установить MetaMask
+        </a>
+      `;
+      connectBtn.disabled = true;
     } else {
-        cameraOffset = [0, 0];
+      connectBtn.addEventListener('click', connectMetaMask);
     }
-}
+    
+    if (disconnectBtn) disconnectBtn.addEventListener('click', disconnectWallet);
+    if (copyBtn) copyBtn.addEventListener('click', copyAddress);
+    if (viewTransactionsBtn) viewTransactionsBtn.addEventListener('click', viewTransactions);
+    
+    // Обработчики для новых кнопок
+    if (sendPaymentBtn) sendPaymentBtn.addEventListener('click', openPaymentModal);
+    if (switchNetworkBtn) switchNetworkBtn.addEventListener('click', openNetworkModal);
+    
+    // Проверяем, есть ли уже подключенный кошелек
+    checkWalletConnection();
+    
+    // Инициализация модальных окон
+    initModals();
+  }
 
-// Спавн врага
-function spawnEnemy(type) {
-    const x = Math.random() * (WIDTH - 100) + 50;
-    enemies.push(new Enemy(x, -50, type, level));
-}
-
-// Спавн босса
-function spawnBoss() {
-    boss = new Boss(level);
-    bossActive = true;
-    bossDefeated = false;
-}
-
-// Спавн улучшения
-function spawnPowerup(x, y) {
-    const powerType = Math.floor(Math.random() * 4);
-    powerups.push(new PowerUp(x, y, powerType));
-}
-
-// Спавн ресурса
-function spawnResource(x, y) {
-    powerups.push(new PowerUp(x, y, 4)); // Тип 4 - ресурс
-}
-
-// Эффект тряски экрана
-function screenShake(intensity, duration) {
-    shakeTimer = duration;
-    shakeIntensity = intensity;
-}
-
-// Проверка столкновений
-function checkCollisions() {
-    // Пули игрока с врагами
-    bullets.forEach(bullet => {
-        if (bullet.vy >= 0) return; // Только пули игрока летят вверх
-        
-        // Проверка столкновения с врагами
-        for (let i = 0; i < enemies.length; i++) {
-            const enemy = enemies[i];
-            const dx = bullet.x - enemy.x;
-            const dy = bullet.y - enemy.y;
-            const distance = Math.sqrt(dx*dx + dy*dy);
-            
-            if (distance < enemy.size + bullet.radius) {
-                if (enemy.hit(bullet.damage * player.damageMultiplier)) {
-                    explosions.push(new Explosion(enemy.x, enemy.y, enemy.size, enemy.color));
-                    score += enemy.scoreValue;
-                    player.score += enemy.scoreValue;
-                    waveEnemiesKilled++;
-                    
-                    // Шанс выпадения ресурса
-                    if (Math.random() < 0.3) {
-                        spawnResource(enemy.x, enemy.y);
-                    }
-                    
-                    enemy.active = false;
-                }
-                bullet.active = false;
-                break;
-            }
-        }
-        
-        // Проверка столкновения с боссом
-        if (bossActive && bullet.vy < 0) {
-            const dx = bullet.x - boss.x;
-            const dy = bullet.y - boss.y;
-            const distance = Math.sqrt(dx*dx + dy*dy);
-            
-            if (distance < boss.size + bullet.radius) {
-                const result = boss.hit(bullet.damage * player.damageMultiplier);
-                if (result) {
-                    explosions.push(new Explosion(boss.x, boss.y, boss.size * 2, boss.color));
-                    score += boss.scoreValue;
-                    player.score += boss.scoreValue;
-                    waveEnemiesKilled++;
-                    bossActive = false;
-                    bossDefeated = true;
-                    levelTransitionTimer = 180;
-                    screenShake(20, 40);
-                }
-                bullet.active = false;
-            }
-        }
+  // Инициализация модальных окон
+  function initModals() {
+    // Закрытие модальных окон
+    document.querySelectorAll('.close-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.modal').forEach(modal => {
+          modal.classList.add('hidden');
+        });
+      });
     });
     
-    // Вражеские пули с игроком
-    bullets.forEach(bullet => {
-        if (bullet.vy <= 0) return; // Только вражеские пули летят вниз
-        
-        const dx = bullet.x - player.x;
-        const dy = bullet.y - player.y;
-        const distance = Math.sqrt(dx*dx + dy*dy);
-        
-        if (distance < 30 + bullet.radius && player.invincible <= 0) {
-            if (player.shield > 0) {
-                player.shield -= bullet.damage;
-            } else {
-                player.health -= bullet.damage;
-                player.invincible = 60;
-                screenShake(10, 15);
-                
-                if (player.health <= 0) {
-                    player.lives--;
-                    player.health = player.maxHealth;
-                    player.invincible = 120;
-                    
-                    if (player.lives <= 0) {
-                        gameState = "game_over";
-                    }
-                }
-            }
-            
-            bullet.active = false;
-            explosions.push(new Explosion(bullet.x, bullet.y, 10, bullet.color));
-        }
+    // Закрытие при клике вне модального окна
+    window.addEventListener('click', (event) => {
+      if (event.target.classList.contains('modal')) {
+        event.target.classList.add('hidden');
+      }
     });
     
-    // Вражеские пули с базами
-    bullets.forEach(bullet => {
-        if (bullet.vy <= 0) return; // Только вражеские пули летят вниз
-        
-        for (let i = 0; i < bases.length; i++) {
-            const base = bases[i];
-            if (bullet.x > base.x && bullet.x < base.x + base.width &&
-                bullet.y > base.y && bullet.y < base.y + base.height) {
-                
-                base.takeDamage(bullet.damage);
-                bullet.active = false;
-                explosions.push(new Explosion(bullet.x, bullet.y, 15, RED));
-                screenShake(5, 10);
-                break;
-            }
-        }
-    });
+    // Обработчик отправки платежа
+    const paymentForm = document.getElementById('payment-form');
+    if (paymentForm) {
+      paymentForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await sendPayment();
+      });
+    }
     
-    // Враги с игроком
-    enemies.forEach(enemy => {
-        const dx = enemy.x - player.x;
-        const dy = enemy.y - player.y;
-        const distance = Math.sqrt(dx*dx + dy*dy);
-        
-        if (distance < enemy.size + 25 && player.invincible <= 0) {
-            explosions.push(new Explosion(enemy.x, enemy.y, enemy.size, enemy.color));
-            enemy.active = false;
-            waveEnemiesKilled++;
-            
-            if (player.shield > 0) {
-                player.shield = 0;
-            } else {
-                player.health -= 20;
-                player.invincible = 60;
-                screenShake(15, 20);
-                
-                if (player.health <= 0) {
-                    player.lives--;
-                    player.health = player.maxHealth;
-                    player.invincible = 120;
-                    
-                    if (player.lives <= 0) {
-                        gameState = "game_over";
-                    }
-                }
-            }
-        }
+    // Обработчики выбора сети
+    document.querySelectorAll('.network-option').forEach(option => {
+      option.addEventListener('click', async () => {
+        const chainId = option.dataset.chainId;
+        await switchNetwork(chainId);
+      });
     });
-    
-    // Враги с базами
-    enemies.forEach(enemy => {
-        for (let i = 0; i < bases.length; i++) {
-            const base = bases[i];
-            if (enemy.x > base.x && enemy.x < base.x + base.width &&
-                enemy.y + enemy.size > base.y && enemy.y - enemy.size < base.y + base.height) {
-                
-                explosions.push(new Explosion(enemy.x, enemy.y, enemy.size, enemy.color));
-                enemy.active = false;
-                waveEnemiesKilled++;
-                base.takeDamage(enemy.damage);
-                screenShake(10, 15);
-                break;
-            }
-        }
-    });
-    
-    // Улучшения с игроком
-    powerups.forEach(powerup => {
-        const dx = powerup.x - player.x;
-        const dy = powerup.y - player.y;
-        const distance = Math.sqrt(dx*dx + dy*dy);
-        
-        if (distance < 25 + powerup.size) {
-            switch(powerup.type) {
-                case 0: // Здоровье
-                    player.health = Math.min(player.maxHealth, player.health + 30);
-                    break;
-                case 1: // Оружие
-                    player.weaponLevel = Math.min(5, player.weaponLevel + 1);
-                    break;
-                case 2: // Щит
-                    player.shield = player.maxShield;
-                    break;
-                case 3: // Жизнь
-                    player.lives++;
-                    break;
-                case 4: // Ресурс
-                    resources += 15 + wave;
-                    break;
-            }
-            
-            powerup.active = false;
-            explosions.push(new Explosion(powerup.x, powerup.y, 20, YELLOW));
-        }
-    });
-}
+  }
 
-// Сброс игры
-function resetGame() {
-    player = new Player();
-    enemies = [];
-    bullets = [];
-    powerups = [];
-    explosions = [];
-    particles = [];
-    level = 1;
-    wave = 1;
-    score = 0;
-    resources = 200; // Увеличено стартовое количество
-    enemySpawnTimer = 0;
-    boss = null;
-    bossActive = false;
-    bossDefeated = false;
-    levelTransitionTimer = 0;
-    shakeTimer = 0;
-    shakeIntensity = 0;
-    cameraOffset = [0, 0];
-    waveEnemiesCount = 0;
-    waveEnemiesKilled = 0;
+  // Открытие модального окна для платежа
+  function openPaymentModal() {
+    const modal = document.getElementById('payment-modal');
+    modal.classList.remove('hidden');
+    document.getElementById('transaction-status').textContent = '';
+  }
+
+  // Открытие модального окна для смены сети
+  function openNetworkModal() {
+    const modal = document.getElementById('network-modal');
+    modal.classList.remove('hidden');
+    document.getElementById('network-status').textContent = '';
+  }
+
+  // Отправка платежа
+  async function sendPayment() {
+    const statusEl = document.getElementById('transaction-status');
+    statusEl.textContent = 'Отправка транзакции...';
+    statusEl.className = 'status-message processing';
     
-    // Сброс улучшений
-    upgrades = {
-        baseHealth: 1,
-        baseShield: 0,
-        baseTurret: 0,
-        playerDamage: 1,
-        playerFireRate: 1,
-        playerShield: 0
+    try {
+      const recipient = document.getElementById('recipient-address').value;
+      const amount = document.getElementById('payment-amount').value;
+      const gasLimit = document.getElementById('gas-limit').value || '21000';
+      const gasPrice = document.getElementById('gas-price').value;
+      
+      if (!recipient || !amount) {
+        throw new Error('Заполните все обязательные поля');
+      }
+      
+      // Получаем текущий аккаунт
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+      if (accounts.length === 0) {
+        throw new Error('Кошелёк не подключен');
+      }
+      
+      const from = accounts[0];
+      
+      // Параметры транзакции
+      const transactionParams = {
+        from,
+        to: recipient,
+        value: ethers.utils.parseEther(amount).toHexString(),
+        gas: gasLimit,
+        gasPrice: gasPrice ? ethers.utils.parseUnits(gasPrice, 'gwei').toHexString() : undefined
+      };
+      
+      // Отправляем транзакцию
+      const txHash = await window.ethereum.request({
+        method: 'eth_sendTransaction',
+        params: [transactionParams]
+      });
+      
+      statusEl.innerHTML = `
+        <p class="success">Транзакция успешно отправлена!</p>
+        <p>Хеш транзакции: <a href="https://etherscan.io/tx/${txHash}" target="_blank">${txHash.substring(0, 12)}...</a></p>
+      `;
+      statusEl.className = 'status-message success';
+      
+      // Обновляем баланс после отправки
+      setTimeout(() => {
+        displayWalletInfo(from);
+      }, 5000);
+      
+    } catch (error) {
+      console.error('Ошибка отправки платежа:', error);
+      statusEl.textContent = error.message || 'Ошибка при отправке транзакции';
+      statusEl.className = 'status-message error';
+    }
+  }
+
+  // Смена сети
+  async function switchNetwork(chainId) {
+    const statusEl = document.getElementById('network-status');
+    statusEl.textContent = 'Переключение сети...';
+    statusEl.className = 'status-message processing';
+    
+    try {
+      // Попытка переключения
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: `0x${Number(chainId).toString(16)}` }]
+      });
+      
+      statusEl.textContent = 'Сеть успешно изменена!';
+      statusEl.className = 'status-message success';
+      
+      // Обновляем информацию о сети
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+      
+    } catch (switchError) {
+      // Если сеть не добавлена, добавляем её
+      if (switchError.code === 4902) {
+        try {
+          await addNetwork(chainId);
+          statusEl.textContent = 'Сеть успешно добавлена и активирована!';
+          statusEl.className = 'status-message success';
+          
+          // Обновляем информацию о сети
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+          
+        } catch (addError) {
+          console.error('Ошибка добавления сети:', addError);
+          statusEl.textContent = addError.message || 'Ошибка при добавлении сети';
+          statusEl.className = 'status-message error';
+        }
+      } else {
+        console.error('Ошибка переключения сети:', switchError);
+        statusEl.textContent = switchError.message || 'Ошибка при переключении сети';
+        statusEl.className = 'status-message error';
+      }
+    }
+  }
+
+  // Добавление новой сети
+  async function addNetwork(chainId) {
+    const networkConfig = getNetworkConfig(chainId);
+    
+    if (!networkConfig) {
+      throw new Error('Конфигурация для данной сети не найдена');
+    }
+    
+    await window.ethereum.request({
+      method: 'wallet_addEthereumChain',
+      params: [networkConfig]
+    });
+  }
+
+  // Конфигурации сетей
+  function getNetworkConfig(chainId) {
+    const networks = {
+      '1': {
+        chainId: '0x1',
+        chainName: 'Ethereum Mainnet',
+        nativeCurrency: {
+          name: 'Ether',
+          symbol: 'ETH',
+          decimals: 18
+        },
+        rpcUrls: ['https://mainnet.infura.io/v3/'],
+        blockExplorerUrls: ['https://etherscan.io']
+      },
+      '5': {
+        chainId: '0x5',
+        chainName: 'Goerli Testnet',
+        nativeCurrency: {
+          name: 'Goerli Ether',
+          symbol: 'ETH',
+          decimals: 18
+        },
+        rpcUrls: ['https://goerli.infura.io/v3/'],
+        blockExplorerUrls: ['https://goerli.etherscan.io']
+      },
+      '137': {
+        chainId: '0x89',
+        chainName: 'Polygon Mainnet',
+        nativeCurrency: {
+          name: 'MATIC',
+          symbol: 'MATIC',
+          decimals: 18
+        },
+        rpcUrls: ['https://polygon-rpc.com/'],
+        blockExplorerUrls: ['https://polygonscan.com']
+      },
+      '80001': {
+        chainId: '0x13881',
+        chainName: 'Mumbai Testnet',
+        nativeCurrency: {
+          name: 'MATIC',
+          symbol: 'MATIC',
+          decimals: 18
+        },
+        rpcUrls: ['https://rpc-mumbai.maticvigil.com/'],
+        blockExplorerUrls: ['https://mumbai.polygonscan.com']
+      },
+      '56': {
+        chainId: '0x38',
+        chainName: 'Binance Smart Chain',
+        nativeCurrency: {
+          name: 'Binance Coin',
+          symbol: 'BNB',
+          decimals: 18
+        },
+        rpcUrls: ['https://bsc-dataseed.binance.org/'],
+        blockExplorerUrls: ['https://bscscan.com']
+      }
     };
     
-    upgradeCosts = {
-        baseHealth: 50,
-        baseShield: 75,
-        baseTurret: 100,
-        playerDamage: 60,
-        playerFireRate: 70,
-        playerShield: 80
-    };
-    
-    createBases();
-    generateWave();
-}
+    return networks[chainId];
+  }
 
-// Класс частиц
-class Particle {
-    constructor(x, y, color, size = 3, velocity = null, life = null) {
-        this.x = x;
-        this.y = y;
-        this.color = color;
-        this.size = Math.max(0.5, size);
-        this.life = life || Math.floor(Math.random() * 30 + 20);
-        this.maxLife = this.life;
-        this.alpha = 255;
-        
-        if (velocity) {
-            this.vx = velocity[0];
-            this.vy = velocity[1];
-        } else {
-            const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * 2.5 + 0.5;
-            this.vx = Math.cos(angle) * speed;
-            this.vy = Math.sin(angle) * speed;
-        }
-        
-        this.active = true;
-    }
+  // Проверка существующего подключения
+  async function checkWalletConnection() {
+    if (typeof window.ethereum === 'undefined') return;
     
-    update() {
-        this.x += this.vx;
-        this.y += this.vy;
-        this.life -= deltaTime;
-        this.alpha = 255 * (this.life / this.maxLife);
-        this.size = Math.max(0.1, this.size - 0.05 * deltaTime);
-        
-        if (this.life <= 0 || this.size <= 0) {
-            this.active = false;
-        }
-        
-        return this.active;
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+      if (accounts.length > 0) {
+        displayWalletInfo(accounts[0]);
+      }
+    } catch (error) {
+      console.error("Ошибка при проверке подключения:", error);
     }
+  }
+  
+  // Подключение к MetaMask
+  async function connectMetaMask() {
+    if (typeof window.ethereum === 'undefined') return;
     
-    draw() {
-        if (this.alpha <= 0 || this.size < 0.5) return;
-        
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${parseInt(this.color.substring(1, 3), 16)}, ${parseInt(this.color.substring(3, 5), 16)}, ${parseInt(this.color.substring(5, 7), 16)}, ${this.alpha/255})`;
-        ctx.fill();
+    try {
+      const accounts = await window.ethereum.request({ 
+        method: 'eth_requestAccounts' 
+      });
+      
+      if (accounts.length > 0) {
+        displayWalletInfo(accounts[0]);
+        setupEventListeners();
+      }
+    } catch (error) {
+      console.error("Ошибка подключения:", error);
+      document.getElementById('wallet-status').innerHTML = `
+        <p>Статус: <span class="status-error">Ошибка подключения!</span></p>
+        <p>${error.message || 'Проверьте расширение MetaMask'}</p>
+      `;
     }
-}
-
-// Класс звезд
-class Star {
-    constructor() {
-        this.x = Math.random() * WIDTH;
-        this.y = Math.random() * HEIGHT;
-        this.size = Math.random() * 2 + 0.5;
-        this.brightness = Math.random() * 0.7 + 0.3;
-        this.speed = Math.random() * 0.4 + 0.1;
-        this.twinkleSpeed = Math.random() * 0.04 + 0.01;
-        this.twinklePhase = Math.random() * Math.PI * 2;
-    }
+  }
+  
+  // Отображение информации о кошельке
+  async function displayWalletInfo(account) {
+    document.getElementById('wallet-status').innerHTML = `
+      <p>Статус: <span class="status-connected">Подключено</span></p>
+    `;
     
-    update() {
-        this.y += this.speed * deltaTime;
-        if (this.y > HEIGHT) {
-            this.y = 0;
-            this.x = Math.random() * WIDTH;
-        }
-        
-        this.twinklePhase += this.twinkleSpeed * deltaTime;
-    }
+    // Форматируем адрес для отображения
+    const formattedAddress = `${account.substring(0, 6)}...${account.substring(account.length - 4)}`;
+    document.getElementById('wallet-address').textContent = formattedAddress;
+    document.getElementById('wallet-address').dataset.full = account;
     
-    draw() {
-        const twinkle = 0.7 + 0.3 * Math.sin(this.twinklePhase);
-        const brightness = this.brightness * twinkle;
-        const value = Math.floor(255 * brightness);
-        ctx.fillStyle = `rgb(${value}, ${value}, ${value})`;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fill();
-    }
-}
-
-// Класс базы
-class Base {
-    constructor(x, y, width, height) {
-        this.x = x;
-        this.y = y;
-        this.width = width;
-        this.height = height;
-        this.maxHealth = 150 + 100 * upgrades.baseHealth; // Усиленное здоровье
-        this.health = this.maxHealth;
-        this.maxShield = 75 * upgrades.baseShield; // Усиленные щиты
-        this.shield = this.maxShield;
-        this.turretLevel = upgrades.baseTurret;
-        this.shootCooldown = 0;
-        this.color = "#32C896";
-    }
+    // Показываем детали кошелька
+    document.getElementById('wallet-details').classList.remove('hidden');
     
-    takeDamage(amount) {
-        if (this.shield > 0) {
-            this.shield -= amount;
-            if (this.shield < 0) {
-                this.health += this.shield; // Отрицательный щит превращается в урон
-                this.shield = 0;
-            }
-        } else {
-            this.health -= amount;
-        }
-        
-        // Визуальный эффект
-        for (let i = 0; i < 10; i++) {
-            particles.push(new Particle(
-                this.x + Math.random() * this.width,
-                this.y + Math.random() * this.height,
-                RED,
-                Math.random() * 3 + 2
-            ));
-        }
+    // Получаем баланс
+    try {
+      const balance = await window.ethereum.request({ 
+        method: 'eth_getBalance',
+        params: [account, 'latest']
+      });
+      
+      // Конвертируем из wei в ETH
+      const ethBalance = parseInt(balance) / 1e18;
+      document.getElementById('balance-details').innerHTML = `
+        <div class="balance-item">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/0/05/Ethereum_logo_2014.svg" alt="ETH">
+          <span>${ethBalance.toFixed(4)} ETH</span>
+        </div>
+        <div class="balance-value">$${(ethBalance * 3500).toFixed(2)} USD</div>
+      `;
+    } catch (error) {
+      console.error("Ошибка получения баланса:", error);
+      document.getElementById('balance-details').innerHTML = `
+        <p class="balance-error">Не удалось получить баланс</p>
+      `;
     }
+  }
+  
+  // Отключение кошелька
+  function disconnectWallet() {
+    document.getElementById('wallet-status').innerHTML = `
+      <p>Статус: <span class="status-disconnected">Не подключено</span></p>
+    `;
+    document.getElementById('wallet-details').classList.add('hidden');
+  }
+  
+  // Копирование адреса в буфер обмена
+  function copyAddress() {
+    const address = document.getElementById('wallet-address').dataset.full;
+    navigator.clipboard.writeText(address)
+      .then(() => {
+        const copyBtn = document.getElementById('copy-address');
+        copyBtn.textContent = 'Скопировано!';
+        setTimeout(() => {
+          copyBtn.textContent = 'Копировать';
+        }, 2000);
+      })
+      .catch(err => {
+        console.error('Ошибка копирования:', err);
+      });
+  }
+  
+  // Просмотр транзакций
+  function viewTransactions() {
+    const address = document.getElementById('wallet-address').dataset.full;
+    const url = `https://etherscan.io/address/${address}`;
+    window.open(url, '_blank');
+  }
+  
+  // Настройка обработчиков событий
+  function setupEventListeners() {
+    // Обработка изменения аккаунтов
+    window.ethereum.on('accountsChanged', (accounts) => {
+      if (accounts.length === 0) {
+        disconnectWallet();
+      } else {
+        displayWalletInfo(accounts[0]);
+      }
+    });
     
-    update() {
-        // Автоматическая турель
-        if (this.turretLevel > 0) {
-            this.shootCooldown -= deltaTime;
-            
-            // Поиск ближайшего врага
-            let nearestEnemy = null;
-            let minDist = Infinity;
-            
-            for (const enemy of enemies) {
-                const dx = enemy.x - (this.x + this.width/2);
-                const dy = enemy.y - (this.y + this.height/2);
-                const dist = Math.sqrt(dx*dx + dy*dy);
-                
-                if (dist < 300 && dist < minDist) {
-                    minDist = dist;
-                    nearestEnemy = enemy;
-                }
-            }
-            
-            // Стрельба по врагу
-            if (nearestEnemy && this.shootCooldown <= 0) {
-                const baseCenterX = this.x + this.width/2;
-                const baseCenterY = this.y + this.height/2;
-                
-                const angle = Math.atan2(
-                    nearestEnemy.y - baseCenterY,
-                    nearestEnemy.x - baseCenterX
-                );
-                
-                const speed = 7;
-                bullets.push(new Bullet(
-                    baseCenterX,
-                    baseCenterY,
-                    Math.cos(angle) * speed,
-                    Math.sin(angle) * speed,
-                    GREEN,
-                    7 * this.turretLevel // Усиленный урон
-                ));
-                
-                this.shootCooldown = 30 - this.turretLevel * 5;
-            }
-        }
-    }
-    
-    draw() {
-        // Отрисовка базы
-        ctx.fillStyle = this.color;
-        ctx.fillRect(this.x, this.y, this.width, this.height);
-        
-        // Детали
-        ctx.fillStyle = "#1E7A5E";
-        ctx.fillRect(this.x + 10, this.y + 5, this.width - 20, 10);
-        ctx.fillRect(this.x + 15, this.y + 20, this.width - 30, 10);
-        
-        // Отрисовка турели
-        if (this.turretLevel > 0) {
-            const turretSize = 6 + this.turretLevel * 2;
-            ctx.fillStyle = "#6464FF";
-            ctx.fillRect(
-                this.x + this.width/2 - turretSize/2,
-                this.y - turretSize,
-                turretSize,
-                turretSize
-            );
-        }
-        
-        // Отрисовка щита
-        if (this.shield > 0) {
-            const shieldAlpha = Math.min(150, 150 * (this.shield / this.maxShield));
-            ctx.beginPath();
-            ctx.rect(
-                this.x - 5, 
-                this.y - 5, 
-                this.width + 10, 
-                this.height + 10
-            );
-            ctx.strokeStyle = `rgba(100, 200, 255, ${shieldAlpha/255})`;
-            ctx.lineWidth = 3;
-            ctx.stroke();
-        }
-        
-        // Отрисовка шкалы здоровья
-        ctx.fillStyle = "#323232";
-        ctx.fillRect(this.x, this.y - 15, this.width, 5);
-        const healthWidth = this.width * (this.health / this.maxHealth);
-        ctx.fillStyle = this.health > this.maxHealth * 0.3 ? GREEN : RED;
-        ctx.fillRect(this.x, this.y - 15, healthWidth, 5);
-    }
-}
-
-// Класс игрока
-class Player {
-    constructor() {
-        this.width = 60;
-        this.height = 40;
-        this.x = WIDTH / 2;
-        this.y = HEIGHT - 100;
-        this.speed = 5;
-        this.health = 100;
-        this.maxHealth = 100;
-        this.weaponLevel = 1;
-        this.damageMultiplier = 1 + 0.4 * upgrades.playerDamage; // Усиленный урон
-        this.fireRateMultiplier = 1 + 0.25 * upgrades.playerFireRate; // Усиленная скорострельность
-        this.shield = 0;
-        this.maxShield = 60 * upgrades.playerShield; // Усиленные щиты
-        this.score = 0;
-        this.lives = 3;
-        this.invincible = 0;
-        this.shootCooldown = 0;
-        this.engineParticles = [];
-    }
-    
-    move(dx, dy) {
-        this.x = Math.max(this.width / 2, Math.min(WIDTH - this.width / 2, this.x + dx * this.speed * deltaTime));
-        this.y = Math.max(this.height / 2, Math.min(HEIGHT - this.height / 2, this.y + dy * this.speed * deltaTime));
-        
-        // Добавление частиц двигателя
-        if ((dx !== 0 || dy !== 0) && Math.random() < 0.5) {
-            const angle = Math.random() * Math.PI * 0.6 + Math.PI * 0.7;
-            const speed = Math.random() * 2 + 1;
-            this.engineParticles.push(new Particle(
-                this.x - Math.random() * 10,
-                this.y + this.height / 2,
-                "#00C8FF",
-                Math.random() * 2 + 2,
-                [Math.sin(angle) * speed, Math.cos(angle) * speed],
-                Math.random() * 10 + 10
-            ));
-        }
-    }
-    
-    update() {
-        if (this.shootCooldown > 0) {
-            this.shootCooldown -= deltaTime;
-        }
-        
-        if (this.invincible > 0) {
-            this.invincible -= deltaTime;
-        }
-        
-        // Обновление частиц двигателя
-        this.engineParticles.forEach(particle => particle.update());
-        this.engineParticles = this.engineParticles.filter(p => p.active);
-    }
-    
-    shoot() {
-        if (this.shootCooldown <= 0) {
-            // Оружие 1 уровня
-            if (this.weaponLevel === 1) {
-                bullets.push(new Bullet(this.x, this.y - 30, 0, -10, BLUE, 10 * this.damageMultiplier));
-            }
-            // Оружие 2 уровня
-            else if (this.weaponLevel === 2) {
-                bullets.push(new Bullet(this.x - 15, this.y - 20, 0, -10, BLUE, 10 * this.damageMultiplier));
-                bullets.push(new Bullet(this.x + 15, this.y - 20, 0, -10, BLUE, 10 * this.damageMultiplier));
-            }
-            // Оружие 3+ уровня
-            else {
-                bullets.push(new Bullet(this.x - 20, this.y - 20, -1, -9, CYAN, 12 * this.damageMultiplier));
-                bullets.push(new Bullet(this.x, this.y - 30, 0, -10, BLUE, 15 * this.damageMultiplier));
-                bullets.push(new Bullet(this.x + 20, this.y - 20, 1, -9, CYAN, 12 * this.damageMultiplier));
-            }
-            
-            this.shootCooldown = (10 - Math.min(3, this.weaponLevel)) / this.fireRateMultiplier;
-        }
-    }
-    
-    draw() {
-        // Отрисовка щита
-        if (this.shield > 0) {
-            const shieldAlpha = Math.min(150, 150 * (this.shield / this.maxShield));
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.width / 2 + 5, 0, Math.PI * 2);
-            ctx.strokeStyle = `rgba(100, 200, 255, ${shieldAlpha/255})`;
-            ctx.lineWidth = 3;
-            ctx.stroke();
-        }
-        
-        // Точки корабля
-        const points = [
-            [this.x, this.y - 20],
-            [this.x - 20, this.y + 15],
-            [this.x - 10, this.y + 10],
-            [this.x - 25, this.y + 25],
-            [this.x, this.y + 15],
-            [this.x + 25, this.y + 25],
-            [this.x + 10, this.y + 10],
-            [this.x + 20, this.y + 15]
-        ];
-        
-        // Цвет корабля (мигает при неуязвимости)
-        let shipColor = BLUE;
-        if (this.invincible > 0 && Math.floor(this.invincible / 4) % 2 === 0) {
-            shipColor = PURPLE;
-        }
-        
-        // Отрисовка корабля
-        ctx.beginPath();
-        ctx.moveTo(points[0][0], points[0][1]);
-        for (let i = 1; i < points.length; i++) {
-            ctx.lineTo(points[i][0], points[i][1]);
-        }
-        ctx.closePath();
-        ctx.fillStyle = shipColor;
-        ctx.fill();
-        ctx.strokeStyle = CYAN;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        
-        // Отрисовка частиц двигателя
-        this.engineParticles.forEach(particle => particle.draw());
-        
-        // Отрисовка шкалы здоровья
-        ctx.fillStyle = "#323246";
-        ctx.fillRect(this.x - 30, this.y + 35, 60, 5);
-        const healthWidth = 60 * (this.health / this.maxHealth);
-        ctx.fillStyle = GREEN;
-        ctx.fillRect(this.x - 30, this.y + 35, healthWidth, 5);
-        
-        // Отрисовка индикаторов оружия
-        for (let i = 0; i < this.weaponLevel; i++) {
-            ctx.fillStyle = YELLOW;
-            ctx.fillRect(this.x - 28 + i * 15, this.y + 45, 10, 3);
-        }
-        
-        // УБРАН ИНДИКАТОР УРОНА (DMG) - БАГ ИСПРАВЛЕН
-    }
-}
-
-// Класс пули
-class Bullet {
-    constructor(x, y, vx, vy, color, damage) {
-        this.x = x;
-        this.y = y;
-        this.vx = vx;
-        this.vy = vy;
-        this.color = color;
-        this.damage = damage;
-        this.radius = 3 + damage / 3;
-        this.active = true;
-    }
-    
-    update() {
-        this.x += this.vx * deltaTime;
-        this.y += this.vy * deltaTime;
-        
-        if (this.x < 0 || this.x > WIDTH || this.y < 0 || this.y > HEIGHT) {
-            this.active = false;
-        }
-        
-        return this.active;
-    }
-    
-    draw() {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
-        ctx.fill();
-        ctx.strokeStyle = WHITE;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-    }
-}
-
-// Класс врага
-class Enemy {
-    constructor(x, y, type, level) {
-        this.x = x;
-        this.y = y;
-        this.type = type;
-        this.level = level;
-        this.setupEnemy();
-        this.shootCooldown = 0;
-        this.particles = [];
-        this.active = true;
-        this.targetBase = null;
-        this.attackCooldown = 0;
-    }
-    
-    setupEnemy() {
-        if (this.type === 0) { // Маленький враг
-            this.health = 20 + this.level * 5;
-            this.maxHealth = this.health;
-            this.speed = Math.random() * 1 + 1 + this.level * 0.1;
-            this.scoreValue = 10;
-            this.shootChance = 0.01;
-            this.color = RED;
-            this.size = 20;
-            this.damage = 10;
-            this.behavior = "basic";
-        } else if (this.type === 1) { // Быстрый враг
-            this.health = 30 + this.level * 6;
-            this.maxHealth = this.health;
-            this.speed = Math.random() * 1.5 + 1.5 + this.level * 0.15;
-            this.scoreValue = 15;
-            this.shootChance = 0.02;
-            this.color = "#FF64C8";
-            this.size = 15;
-            this.damage = 15;
-            this.behavior = "evasive";
-            this.evasiveTimer = 0;
-        } else if (this.type === 2) { // Танк
-            this.health = 150 + this.level * 20;
-            this.maxHealth = this.health;
-            this.speed = Math.random() * 0.3 + 0.3 + this.level * 0.03;
-            this.scoreValue = 30;
-            this.shootChance = 0.01;
-            this.color = "#FF9632";
-            this.size = 40;
-            this.damage = 25;
-            this.behavior = "tank";
-        } else if (this.type === 3) { // Бомбардировщик
-            this.health = 40 + this.level * 8;
-            this.maxHealth = this.health;
-            this.speed = Math.random() * 0.8 + 0.8 + this.level * 0.08;
-            this.scoreValue = 25;
-            this.shootChance = 0.03;
-            this.color = "#C864FF";
-            this.size = 25;
-            this.damage = 20;
-            this.behavior = "bomber";
-            this.bombTimer = 0;
-        } else { // Босс
-            this.health = 500 + this.level * 200;
-            this.maxHealth = this.health;
-            this.speed = 0.5;
-            this.scoreValue = 500 + this.level * 100;
-            this.shootChance = 0.05;
-            this.color = "#C83296";
-            this.size = 80;
-            this.damage = 40;
-            this.behavior = "boss";
-        }
-    }
-    
-    update() {
-        // Поиск цели (базы)
-        if (!this.targetBase || this.targetBase.health <= 0) {
-            this.findTargetBase();
-        }
-        
-        // Движение к цели
-        if (this.targetBase) {
-            const targetX = this.targetBase.x + this.targetBase.width / 2;
-            const targetY = this.targetBase.y + this.targetBase.height / 2;
-            
-            const dx = targetX - this.x;
-            const dy = targetY - this.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            if (distance > 10) {
-                const speed = this.speed * deltaTime;
-                this.x += (dx / distance) * speed;
-                this.y += (dy / distance) * speed;
-            }
-        } else {
-            // Движение вниз если нет баз
-            this.y += this.speed * deltaTime;
-        }
-        
-        // Особые поведения
-        if (this.behavior === "evasive") {
-            this.evasiveTimer += deltaTime;
-            // Зигзагообразное движение
-            this.x += Math.sin(this.evasiveTimer * 0.1) * 1.5;
-        } else if (this.behavior === "bomber") {
-            this.bombTimer += deltaTime;
-            if (this.bombTimer > 120) {
-                this.dropBomb();
-                this.bombTimer = 0;
-            }
-        }
-        
-        if (this.shootCooldown > 0) {
-            this.shootCooldown -= deltaTime;
-        }
-        
-        // Обновление частиц
-        this.particles.forEach(particle => particle.update());
-        this.particles = this.particles.filter(p => p.active);
-        
-        if (this.y > HEIGHT + 50) {
-            this.active = false;
-        }
-        
-        return this.active;
-    }
-    
-    findTargetBase() {
-        let minDist = Infinity;
-        let closestBase = null;
-        
-        for (const base of bases) {
-            if (base.health > 0) {
-                const dx = base.x + base.width/2 - this.x;
-                const dy = base.y + base.height/2 - this.y;
-                const dist = Math.sqrt(dx*dx + dy*dy);
-                
-                if (dist < minDist) {
-                    minDist = dist;
-                    closestBase = base;
-                }
-            }
-        }
-        
-        this.targetBase = closestBase;
-    }
-    
-    dropBomb() {
-        bullets.push(new Bullet(this.x, this.y + this.size, 0, 4, PURPLE, 15));
-    }
-    
-    shoot() {
-        if (this.shootCooldown <= 0 && Math.random() < this.shootChance) {
-            bullets.push(new Bullet(this.x, this.y + this.size, 0, 5, RED, 5));
-            this.shootCooldown = 60;
-            return true;
-        }
-        return false;
-    }
-    
-    hit(damage) {
-        this.health -= damage;
-        
-        // Создание частиц при попадании
-        for (let i = 0; i < 5; i++) {
-            this.particles.push(new Particle(
-                this.x + Math.random() * this.size - this.size/2,
-                this.y + Math.random() * this.size - this.size/2,
-                this.color,
-                Math.random() * 2 + 2,
-                [Math.random() * 2 - 1, Math.random() * 2 - 1]
-            ));
-        }
-        
-        if (this.health <= 0) {
-            this.active = false;
-            return true;
-        }
-        return false;
-    }
-    
-    draw() {
-        // Отрисовка врага по типу
-        if (this.type === 0) { // Маленький
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-            ctx.fillStyle = this.color;
-            ctx.fill();
-        }
-        else if (this.type === 1) { // Быстрый
-            ctx.beginPath();
-            ctx.moveTo(this.x, this.y - this.size);
-            ctx.lineTo(this.x - this.size, this.y + this.size);
-            ctx.lineTo(this.x + this.size, this.y + this.size);
-            ctx.closePath();
-            ctx.fillStyle = this.color;
-            ctx.fill();
-        }
-        else if (this.type === 2) { // Танк
-            ctx.fillStyle = this.color;
-            ctx.fillRect(this.x - this.size, this.y - this.size/2, this.size*2, this.size);
-            ctx.fillStyle = "#646464";
-            ctx.fillRect(this.x - this.size/2, this.y - this.size, this.size, this.size/2);
-        }
-        else if (this.type === 3) { // Бомбардировщик
-            ctx.beginPath();
-            ctx.ellipse(this.x, this.y, this.size, this.size/1.5, 0, 0, Math.PI * 2);
-            ctx.fillStyle = this.color;
-            ctx.fill();
-            
-            // Крылья
-            ctx.fillStyle = "#9632C8";
-            ctx.fillRect(this.x - this.size*1.5, this.y - 5, this.size, 10);
-            ctx.fillRect(this.x + this.size*0.5, this.y - 5, this.size, 10);
-        }
-        else { // Босс
-            // Отрисовка босса в классе Boss
-        }
-        
-        // Отрисовка шкалы здоровья для не-боссов
-        if (this.type !== 4) {
-            ctx.fillStyle = "#323232";
-            ctx.fillRect(this.x - this.size, this.y - this.size - 10, this.size * 2, 5);
-            const healthWidth = this.size * 2 * (this.health / this.maxHealth);
-            ctx.fillStyle = this.health > this.maxHealth * 0.3 ? GREEN : RED;
-            ctx.fillRect(this.x - this.size, this.y - this.size - 10, healthWidth, 5);
-        }
-        
-        // Отрисовка частиц
-        this.particles.forEach(particle => particle.draw());
-    }
-}
-
-// Класс босса
-class Boss extends Enemy {
-    constructor(level) {
-        super(WIDTH / 2, -100, 4, level);
-        this.phase = 1;
-        this.attackTimer = 0;
-        this.attackPattern = 0;
-        this.attackCooldown = 0;
-        this.specialAttackTimer = 0;
-        this.pulse = 0;
-    }
-    
-    update() {
-        if (this.y < 150) {
-            this.y += this.speed * deltaTime;
-        } else {
-            this.attackTimer += deltaTime;
-            this.pulse += 0.1 * deltaTime;
-            
-            // Смена паттерна атаки
-            if (this.attackTimer > 180) {
-                this.attackTimer = 0;
-                this.attackPattern = Math.floor(Math.random() * 3);
-                this.attackCooldown = 30;
-            }
-            
-            if (this.attackCooldown > 0) {
-                this.attackCooldown -= deltaTime;
-            }
-            
-            // Специальная атака
-            this.specialAttackTimer += deltaTime;
-            if (this.specialAttackTimer > 300) {
-                this.specialAttackTimer = 0;
-                this.specialAttack();
-                screenShake(10, 15);
-            }
-        }
-        
-        return true;
-    }
-    
-    shoot() {
-        if (this.attackCooldown <= 0) {
-            if (this.attackPattern === 0) { // Веер
-                for (let angle = -60; angle <= 60; angle += 15) {
-                    const rad = angle * Math.PI / 180;
-                    bullets.push(new Bullet(
-                        this.x, this.y + 30,
-                        Math.sin(rad) * 3, Math.cos(rad) * 3,
-                        PURPLE, 10
-                    ));
-                }
-            } else if (this.attackPattern === 1) { // Спираль
-                const angle = this.attackTimer * 10;
-                const rad = angle * Math.PI / 180;
-                bullets.push(new Bullet(
-                    this.x, this.y + 30,
-                    Math.sin(rad) * 4, Math.cos(rad) * 4,
-                    RED, 8
-                ));
-            } else if (this.attackPattern === 2) { // Направленная
-                bullets.push(new Bullet(this.x - 40, this.y + 30, -1, 4, BLUE, 12));
-                bullets.push(new Bullet(this.x + 40, this.y + 30, 1, 4, BLUE, 12));
-                bullets.push(new Bullet(this.x, this.y + 30, 0, 4, BLUE, 15));
-            }
-            
-            this.attackCooldown = 20;
-            screenShake(3, 5);
-            return true;
-        }
-        return false;
-    }
-    
-    specialAttack() {
-        for (let i = 0; i < 8; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * 2 + 2;
-            bullets.push(new Bullet(
-                this.x, this.y + 30,
-                Math.sin(angle) * speed, Math.cos(angle) * speed,
-                YELLOW, 15
-            ));
-        }
-    }
-    
-    hit(damage) {
-        this.health -= damage;
-        
-        // Создание частиц при попадании
-        for (let i = 0; i < 10; i++) {
-            this.particles.push(new Particle(
-                this.x + Math.random() * this.size - this.size/2,
-                this.y + Math.random() * this.size - this.size/2,
-                this.color,
-                Math.random() * 3 + 3,
-                [Math.random() * 4 - 2, Math.random() * 4 - 2]
-            ));
-        }
-        
-        // Смена фазы при 50% здоровья
-        if (this.health <= this.maxHealth * 0.5 && this.phase === 1) {
-            this.phase = 2;
-            this.color = "#FF3232";
-            this.shootChance = 0.1;
-            screenShake(15, 30);
-        }
-        
-        if (this.health <= 0) {
-            this.active = false;
-            return true;
-        }
-        return false;
-    }
-    
-    draw() {
-        // Пульсация
-        const pulseSize = this.size + Math.sin(this.pulse) * 5;
-        
-        // Отрисовка босса
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, pulseSize, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, pulseSize - 10, 0, Math.PI * 2);
-        ctx.fillStyle = "#FFC8C8";
-        ctx.fill();
-        
-        // Глаза
-        ctx.beginPath();
-        ctx.arc(this.x - 20, this.y - 10, 12, 0, Math.PI * 2);
-        ctx.fillStyle = "#323296";
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(this.x + 20, this.y - 10, 12, 0, Math.PI * 2);
-        ctx.fillStyle = "#323296";
-        ctx.fill();
-        
-        ctx.beginPath();
-        ctx.arc(this.x - 20, this.y - 10, 6, 0, Math.PI * 2);
-        ctx.fillStyle = CYAN;
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(this.x + 20, this.y - 10, 6, 0, Math.PI * 2);
-        ctx.fillStyle = CYAN;
-        ctx.fill();
-        
-        // Рот
-        ctx.beginPath();
-        ctx.arc(this.x, this.y + 25, 15, 0, Math.PI);
-        ctx.strokeStyle = "#640000";
-        ctx.lineWidth = 5;
-        ctx.stroke();
-        
-        // Отрисовка шкалы здоровья
-        ctx.fillStyle = "#323232";
-        ctx.fillRect(this.x - this.size, this.y - this.size - 20, this.size * 2, 10);
-        const healthWidth = this.size * 2 * (this.health / this.maxHealth);
-        ctx.fillStyle = GREEN;
-        ctx.fillRect(this.x - this.size, this.y - this.size - 20, healthWidth, 10);
-        
-        // Отрисовка частиц
-        this.particles.forEach(particle => particle.draw());
-    }
-}
-
-// Класс улучшения
-class PowerUp {
-    constructor(x, y, type) {
-        this.x = x;
-        this.y = y;
-        this.type = type;
-        this.speed = 2;
-        this.size = 20;
-        this.rotation = 0;
-        this.active = true;
-        this.colors = [GREEN, YELLOW, CYAN, PURPLE, YELLOW];
-        this.shapes = ["circle", "square", "triangle", "diamond", "star"];
-    }
-    
-    update() {
-        this.y += this.speed * deltaTime;
-        this.rotation += 0.05 * deltaTime;
-        
-        if (this.y > HEIGHT + 50) {
-            this.active = false;
-        }
-        
-        return this.active;
-    }
-    
-    draw() {
-        const color = this.colors[this.type];
-        const shape = this.shapes[this.type];
-        
-        // Отрисовка вращающегося улучшения
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.rotate(this.rotation);
-        
-        if (shape === "circle") {
-            ctx.beginPath();
-            ctx.arc(0, 0, this.size, 0, Math.PI * 2);
-            ctx.fillStyle = color;
-            ctx.fill();
-        }
-        else if (shape === "square") {
-            ctx.fillStyle = color;
-            ctx.fillRect(-this.size, -this.size, this.size*2, this.size*2);
-        }
-        else if (shape === "triangle") {
-            ctx.beginPath();
-            ctx.moveTo(0, -this.size);
-            ctx.lineTo(-this.size, this.size);
-            ctx.lineTo(this.size, this.size);
-            ctx.closePath();
-            ctx.fillStyle = color;
-            ctx.fill();
-        }
-        else if (shape === "diamond") {
-            ctx.beginPath();
-            ctx.moveTo(0, -this.size);
-            ctx.lineTo(-this.size, 0);
-            ctx.lineTo(0, this.size);
-            ctx.lineTo(this.size, 0);
-            ctx.closePath();
-            ctx.fillStyle = color;
-            ctx.fill();
-        }
-        else if (shape === "star") {
-            ctx.beginPath();
-            for (let i = 0; i < 5; i++) {
-                const angle = i * Math.PI * 0.4;
-                const radius = i % 2 === 0 ? this.size : this.size * 0.5;
-                ctx.lineTo(
-                    Math.cos(angle) * radius,
-                    Math.sin(angle) * radius
-                );
-            }
-            ctx.closePath();
-            ctx.fillStyle = color;
-            ctx.fill();
-        }
-        
-        ctx.strokeStyle = WHITE;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        
-        // Центр
-        ctx.beginPath();
-        ctx.arc(0, 0, this.size / 3, 0, Math.PI * 2);
-        ctx.fillStyle = "#C8C8FF";
-        ctx.fill();
-        
-        ctx.restore();
-    }
-}
-
-// Класс взрыва
-class Explosion {
-    constructor(x, y, size, color) {
-        this.x = x;
-        this.y = y;
-        this.size = size;
-        this.color = color;
-        this.particles = [];
-        this.life = 60;
-        this.active = true;
-        
-        // Создание частиц взрыва
-        const particleCount = Math.min(50, size * 5);
-        for (let i = 0; i < particleCount; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * (size / 2) + 1;
-            this.particles.push(new Particle(
-                x, y, 
-                color,
-                Math.random() * (size / 3) + 2,
-                [Math.cos(angle) * speed, Math.sin(angle) * speed],
-                Math.random() * 40 + 20
-            ));
-        }
-    }
-    
-    update() {
-        this.life -= deltaTime;
-        this.particles.forEach(particle => particle.update());
-        
-        if (this.life <= 0 && this.particles.length === 0) {
-            this.active = false;
-        }
-        
-        return this.active;
-    }
-    
-    draw() {
-        this.particles.forEach(particle => particle.draw());
-    }
-}
-
-// Запуск игры
-window.onload = init;
+    // Обработка изменения сети
+    window.ethereum.on('chainChanged', (chainId) => {
+      // При изменении сети перезагружаем информацию
+      window.location.reload();
+    });
+  }
+});
