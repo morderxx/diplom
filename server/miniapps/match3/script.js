@@ -7,9 +7,11 @@ function resizeCanvas() {
     canvas.width = container.clientWidth;
     canvas.height = container.clientHeight;
     
-    // Перерисовываем игру
-    if (window.drawGame) {
-        drawGame(); // Вызов вашей функции отрисовки
+    // Обновляем размеры в игровом классе
+    if (window.gameInstance) {
+        gameInstance.width = canvas.width;
+        gameInstance.height = canvas.height;
+        gameInstance.resizeCanvas();
     }
 }
 
