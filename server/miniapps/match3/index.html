@@ -3,28 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Match-3 Игра</title>
+    <title>Gem Quest - Match-3 Игра</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <div class="game-container">
+        <div class="particles-container"></div>
+        
         <div class="game-header">
-            <div class="game-title">MATCH-3 ИГРА</div>
-            <div>Собери 3+ одинаковых камня в ряд!</div>
+            <div class="game-title">GEM QUEST</div>
+            <div>Собери 3+ одинаковых кристалла в ряд!</div>
         </div>
         
         <div class="game-status">
             <div class="status-item">
-                Уровень: <span id="level" class="status-value">1</span>
+                <i class="fas fa-map"></i> Уровень: <span id="level" class="status-value">1</span>
             </div>
             <div class="status-item">
-                Очки: <span id="score" class="status-value">0</span>
+                <i class="fas fa-gem"></i> Очки: <span id="score" class="status-value">0</span>
             </div>
             <div class="status-item">
-                Ходы: <span id="moves" class="status-value">20</span>
+                <i class="fas fa-exchange-alt"></i> Ходы: <span id="moves" class="status-value">20</span>
             </div>
             <div class="status-item">
-                Цель: <span id="target" class="status-value">1000</span>
+                <i class="fas fa-bullseye"></i> Цель: <span id="target" class="status-value">1000</span>
             </div>
         </div>
         
@@ -33,27 +36,67 @@
         </div>
         
         <div class="screen" id="menu-screen">
-            <h1 class="screen-title">MATCH-3 ИГРА</h1>
-            <p class="screen-text">Выберите уровень сложности. Соберите 3 или более одинаковых камней в ряд, чтобы получить очки!</p>
-            <div class="levels-container" id="levels-container"></div>
+            <div class="screen-content">
+                <h1 class="screen-title">GEM QUEST</h1>
+                <p class="screen-text">Отправляйся в удивительное приключение! Собирай кристаллы и развивай свои способности</p>
+                
+                <div class="tutorial">
+                    <div class="tutorial-title">Как играть:</div>
+                    <ul class="tutorial-list">
+                        <li><i class="fas fa-mouse-pointer"></i> Кликайте на кристаллы, чтобы выбрать их</li>
+                        <li><i class="fas fa-arrows-alt-h"></i> Меняйте местами соседние кристаллы</li>
+                        <li><i class="fas fa-align-left"></i> Собирайте 3+ одинаковых кристалла в ряд</li>
+                        <li><i class="fas fa-star"></i> Чем больше кристаллов - тем больше очков!</li>
+                        <li><i class="fas fa-hourglass-half"></i> Управляйте ходами, чтобы достичь цели</li>
+                    </ul>
+                </div>
+                
+                <div class="levels-container" id="levels-container"></div>
+            </div>
         </div>
         
         <div class="screen hidden" id="win-screen">
-            <h1 class="screen-title">ПОБЕДА!</h1>
-            <p class="screen-text">Вы успешно прошли уровень! Ваш счет: <span id="win-score">0</span></p>
-            <button class="action-btn" id="next-level-btn">Следующий уровень</button>
-            <button class="action-btn" id="menu-btn">Меню</button>
+            <div class="screen-content">
+                <div class="celebration">
+                    <i class="fas fa-trophy"></i>
+                </div>
+                <h1 class="screen-title">ПОБЕДА!</h1>
+                <p class="screen-text">Вы успешно собрали кристаллы!<br>Ваш счет: <span id="win-score">0</span></p>
+                <button class="action-btn" id="next-level-btn">
+                    <i class="fas fa-arrow-right"></i> Следующий уровень
+                </button>
+                <button class="action-btn secondary" id="menu-btn">
+                    <i class="fas fa-home"></i> Меню
+                </button>
+            </div>
         </div>
         
         <div class="screen hidden" id="lose-screen">
-            <h1 class="screen-title">УВЫ...</h1>
-            <p class="screen-text">У вас закончились ходы. Вы набрали: <span id="lose-score">0</span></p>
-            <button class="action-btn" id="retry-btn">Попробовать снова</button>
-            <button class="action-btn" id="menu-btn2">Меню</button>
+            <div class="screen-content">
+                <div class="celebration">
+                    <i class="fas fa-redo"></i>
+                </div>
+                <h1 class="screen-title">УВЫ...</h1>
+                <p class="screen-text">У вас закончились ходы<br>Вы набрали: <span id="lose-score">0</span></p>
+                <button class="action-btn" id="retry-btn">
+                    <i class="fas fa-sync-alt"></i> Попробовать снова
+                </button>
+                <button class="action-btn secondary" id="menu-btn2">
+                    <i class="fas fa-home"></i> Меню
+                </button>
+            </div>
         </div>
         
         <div class="game-footer">
-            Игра разработана специально для проекта | © 2023
+            <div class="footer-content">
+                <div>Gem Quest Adventure</div>
+                <div class="footer-icons">
+                    <i class="fas fa-gem"></i>
+                    <i class="fas fa-dragon"></i>
+                    <i class="fas fa-hat-wizard"></i>
+                </div>
+                <div>© 2023 Волшебный мир кристаллов</div>
+            </div>
         </div>
     </div>
 
