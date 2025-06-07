@@ -1381,7 +1381,7 @@ window.addEventListener('click', (event) => {
 document.getElementById('btn-strike-game')
   .addEventListener('click', () => openGame('/miniapps/strikegame/index.html'));
 
-document.getElementById('btn-strip-game')
+document.getElementById('btn-stip-game')
   .addEventListener('click', () => openGame('/miniapps/match3/index.html'));
   // Initialization
   loadRooms();
