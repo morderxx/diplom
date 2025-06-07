@@ -237,9 +237,9 @@ button:active {
 .shape {
     width: 80%;
     height: 80%;
-    border-radius: 50%;
     position: relative;
     z-index: 2;
+    transition: transform 0.5s ease;
 }
 
 /* Экран победы/поражения */
@@ -303,13 +303,6 @@ button:active {
     pointer-events: none;
 }
 
-.shape {
-    width: 80%;
-    height: 80%;
-    margin: 10%;
-    transition: transform 0.5s ease;
-}
-
 .circle {
     border-radius: 50%;
 }
@@ -337,6 +330,12 @@ button:active {
     clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
     -webkit-clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
 }
+
+.pentagon {
+    clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
+    -webkit-clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
+}
+
 /* Адаптивность */
 @media (max-width: 600px) {
     .levels-grid {
