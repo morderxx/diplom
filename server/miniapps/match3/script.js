@@ -36,37 +36,70 @@ const elements = {
     nextLevelBtn: document.getElementById('next-level-btn'),
     menuBtn: document.getElementById('menu-btn'),
     menuBtn2: document.getElementById('menu-btn2'),
-    retryBtn: document.getElementById('retry-btn')
+    retryBtn: document.getElementById('retry-btn'),
+    particlesContainer: document.querySelector('.particles-container')
 };
 
-// Цвета драгоценных камней
-const gemColors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
+// Формы и цвета драгоценных камней
+const gemShapes = [
+    { shape: 'triangle', color: 'blue' },     // Треугольник - синий
+    { shape: 'square', color: 'green' },      // Квадрат - зеленый
+    { shape: 'circle', color: 'yellow' },     // Круг - желтый
+    { shape: 'diamond', color: 'purple' },    // Ромб - фиолетовый
+    { shape: 'star', color: 'orange' },       // Звезда - оранжевый
+    { shape: 'heart', color: 'red' }          // Сердце - красный
+];
 
 // Инициализация игры
 function initGame() {
+    createParticles();
     renderLevelMenu();
     showMenu();
     
-    // Добавляем инструкцию
-    const tutorial = document.createElement('div');
-    tutorial.className = 'tutorial';
-    tutorial.innerHTML = `
-        <div class="tutorial-title">Как играть:</div>
-        <ul class="tutorial-list">
-            <li>Кликайте на камни, чтобы выбрать их</li>
-            <li>Меняйте местами соседние камни</li>
-            <li>Собирайте 3+ одинаковых камня в ряд</li>
-            <li>Чем больше камней в ряду - тем больше очков!</li>
-            <li>Управляйте ходами, чтобы достичь цели</li>
-        </ul>
-    `;
-    elements.menuScreen.appendChild(tutorial);
+    // Добавляем обработчики кнопок
+    elements.nextLevelBtn.addEventListener('click', () => {
+        const nextLevel = gameState.currentLevel + 1;
+        if (nextLevel < levels.length) {
+            startLevel(nextLevel);
+        } else {
+            showMenu();
+        }
+    });
+    
+    elements.menuBtn.addEventListener('click', showMenu);
+    elements.menuBtn2.addEventListener('click', showMenu);
+    elements.retryBtn.addEventListener('click', () => startLevel(gameState.currentLevel));
+}
+
+// Создание частиц фона
+function createParticles() {
+    const particleCount = 50;
+    
+    for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div');
+        particle.classList.add('particle');
+        
+        // Случайная позиция
+        const posX = Math.random() * 100;
+        const posY = Math.random() * 100;
+        const delay = Math.random() * 15;
+        const size = Math.random() * 3 + 1;
+        
+        particle.style.left = `${posX}%`;
+        particle.style.animationDelay = `${delay}s`;
+        particle.style.width = `${size}px`;
+        particle.style.height = `${size}px`;
+        particle.style.opacity = Math.random() * 0.5 + 0.1;
+        
+        elements.particlesContainer.appendChild(particle);
+    }
 }
 
 // Показать меню
 function showMenu() {
     hideAllScreens();
     elements.menuScreen.classList.remove('hidden');
+    renderLevelMenu();
 }
 
 // Показать экран победы
@@ -97,7 +130,7 @@ function renderLevelMenu() {
         const isCompleted = gameState.completedLevels.includes(level.id);
         const btn = document.createElement('button');
         btn.className = `level-btn ${isCompleted ? 'completed' : ''}`;
-        btn.textContent = `Уровень ${level.id}${isCompleted ? ' ✓' : ''}`;
+        btn.innerHTML = `<i class="fas fa-${isCompleted ? 'check-circle' : 'play-circle'}" style="margin-right: 8px;"></i> Уровень ${level.id}`;
         btn.onclick = () => startLevel(level.id - 1);
         elements.levelsContainer.appendChild(btn);
     });
@@ -155,6 +188,7 @@ function createBoard(size, colors) {
                 gameState.board[row][col] = {
                     element: gem,
                     color: gem.dataset.color,
+                    shape: gem.dataset.shape,
                     row,
                     col
                 };
@@ -180,11 +214,13 @@ function createBoard(size, colors) {
 // Создание случайного камня
 function createRandomGem(colors) {
     const gem = document.createElement('div');
-    const colorIndex = Math.floor(Math.random() * colors);
-    const color = gemColors[colorIndex];
+    const shapeIndex = Math.floor(Math.random() * colors);
+    const shape = gemShapes[shapeIndex].shape;
+    const color = gemShapes[shapeIndex].color;
     
-    gem.className = `gem ${color}`;
+    gem.className = `gem ${shape}`;
     gem.dataset.color = color;
+    gem.dataset.shape = shape;
     
     return gem;
 }
@@ -261,8 +297,8 @@ function swapGems(gem1, gem2) {
     gem1.element.style.transition = 'transform 0.3s ease';
     gem2.element.style.transition = 'transform 0.3s ease';
     
-    gem1.element.style.transform = 'scale(1.1)';
-    gem2.element.style.transform = 'scale(1.1)';
+    gem1.element.style.transform = 'scale(1.1) rotate(10deg)';
+    gem2.element.style.transform = 'scale(1.1) rotate(-10deg)';
     
     setTimeout(() => {
         gem1.element.style.transform = '';
@@ -317,8 +353,8 @@ function revertSwap(originalGem1, originalGem2) {
     gem1.element.style.transition = 'transform 0.3s ease';
     gem2.element.style.transition = 'transform 0.3s ease';
     
-    gem1.element.style.transform = 'scale(1.1)';
-    gem2.element.style.transform = 'scale(1.1)';
+    gem1.element.style.transform = 'scale(1.1) rotate(-10deg)';
+    gem2.element.style.transform = 'scale(1.1) rotate(10deg)';
     
     setTimeout(() => {
         gem1.element.style.transform = '';
@@ -479,6 +515,14 @@ function shiftGemsDown() {
                         cell.innerHTML = '';
                         cell.appendChild(gem.element);
                         
+                        // Анимация падения
+                        gem.element.style.transition = 'transform 0.5s ease';
+                        gem.element.style.transform = `translateY(${(r - row) * 55}px)`;
+                        
+                        setTimeout(() => {
+                            gem.element.style.transform = '';
+                        }, 10);
+                        
                         break;
                     }
                 }
@@ -505,6 +549,7 @@ function fillEmptyCells() {
                 gameState.board[row][col] = {
                     element: gem,
                     color: gem.dataset.color,
+                    shape: gem.dataset.shape,
                     row,
                     col
                 };
@@ -532,20 +577,6 @@ function checkGameStatus() {
         setTimeout(showLoseScreen, 500);
     }
 }
-
-// Обработчики кнопок
-elements.nextLevelBtn.addEventListener('click', () => {
-    const nextLevel = gameState.currentLevel + 1;
-    if (nextLevel < levels.length) {
-        startLevel(nextLevel);
-    } else {
-        showMenu();
-    }
-});
-
-elements.menuBtn.addEventListener('click', showMenu);
-elements.menuBtn2.addEventListener('click', showMenu);
-elements.retryBtn.addEventListener('click', () => startLevel(gameState.currentLevel));
 
 // Запуск игры
 initGame();
