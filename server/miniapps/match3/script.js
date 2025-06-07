@@ -4,7 +4,7 @@ const levels = [
     { targetScore: 1000, moves: 25, colors: 5 },
     { targetScore: 2000, moves: 20, colors: 5 },
     { targetScore: 3000, moves: 18, colors: 6 },
-    { targetScore: 5000, moves: 15, colors: 6 }
+    { targetScore: 5000, moves: 15, colors: 7 }
 ];
 
 // Элементы DOM
@@ -29,7 +29,7 @@ let isProcessingMatches = false;
 let unlockedLevels = 0; // Открытые уровни
 
 // Различные фигуры и их цвета
-const shapeTypes = ['circle', 'square', 'triangle', 'diamond', 'star', 'hexagon'];
+const shapeTypes = ['circle', 'square', 'triangle', 'diamond', 'star', 'hexagon', 'pentagon'];
 const shapeColors = [
     '#FF6B6B', // Красный
     '#4ECDC4', // Бирюзовый
@@ -38,7 +38,9 @@ const shapeColors = [
     '#118AB2', // Синий
     '#073B4C', // Тёмно-синий
     '#EF476F', // Розовый
-    '#FF9E6D'  // Оранжевый
+    '#FF9E6D',  // Оранжевый
+    '#9B5DE5',  // Фиолетовый
+    '#00BBF9'   // Голубой
 ];
 
 // Инициализация игры
@@ -171,20 +173,20 @@ function createBoard() {
             let attempts = 0;
             do {
                 colorIndex = Math.floor(Math.random() * colors);
-                shapeType = shapeTypes[colorIndex % shapeTypes.length];
+                shapeType = shapeTypes[Math.floor(Math.random() * shapeTypes.length)];
                 attempts++;
                 
                 // Проверка горизонтальных совпадений
                 if (col >= 2 && 
-                    board[row][col-1].color === colorIndex && 
-                    board[row][col-2].color === colorIndex) {
+                    board[row][col-1] && board[row][col-1].color === colorIndex && 
+                    board[row][col-2] && board[row][col-2].color === colorIndex) {
                     continue;
                 }
                 
                 // Проверка вертикальных совпадений
                 if (row >= 2 && 
-                    board[row-1][col].color === colorIndex && 
-                    board[row-2][col].color === colorIndex) {
+                    board[row-1][col] && board[row-1][col].color === colorIndex && 
+                    board[row-2][col] && board[row-2][col].color === colorIndex) {
                     continue;
                 }
                 
@@ -337,13 +339,17 @@ function findMatches() {
     // Проверка горизонтальных совпадений
     for (let row = 0; row < size; row++) {
         for (let col = 0; col < size - 2; col++) {
+            if (!board[row][col] || !board[row][col+1] || !board[row][col+2]) continue;
+            
             const color = board[row][col].color;
             if (color !== null &&
                 color === board[row][col + 1].color &&
                 color === board[row][col + 2].color) {
                 
                 let matchLength = 3;
-                while (col + matchLength < size && board[row][col + matchLength].color === color) {
+                while (col + matchLength < size && 
+                       board[row][col + matchLength] && 
+                       board[row][col + matchLength].color === color) {
                     matchLength++;
                 }
                 
@@ -359,13 +365,17 @@ function findMatches() {
     // Проверка вертикальных совпадений
     for (let col = 0; col < size; col++) {
         for (let row = 0; row < size - 2; row++) {
+            if (!board[row][col] || !board[row+1][col] || !board[row+2][col]) continue;
+            
             const color = board[row][col].color;
             if (color !== null &&
                 color === board[row + 1][col].color &&
                 color === board[row + 2][col].color) {
                 
                 let matchLength = 3;
-                while (row + matchLength < size && board[row + matchLength][col].color === color) {
+                while (row + matchLength < size && 
+                       board[row + matchLength][col] && 
+                       board[row + matchLength][col].color === color) {
                     matchLength++;
                 }
                 
@@ -412,6 +422,8 @@ function dropTiles() {
         for (let row = size - 1; row >= 0; row--) {
             const tile = board[row][col];
             
+            if (!tile) continue;
+            
             if (tile.color === null) {
                 emptySpaces++;
             } else if (emptySpaces > 0) {
@@ -443,22 +455,22 @@ function fillEmptySpaces() {
     
     for (let col = 0; col < size; col++) {
         for (let row = 0; row < size; row++) {
-            if (board[row][col].color === null) {
+            if (board[row][col] && board[row][col].color === null) {
                 const tile = board[row][col];
+                
+                // Удалить все дочерние элементы плитки
+                while (tile.element.firstChild) {
+                    tile.element.removeChild(tile.element.firstChild);
+                }
+                
                 const colorIndex = Math.floor(Math.random() * colors);
-                const shapeType = shapeTypes[colorIndex % shapeTypes.length];
+                const shapeType = shapeTypes[Math.floor(Math.random() * shapeTypes.length)];
                 
                 // Создать новую фигуру
                 const shape = document.createElement('div');
                 shape.className = `shape ${shapeType}`;
                 shape.style.backgroundColor = shapeColors[colorIndex];
                 shape.style.transform = 'translateY(-1000%)'; // Начальная позиция сверху
-                
-                // Удалить старую фигуру, если есть
-                if (tile.shape) {
-                    tile.shape.remove();
-                }
-                
                 tile.element.appendChild(shape);
                 
                 // Обновить данные плитки
@@ -468,7 +480,7 @@ function fillEmptySpaces() {
                 
                 // Анимация падения
                 setTimeout(() => {
-                    shape.style.transition = 'transform 0.8s ease';
+                    shape.style.transition = 'transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
                     shape.style.transform = 'translateY(0)';
                 }, 100);
             }
