@@ -509,7 +509,14 @@ function createNewTile(row, col) {
         }
     }
     
-    const tileType = possibleTypes[Math.floor(Math.random() * possibleTypes.length)];
+    // Защита от пустого списка возможных типов
+    let tileType;
+    if (possibleTypes.length === 0) {
+        tileType = Math.floor(Math.random() * COLORS.length);
+    } else {
+        tileType = possibleTypes[Math.floor(Math.random() * possibleTypes.length)];
+    }
+    
     board[row][col] = new Tile(row, col, tileType);
     board[row][col].animating = true;
     board[row][col].y = -tileSize;
@@ -573,14 +580,16 @@ function draw() {
     ctx.lineTo(canvas.width, 140 * (canvas.height / BASE_HEIGHT));
     ctx.stroke();
     
-    ctx.font = "bold " + Math.round(60 * (canvas.height / BASE_HEIGHT)) + "px Arial";
+    const titleFontSize = Math.round(60 * (canvas.width / BASE_WIDTH));
+    ctx.font = `bold ${titleFontSize}px Arial`;
     ctx.fillStyle = "#d4b4ff";
     ctx.textAlign = "center";
     ctx.fillText("ТРИ В РЯД", canvas.width/2, 70 * (canvas.height / BASE_HEIGHT));
     
     // Отображаем состояние игры
     if (gameState === "menu") {
-        ctx.font = "bold " + Math.round(60 * (canvas.height / BASE_HEIGHT)) + "px Arial";
+        const menuFontSize = Math.round(60 * (canvas.width / BASE_WIDTH));
+        ctx.font = `bold ${menuFontSize}px Arial`;
         ctx.fillStyle = "#d4b4ff";
         ctx.textAlign = "center";
         ctx.fillText("Главное меню", canvas.width/2, 300 * (canvas.height / BASE_HEIGHT));
@@ -589,7 +598,8 @@ function draw() {
         menuButtons.forEach(button => button.draw());
     } else if (gameState === "playing") {
         // Игровая информация
-        ctx.font = Math.round(36 * (canvas.height / BASE_HEIGHT)) + "px Arial";
+        const infoFontSize = Math.round(36 * (canvas.width / BASE_WIDTH));
+        ctx.font = `${infoFontSize}px Arial`;
         ctx.fillStyle = "#ffffc8";
         ctx.textAlign = "left";
         ctx.fillText(`ОЧКИ: ${score}`, 50 * (canvas.width / BASE_WIDTH), 80 * (canvas.height / BASE_HEIGHT));
@@ -627,7 +637,8 @@ function draw() {
         // Отрисовка комбо
         if (combo > 1) {
             const comboAlpha = Math.min(255, comboTimer * 4);
-            ctx.font = "bold " + Math.round(72 * (canvas.height / BASE_HEIGHT)) + "px Arial";
+            const comboFontSize = Math.round(72 * (canvas.width / BASE_WIDTH));
+            ctx.font = `bold ${comboFontSize}px Arial`;
             ctx.fillStyle = `rgba(255, 220, 100, ${comboAlpha/255})`;
             ctx.textAlign = "center";
             ctx.fillText(`x${combo} КОМБО!`, canvas.width/2, 550 * (canvas.height / BASE_HEIGHT));
@@ -650,24 +661,28 @@ function draw() {
             ctx.stroke();
         }
     } else if (gameState === "level_complete") {
-        ctx.font = "bold " + Math.round(60 * (canvas.height / BASE_HEIGHT)) + "px Arial";
+        const levelCompleteFontSize = Math.round(60 * (canvas.width / BASE_WIDTH));
+        ctx.font = `bold ${levelCompleteFontSize}px Arial`;
         ctx.fillStyle = "#d4b4ff";
         ctx.textAlign = "center";
         ctx.fillText(`Уровень ${currentLevel + 1} пройден!`, canvas.width/2, 300 * (canvas.height / BASE_HEIGHT));
         
-        ctx.font = Math.round(36 * (canvas.height / BASE_HEIGHT)) + "px Arial";
+        const scoreFontSize = Math.round(36 * (canvas.width / BASE_WIDTH));
+        ctx.font = `${scoreFontSize}px Arial`;
         ctx.fillStyle = "#ffffc8";
         ctx.fillText(`Набрано очков: ${levelScore}`, canvas.width/2, 370 * (canvas.height / BASE_HEIGHT));
         
         // Кнопки
         levelCompleteButtons.forEach(button => button.draw());
     } else if (gameState === "game_over") {
-        ctx.font = "bold " + Math.round(60 * (canvas.height / BASE_HEIGHT)) + "px Arial";
+        const gameOverFontSize = Math.round(60 * (canvas.width / BASE_WIDTH));
+        ctx.font = `bold ${gameOverFontSize}px Arial`;
         ctx.fillStyle = "#d4b4ff";
         ctx.textAlign = "center";
         ctx.fillText("ИГРА ПРОЙДЕНА!", canvas.width/2, 300 * (canvas.height / BASE_HEIGHT));
         
-        ctx.font = Math.round(36 * (canvas.height / BASE_HEIGHT)) + "px Arial";
+        const finalScoreFontSize = Math.round(36 * (canvas.width / BASE_WIDTH));
+        ctx.font = `${finalScoreFontSize}px Arial`;
         ctx.fillStyle = "#ffffc8";
         ctx.fillText(`Общий счет: ${score}`, canvas.width/2, 370 * (canvas.height / BASE_HEIGHT));
         
@@ -988,14 +1003,20 @@ function swapTiles(row1, col1, row2, col2) {
     
     // Обновляем координаты плиток
     if (board[row1][col1]) {
-        board[row1][col1].row = row1;
-        board[row1][col1].col = col1;
-        board[row1][col1].animating = true;
+        const tile = board[row1][col1];
+        tile.row = row1;
+        tile.col = col1;
+        tile.x = offsetX + col1 * tileSize;
+        tile.y = offsetY + row1 * tileSize;
+        tile.animating = false;
     }
     if (board[row2][col2]) {
-        board[row2][col2].row = row2;
-        board[row2][col2].col = col2;
-        board[row2][col2].animating = true;
+        const tile = board[row2][col2];
+        tile.row = row2;
+        tile.col = col2;
+        tile.x = offsetX + col2 * tileSize;
+        tile.y = offsetY + row2 * tileSize;
+        tile.animating = false;
     }
 }
 
@@ -1091,6 +1112,8 @@ function removeMatches() {
     combo++;
     comboTimer = 90;
     
+    let removedTiles = 0;
+    
     // Создаем эффекты взрыва
     for (let row = 0; row < boardSize; row++) {
         for (let col = 0; col < boardSize; col++) {
@@ -1105,13 +1128,15 @@ function removeMatches() {
                 
                 // Удаляем плитку
                 board[row][col] = null;
-                // Добавляем очки
-                const points = 10 * combo;
-                score += points;
-                levelScore += points;
+                removedTiles++;
             }
         }
     }
+    
+    // Добавляем очки (10 за плитку * множитель комбо)
+    const points = 10 * combo * removedTiles;
+    score += points;
+    levelScore += points;
 }
 
 function fillEmptySpaces() {
