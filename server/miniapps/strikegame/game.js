@@ -1792,4 +1792,3 @@ class Explosion {
 
 // Запуск игры
 window.onload = init;
-[file content end]
