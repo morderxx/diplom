@@ -287,14 +287,52 @@ body {
 }
 
 .screen-content {
+    /* Основные размеры */
     height: 100%;
     max-width: 100%;
+    
+    /* Визуальные стили */
     padding: 30px;
     background: rgba(20, 15, 45, 0.8);
     border-radius: 20px;
     box-shadow: 0 0 40px rgba(120, 50, 255, 0.5);
     border: 2px solid #6a4cff;
     
+    /* Центрирование */
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Вертикальное центрирование */
+    align-items: center;     /* Горизонтальное центрирование */
+    text-align: center;
+    
+    /* Убираем прокрутку */
+    overflow: hidden;        /* Заменяем overflow-y: auto */
+    box-sizing: border-box;
+    
+    /* Новое свойство для контента */
+    position: relative;      /* Для корректной работы внутренних элементов */
+}
+
+/* Для внутренних элементов */
+.screen-title,
+.screen-text,
+.tutorial,
+.celebration {
+    text-align: center;
+    width: 100%;
+    margin: 5px 0;          /* Уменьшаем вертикальные отступы */
+}
+
+/* Контейнеры кнопок */
+.levels-container,
+.button-group {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+    margin: 10px 0;         /* Уменьшаем вертикальные отступы */
+    width: 100%;
+    max-height: 100%;       /* Ограничиваем высоту */
 }
 
 .screen-title {
