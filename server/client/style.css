@@ -600,13 +600,17 @@ body.lightbox-open {
 .game-modal-content {
   width: 95%;
   height: 90%;
-  max-width: 1200px;
-  max-height: 800px;
+  max-width: 1400px; /* Увеличено на 200px */
+  max-height: 90vh;  /* Заменено с фиксированного значения */
+  min-width: 300px;  /* Для мобильных устройств */
+  min-height: 500px; /* Для мобильных устройств */
   background-color: #0a0a28;
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 0 30px rgba(0, 150, 255, 0.7);
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .close-game {
@@ -627,9 +631,30 @@ body.lightbox-open {
   text-decoration: none;
 }
 
+.game-container {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
 .game-frame {
   width: 100%;
   height: 100%;
   border: none;
   border-radius: 8px;
+}
+
+/* Адаптация для мобильных */
+@media (max-width: 768px) {
+  .game-modal-content {
+    width: 98%;
+    height: 95%;
+  }
+  
+  .close-game {
+    font-size: 30px;
+    right: 15px;
+    top: 5px;
+  }
 }
