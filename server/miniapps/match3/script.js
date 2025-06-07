@@ -28,6 +28,19 @@ let isSwapping = false;
 let isProcessingMatches = false;
 let unlockedLevels = 0; // Открытые уровни
 
+// Различные фигуры и их цвета
+const shapeTypes = ['circle', 'square', 'triangle', 'diamond', 'star', 'hexagon'];
+const shapeColors = [
+    '#FF6B6B', // Красный
+    '#4ECDC4', // Бирюзовый
+    '#FFD166', // Жёлтый
+    '#06D6A0', // Зелёный
+    '#118AB2', // Синий
+    '#073B4C', // Тёмно-синий
+    '#EF476F', // Розовый
+    '#FF9E6D'  // Оранжевый
+];
+
 // Инициализация игры
 function init() {
     // Загрузка открытых уровней
@@ -152,13 +165,13 @@ function createBoard() {
             
             // Добавление фигуры
             const shape = document.createElement('div');
-            shape.className = 'shape';
             
-            // Выбор цвета с проверкой на совпадения
-            let colorIndex;
+            // Выбор цвета и типа фигуры с проверкой на совпадения
+            let colorIndex, shapeType;
             let attempts = 0;
             do {
                 colorIndex = Math.floor(Math.random() * colors);
+                shapeType = shapeTypes[colorIndex % shapeTypes.length];
                 attempts++;
                 
                 // Проверка горизонтальных совпадений
@@ -179,14 +192,16 @@ function createBoard() {
                 
             } while (attempts < 100); // Защита от бесконечного цикла
             
-            shape.style.backgroundColor = getShapeColor(colorIndex);
+            shape.className = `shape ${shapeType}`;
+            shape.style.backgroundColor = shapeColors[colorIndex];
             tile.appendChild(shape);
             gameBoard.appendChild(tile);
             
             board[row][col] = {
                 element: tile,
                 color: colorIndex,
-                shape: shape
+                shape: shape,
+                shapeType: shapeType
             };
             
             // Обработчик клика
@@ -431,11 +446,12 @@ function fillEmptySpaces() {
             if (board[row][col].color === null) {
                 const tile = board[row][col];
                 const colorIndex = Math.floor(Math.random() * colors);
+                const shapeType = shapeTypes[colorIndex % shapeTypes.length];
                 
                 // Создать новую фигуру
                 const shape = document.createElement('div');
-                shape.className = 'shape';
-                shape.style.backgroundColor = getShapeColor(colorIndex);
+                shape.className = `shape ${shapeType}`;
+                shape.style.backgroundColor = shapeColors[colorIndex];
                 shape.style.transform = 'translateY(-1000%)'; // Начальная позиция сверху
                 
                 // Удалить старую фигуру, если есть
@@ -448,6 +464,7 @@ function fillEmptySpaces() {
                 // Обновить данные плитки
                 tile.color = colorIndex;
                 tile.shape = shape;
+                tile.shapeType = shapeType;
                 
                 // Анимация падения
                 setTimeout(() => {
@@ -479,21 +496,6 @@ function checkLevelCompletion() {
             showScene('loseScene');
         }
     }
-}
-
-// Получить цвет фигуры
-function getShapeColor(index) {
-    const colors = [
-        '#FF6B6B', // Красный
-        '#4ECDC4', // Бирюзовый
-        '#FFD166', // Желтый
-        '#06D6A0', // Зеленый
-        '#118AB2', // Синий
-        '#073B4C', // Темно-синий
-        '#EF476F', // Розовый
-        '#FF9E6D'  // Оранжевый
-    ];
-    return colors[index % colors.length];
 }
 
 // Запуск игры при загрузке страницы
