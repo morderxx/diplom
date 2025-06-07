@@ -1,3 +1,22 @@
+// Добавьте в начало script.js
+function resizeCanvas() {
+    const canvas = document.getElementById('gameCanvas');
+    const container = canvas.parentElement;
+    
+    // Устанавливаем размеры canvas равными размерам контейнера
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+    
+    // Перерисовываем игру
+    if (window.drawGame) {
+        drawGame(); // Вызов вашей функции отрисовки
+    }
+}
+
+// Вызываем при загрузке и ресайзе
+window.addEventListener('load', resizeCanvas);
+window.addEventListener('resize', resizeCanvas);
+
 class Particle {
     constructor(x, y, color) {
         this.x = x;
