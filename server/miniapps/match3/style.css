@@ -51,9 +51,8 @@ body {
 .game-container {
     width: 100%;
     max-width: 800px;
-    height: 100%; /* Занимаем всю высоту модалки */
-    max-height: none; /* Убираем ограничение */
-    max-width: none; /* Убираем ограничение */
+    height: 90vh;
+    max-height: 700px;
     background: rgba(10, 8, 30, 0.85);
     border-radius: 20px;
     box-shadow: 0 0 40px rgba(120, 50, 255, 0.6);
