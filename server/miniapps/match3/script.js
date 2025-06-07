@@ -493,6 +493,10 @@ function processMatches(matches) {
 function shiftGemsDown() {
     const size = gameState.board.length;
     
+    // Получаем реальный размер ячейки
+    const rootStyles = getComputedStyle(document.documentElement);
+    const cellSize = parseFloat(rootStyles.getPropertyValue('--cell-size'));
+    
     for (let col = 0; col < size; col++) {
         for (let row = size - 1; row >= 0; row--) {
             // Если ячейка пустая
@@ -515,9 +519,9 @@ function shiftGemsDown() {
                         cell.innerHTML = '';
                         cell.appendChild(gem.element);
                         
-                        // Анимация падения
-                        gem.element.style.transition = 'transform 0.5s ease';
-                        gem.element.style.transform = `translateY(${(r - row) * 55}px)`;
+                        // Анимация падения с учетом реального размера
+                        gem.element.style.transition = 'transform 0.4s ease';
+                        gem.element.style.transform = `translateY(${(r - row) * cellSize}px)`;
                         
                         setTimeout(() => {
                             gem.element.style.transform = '';
