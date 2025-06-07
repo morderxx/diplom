@@ -66,7 +66,7 @@ const fonts = {
     large: { size: 42, weight: "bold" },
     medium: { size: 32, weight: "normal" },
     small: { size: 24, weight: "normal" },
-    smaller: { size: 20, weight: "normal" }
+    smaller: { size: 20, weight: "normal" } // для подсказок поменьше
 };
 
 function init() {
@@ -146,24 +146,47 @@ function buyUpgrade(type) {
     }
 }
 
-function startNextWave() { wave++; waveEnemiesKilled = 0; gameState = "playing"; generateWave(); }
-function startNextLevel() { level++; wave=1; waveEnemiesKilled=0; gameState="playing"; generateWave(); bases.forEach(b=>{b.health=b.maxHealth; b.shield=b.maxShield}); player.health=player.maxHealth; player.shield=player.maxShield; }
+function startNextWave() { 
+    wave++; 
+    waveEnemiesKilled = 0; 
+    gameState = "playing"; 
+    generateWave(); 
+}
+function startNextLevel() { 
+    level++; 
+    wave = 1; 
+    waveEnemiesKilled = 0; 
+    gameState = "playing"; 
+    createBases(); 
+    player.health = player.maxHealth; 
+    player.shield = player.maxShield;
+    generateWave(); 
+}
 
+// CHANGED: вычисляем число волн на уровне
+function getWavesInLevel() {
+    return level < 3 ? level : 3;
+}
+
+// CHANGED: генерация волны с учётом уровня и новых типов мобов
 function generateWave() {
+    const wavesInLevel = getWavesInLevel();
     enemyQueue = [];
-    waveEnemiesCount = 8 + wave * 3 + level * 2;
+    // CHANGED: базовое число врагов + увеличение здоровья с каждой волной
+    waveEnemiesCount = 8 + wave * 4 + level * 2;
     for (let i = 0; i < waveEnemiesCount; i++) {
-        let type;
-        const r = Math.random();
-        const waveLevelFactor = Math.min(10, wave + level);
-        if (waveLevelFactor < 3) type = r < 0.9 ? 0 : 1;
-        else if (waveLevelFactor < 6) type = r < 0.6 ? 0 : (r<0.9?1:2);
-        else if (waveLevelFactor < 9) type = r < 0.4 ? 0 : (r<0.7?1:(r<0.9?2:3));
-        else type = r<0.3?0:(r<0.5?1:(r<0.7?2:(r<0.9?3:5)));
+        // определяем доступные типы врагов для текущего уровня
+        const allowed = [0];
+        if (level >= 2) allowed.push(1);
+        if (level >= 3) allowed.push(2);
+        if (level >= 4) allowed.push(3);
+        if (level >= 5) allowed.push(5);
+        const type = allowed[Math.floor(Math.random() * allowed.length)];
         enemyQueue.push({ type: type, delay: i * (15 - Math.min(10, wave)) });
     }
-    if (wave % 3 === 0) {
-        enemyQueue.push({ type: 4, delay: enemyQueue[enemyQueue.length-1].delay + 100 });
+    // CHANGED: босс только на последней волне уровня
+    if (wave === wavesInLevel) {
+        enemyQueue.push({ type: 4, delay: enemyQueue[enemyQueue.length - 1].delay + 100 });
         waveEnemiesCount++;
     }
     enemySpawnTimer = 0;
@@ -180,8 +203,15 @@ function update() {
             enemyQueue.shift(); enemySpawnTimer=0;
         }
     } else if (enemies.length===0 && !bossActive && waveEnemiesKilled>=waveEnemiesCount) {
-        if (wave%3===0) { gameState="level_transition"; resources+=150+level*50; }
-        else { gameState="wave_break"; resources+=80+wave*30+level*20; waveBreakTimer=180; }
+        const wavesInLevel = getWavesInLevel();
+        if (wave < wavesInLevel) {
+            gameState="wave_break"; 
+            resources += 80 + wave*30 + level*20; 
+            waveBreakTimer=180; 
+        } else {
+            gameState="level_transition"; 
+            resources += 150 + level*50; 
+        }
     }
     enemies.forEach(e=>e.update()); if (bossActive) boss.update(); bullets.forEach(b=>b.update()); powerups.forEach(p=>p.update()); explosions.forEach(e=>e.update()); particles.forEach(p=>p.update());
     bullets=bullets.filter(b=>b.active); enemies=enemies.filter(e=>e.active); powerups=powerups.filter(p=>p.active);
@@ -205,7 +235,8 @@ function drawHUD() {
     drawText(`Счет: ${player.score}`,20,40,"white","smaller");
     drawText(`Ресурсы: ${resources}`,20,70,YELLOW,"smaller");
     const lvl=`Уровень: ${level}`; drawText(lvl,WIDTH-ctx.measureText(lvl).width-20,40,"white","smaller");
-    const wv=`Волна: ${wave}/3`; drawText(wv,WIDTH-ctx.measureText(wv).width-20,70,"white","smaller");
+    const wavesInLevel = getWavesInLevel();
+    const wv=`Волна: ${wave}/${wavesInLevel}`; drawText(wv,WIDTH-ctx.measureText(wv).width-20,70,"white","smaller");
     const en=`Врагов: ${waveEnemiesCount-waveEnemiesKilled}`; drawText(en,WIDTH-ctx.measureText(en).width-20,100,"white","smaller");
     if (bossActive) drawText("БОСС БИТВА!",WIDTH/2-ctx.measureText("БОСС БИТВА!").width/2,60,RED,"medium");
 }
@@ -218,7 +249,8 @@ function drawWaveBreakScreen() {
     drawText("УЛУЧШЕНИЯ:",WIDTH/2,280,CYAN,"large",true);
     const items=["Здоровье баз","Щиты баз","Турели баз","Урон игрока","Скорость стрельбы","Щиты игрока","Скорость игрока"];
     items.forEach((t,i)=>{ drawText(`${i+1}. ${t}`,200,330+i*50,WHITE,"small"); drawText(`(${Object.values(upgrades)[i]}) - ${Object.values(upgradeCosts)[i]}`,700,330+i*50,YELLOW,"small");});
-    drawText("Нажмите ENTER для следующей волны",WIDTH/2,HEIGHT-50,GREEN,"medium",true);
+    // CHANGED: подсказка поменьше
+    drawText("Нажмите ENTER для следующей волны",WIDTH/2,HEIGHT-50,GREEN,"smaller",true);
 }
 
 function drawLevelTransition() {
@@ -237,8 +269,11 @@ function drawLevelTransition() {
         "- Враги станут сильнее и быстрее"
     ][Math.min(level-1,4)];
     drawText(nextEnemy,WIDTH/2,510,ORANGE,"medium",true);
-    drawText(`Нажмите ENTER на уровень ${level+1}`,WIDTH/2,HEIGHT-50,GREEN,"medium",true);
+    // CHANGED: подсказка поменьше
+    drawText(`Нажмите ENTER на уровень ${level+1}`,WIDTH/2,HEIGHT-50,GREEN,"smaller",true);
 }
+
+// ... остальной код без изменений ...
 
 // Отрисовка меню
 function drawMenu() {
