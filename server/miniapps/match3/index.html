@@ -3,13 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Galactic Match-3</title>
+    <title>Игра 3 в ряд</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="game-container">
-        <canvas id="gameCanvas"></canvas>
+        <!-- Главное меню -->
+        <div id="main-menu" class="scene active">
+            <h1>ТРИ В РЯД</h1>
+            <div class="menu-buttons">
+                <button id="play-btn">Играть</button>
+                <button id="levels-btn">Уровни</button>
+                <button id="about-btn">Об игре</button>
+            </div>
+            <div class="game-info">
+                <p>Собери 3 и более одинаковых фигуры в ряд!</p>
+            </div>
+        </div>
+
+        <!-- Выбор уровня -->
+        <div id="level-select" class="scene">
+            <h1>Выберите уровень</h1>
+            <div class="levels-grid">
+                <div class="level-card" data-level="1">
+                    <div class="level-number">1</div>
+                    <div class="level-info">Цель: 500 очков</div>
+                    <div class="level-info">Ходы: 30</div>
+                </div>
+                <div class="level-card" data-level="2">
+                    <div class="level-number">2</div>
+                    <div class="level-info">Цель: 1000 очков</div>
+                    <div class="level-info">Ходы: 25</div>
+                </div>
+                <div class="level-card" data-level="3">
+                    <div class="level-number">3</div>
+                    <div class="level-info">Цель: 2000 очков</div>
+                    <div class="level-info">Ходы: 20</div>
+                </div>
+                <div class="level-card" data-level="4">
+                    <div class="level-number">4</div>
+                    <div class="level-info">Цель: 3000 очков</div>
+                    <div class="level-info">Ходы: 18</div>
+                </div>
+                <div class="level-card" data-level="5">
+                    <div class="level-number">5</div>
+                    <div class="level-info">Цель: 5000 очков</div>
+                    <div class="level-info">Ходы: 15</div>
+                </div>
+            </div>
+            <button id="back-to-menu" class="back-btn">Назад</button>
+        </div>
+
+        <!-- Игровой экран -->
+        <div id="game-scene" class="scene">
+            <div class="game-header">
+                <div class="game-stats">
+                    <div class="stat">
+                        <span>Очки:</span>
+                        <span id="score">0</span>
+                    </div>
+                    <div class="stat">
+                        <span>Цель:</span>
+                        <span id="target">0</span>
+                    </div>
+                    <div class="stat">
+                        <span>Ходы:</span>
+                        <span id="moves">0</span>
+                    </div>
+                    <div class="stat">
+                        <span>Уровень:</span>
+                        <span id="level">1</span>
+                    </div>
+                </div>
+                <button id="menu-btn" class="menu-button">Меню</button>
+            </div>
+            <div id="game-board"></div>
+        </div>
+
+        <!-- Экран победы -->
+        <div id="win-scene" class="scene">
+            <h1>Победа!</h1>
+            <div class="result-info">
+                <p>Вы прошли уровень <span id="win-level">1</span></p>
+                <p>Набрано очков: <span id="win-score">0</span></p>
+            </div>
+            <div class="menu-buttons">
+                <button id="next-level-btn">Следующий уровень</button>
+                <button id="win-menu-btn">Главное меню</button>
+            </div>
+        </div>
+
+        <!-- Экран поражения -->
+        <div id="lose-scene" class="scene">
+            <h1>Игра окончена</h1>
+            <div class="result-info">
+                <p>Вы не достигли цели уровня <span id="lose-level">1</span></p>
+                <p>Набрано очков: <span id="lose-score">0</span></p>
+            </div>
+            <div class="menu-buttons">
+                <button id="retry-btn">Повторить</button>
+                <button id="lose-menu-btn">Главное меню</button>
+            </div>
+        </div>
+
+        <!-- Об игре -->
+        <div id="about-scene" class="scene">
+            <h1>Об игре</h1>
+            <div class="about-content">
+                <p>Игра "Три в ряд" - классическая головоломка, где нужно собирать линии из одинаковых фигур.</p>
+                <p>Правила:</p>
+                <ul>
+                    <li>Собери 3 или более одинаковых фигуры в ряд (горизонтально или вертикально)</li>
+                    <li>За каждую фигуру в комбинации вы получаете очки</li>
+                    <li>Длинные комбинации дают больше очков</li>
+                    <li>Цель - набрать необходимое количество очков за отведенное число ходов</li>
+                </ul>
+            </div>
+            <button id="about-back-btn" class="back-btn">Назад</button>
+        </div>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>
