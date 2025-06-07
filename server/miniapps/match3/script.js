@@ -26,15 +26,23 @@ let selectedTile = null;
 let board = [];
 let isSwapping = false;
 let isProcessingMatches = false;
+let unlockedLevels = 0; // Открытые уровни
 
 // Инициализация игры
 function init() {
+    // Загрузка открытых уровней
+    const savedLevels = localStorage.getItem('unlockedLevels');
+    if (savedLevels !== null) {
+        unlockedLevels = parseInt(savedLevels);
+    }
+
     // Назначение обработчиков событий
     document.getElementById('play-btn').addEventListener('click', () => {
         showScene('levelSelect');
     });
     
     document.getElementById('levels-btn').addEventListener('click', () => {
+        updateLevelSelect();
         showScene('levelSelect');
     });
     
@@ -76,12 +84,21 @@ function init() {
     });
     
     // Обработчики выбора уровня
+    updateLevelSelect();
+}
+
+// Обновление экрана выбора уровня
+function updateLevelSelect() {
     const levelCards = document.querySelectorAll('.level-card');
     levelCards.forEach(card => {
-        card.addEventListener('click', () => {
-            const level = parseInt(card.dataset.level) - 1;
-            startLevel(level);
-        });
+        const level = parseInt(card.dataset.level) - 1;
+        if (level <= unlockedLevels) {
+            card.classList.remove('locked');
+            card.onclick = () => startLevel(level);
+        } else {
+            card.classList.add('locked');
+            card.onclick = null;
+        }
     });
 }
 
@@ -115,7 +132,7 @@ function startLevel(level) {
     showScene('gameScene');
 }
 
-// Создание игрового поля
+// Создание игрового поля без начальных совпадений
 function createBoard() {
     const gameBoard = document.getElementById('game-board');
     gameBoard.innerHTML = '';
@@ -124,7 +141,7 @@ function createBoard() {
     const size = 8; // 8x8 сетка
     const colors = levels[currentLevel].colors;
     
-    // Создание плиток
+    // Создание плиток без совпадений
     for (let row = 0; row < size; row++) {
         board[row] = [];
         for (let col = 0; col < size; col++) {
@@ -137,10 +154,32 @@ function createBoard() {
             const shape = document.createElement('div');
             shape.className = 'shape';
             
-            // Выбор случайного цвета для фигуры
-            const colorIndex = Math.floor(Math.random() * colors);
-            shape.style.backgroundColor = getShapeColor(colorIndex);
+            // Выбор цвета с проверкой на совпадения
+            let colorIndex;
+            let attempts = 0;
+            do {
+                colorIndex = Math.floor(Math.random() * colors);
+                attempts++;
+                
+                // Проверка горизонтальных совпадений
+                if (col >= 2 && 
+                    board[row][col-1].color === colorIndex && 
+                    board[row][col-2].color === colorIndex) {
+                    continue;
+                }
+                
+                // Проверка вертикальных совпадений
+                if (row >= 2 && 
+                    board[row-1][col].color === colorIndex && 
+                    board[row-2][col].color === colorIndex) {
+                    continue;
+                }
+                
+                break;
+                
+            } while (attempts < 100); // Защита от бесконечного цикла
             
+            shape.style.backgroundColor = getShapeColor(colorIndex);
             tile.appendChild(shape);
             gameBoard.appendChild(tile);
             
@@ -154,11 +193,6 @@ function createBoard() {
             tile.addEventListener('click', () => handleTileClick(row, col));
         }
     }
-    
-    // Проверка начальных совпадений
-    setTimeout(() => {
-        processMatches(true);
-    }, 500);
 }
 
 // Обработка клика по плитке
@@ -237,14 +271,14 @@ function swapTiles(row1, col1, row2, col2) {
         
         // Проверить совпадения после обмена
         setTimeout(() => {
-            processMatches(false);
+            processMatches();
             isSwapping = false;
         }, 300);
     }, 300);
 }
 
 // Обработка совпадений
-function processMatches(isInitial) {
+function processMatches() {
     isProcessingMatches = true;
     const matches = findMatches();
     
@@ -259,25 +293,23 @@ function processMatches(isInitial) {
         setTimeout(() => {
             dropTiles();
             
-            // Заполнить пустые места
+            // Заполнить пустые места новыми фигурами сверху
             setTimeout(() => {
                 fillEmptySpaces();
                 
                 // Проверить новые совпадения
                 setTimeout(() => {
-                    processMatches(false);
+                    processMatches();
                 }, 500);
             }, 500);
         }, 500);
     } else {
-        if (!isInitial) {
-            // Если совпадений нет и это не начальная проверка, использовать ход
-            movesLeft--;
-            document.getElementById('moves').textContent = movesLeft;
-            
-            // Проверить условия завершения уровня
-            checkLevelCompletion();
-        }
+        // Если совпадений нет, использовать ход
+        movesLeft--;
+        document.getElementById('moves').textContent = movesLeft;
+        
+        // Проверить условия завершения уровня
+        checkLevelCompletion();
         isProcessingMatches = false;
     }
 }
@@ -389,7 +421,7 @@ function dropTiles() {
     }
 }
 
-// Заполнить пустые места
+// Заполнить пустые места с анимацией падения сверху
 function fillEmptySpaces() {
     const size = 8;
     const colors = levels[currentLevel].colors;
@@ -404,9 +436,7 @@ function fillEmptySpaces() {
                 const shape = document.createElement('div');
                 shape.className = 'shape';
                 shape.style.backgroundColor = getShapeColor(colorIndex);
-                shape.style.visibility = 'hidden';
-                shape.style.opacity = '0';
-                shape.style.transform = 'translateY(-100%)';
+                shape.style.transform = 'translateY(-1000%)'; // Начальная позиция сверху
                 
                 // Удалить старую фигуру, если есть
                 if (tile.shape) {
@@ -419,11 +449,9 @@ function fillEmptySpaces() {
                 tile.color = colorIndex;
                 tile.shape = shape;
                 
-                // Анимация появления
+                // Анимация падения
                 setTimeout(() => {
-                    shape.style.visibility = 'visible';
-                    shape.style.transition = 'opacity 0.3s ease, transform 0.5s ease';
-                    shape.style.opacity = '1';
+                    shape.style.transition = 'transform 0.8s ease';
                     shape.style.transform = 'translateY(0)';
                 }, 100);
             }
@@ -435,7 +463,12 @@ function fillEmptySpaces() {
 function checkLevelCompletion() {
     if (movesLeft <= 0) {
         if (score >= levels[currentLevel].targetScore) {
-            // Победа
+            // Победа - открываем следующий уровень
+            if (currentLevel >= unlockedLevels) {
+                unlockedLevels = currentLevel + 1;
+                localStorage.setItem('unlockedLevels', unlockedLevels);
+            }
+            
             document.getElementById('win-level').textContent = currentLevel + 1;
             document.getElementById('win-score').textContent = score;
             showScene('winScene');
