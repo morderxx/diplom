@@ -295,12 +295,6 @@ body {
     box-shadow: 0 0 40px rgba(120, 50, 255, 0.5);
     border: 2px solid #6a4cff;
     
-    /* Новые стили для центрирования */
-    display: flex;
-    flex-direction: column;
-    justify-content: center; /* Вертикальное центрирование */
-    align-items: center;     /* Горизонтальное центрирование */
-    text-align: center;      /* Центрирование текста внутри элементов */
 }
 
 .screen-title {
