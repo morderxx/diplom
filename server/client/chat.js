@@ -1347,18 +1347,30 @@ closeBtn.addEventListener('click', () => {
   // НЕ трогаем frame.src — iframe остаётся загруженным, и код календаря продолжает работать
 });
 
-// Функция открытия игры
 function openGame(path) {
-  // Если уже открыта другая игра - очищаем
-  if (gameFrame.src && !gameFrame.src.endsWith(path)) {
-    gameFrame.src = '';
-  }
-  
-  gameFrame.src = path;
-  gameModal.style.display = 'flex';
-  
-  // Блокируем скролл основного контента
-  document.body.style.overflow = 'hidden';
+    if (gameFrame.src && !gameFrame.src.endsWith(path)) {
+        gameFrame.src = '';
+    }
+    
+    gameModal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    
+    // Ждем загрузки фрейма
+    gameFrame.onload = function() {
+        try {
+            // Вызываем ресайз внутри iframe
+            const iframeWindow = gameFrame.contentWindow;
+            if (iframeWindow.resizeCanvas) {
+                setTimeout(() => {
+                    iframeWindow.resizeCanvas();
+                }, 100);
+            }
+        } catch (e) {
+            console.error('Error resizing iframe content:', e);
+        }
+    };
+    
+    gameFrame.src = path;
 }
 
 // Закрытие игрового модального окна
