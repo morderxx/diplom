@@ -47,7 +47,8 @@ let upgrades = {
     baseTurret: 0,
     playerDamage: 1,
     playerFireRate: 1,
-    playerShield: 0
+    playerShield: 0,
+    playerSpeed: 0
 };
 let upgradeCosts = {
     baseHealth: 50,
@@ -55,7 +56,8 @@ let upgradeCosts = {
     baseTurret: 100,
     playerDamage: 60,
     playerFireRate: 70,
-    playerShield: 80
+    playerShield: 80,
+    playerSpeed: 50
 };
 
 // Шрифты
@@ -193,8 +195,18 @@ function handleInput() {
             buyUpgrade("playerShield");
             keys["6"] = false;
         }
+        if (keys["7"]) {
+            buyUpgrade("playerSpeed");
+            keys["7"] = false;
+        }
         if (keys["Enter"]) {
             startNextWave();
+            keys["Enter"] = false;
+        }
+    }
+    else if (gameState === "level_transition") {
+        if (keys["Enter"]) {
+            startNextLevel();
             keys["Enter"] = false;
         }
     }
@@ -230,6 +242,9 @@ function buyUpgrade(type) {
             player.maxShield = 60 * upgrades.playerShield; // Усиленное улучшение
             player.shield = player.maxShield;
         }
+        else if (type === "playerSpeed") {
+            player.speed = 5 + 1 * upgrades.playerSpeed;
+        }
     }
 }
 
@@ -241,34 +256,59 @@ function startNextWave() {
     generateWave();
 }
 
+// Начать следующий уровень
+function startNextLevel() {
+    level++;
+    wave = 1;
+    waveEnemiesKilled = 0;
+    gameState = "playing";
+    generateWave();
+    
+    // Восстановление здоровья баз
+    bases.forEach(base => {
+        base.health = base.maxHealth;
+        base.shield = base.maxShield;
+    });
+    
+    // Восстановление здоровья игрока
+    player.health = player.maxHealth;
+    player.shield = player.maxShield;
+}
+
 // Генерация волны врагов
 function generateWave() {
     enemyQueue = [];
-    waveEnemiesCount = 8 + wave * 3; // Меньше врагов в начале
+    // Количество врагов зависит от уровня и волны
+    waveEnemiesCount = 8 + wave * 3 + level * 2; 
     
     // Состав волны
     for (let i = 0; i < waveEnemiesCount; i++) {
-        // На высоких волнах более сильные враги
+        // На высоких волнах и уровнях более сильные враги
         let type;
         const r = Math.random();
+        const waveLevelFactor = Math.min(10, wave + level);
         
-        if (wave < 3) {
-            type = 0; // Только обычные враги
+        if (waveLevelFactor < 3) {
+            if (r < 0.9) type = 0; // Обычные
+            else type = 1; // Быстрые
         } 
-        else if (wave < 6) {
-            if (r < 0.7) type = 0;
-            else type = 1; // Быстрые враги
-        }
-        else if (wave < 9) {
-            if (r < 0.5) type = 0;
-            else if (r < 0.8) type = 1;
+        else if (waveLevelFactor < 6) {
+            if (r < 0.6) type = 0;
+            else if (r < 0.9) type = 1;
             else type = 2; // Танки
         }
-        else {
+        else if (waveLevelFactor < 9) {
             if (r < 0.4) type = 0;
             else if (r < 0.7) type = 1;
             else if (r < 0.9) type = 2;
             else type = 3; // Бомбардировщики
+        }
+        else {
+            if (r < 0.3) type = 0;
+            else if (r < 0.5) type = 1;
+            else if (r < 0.7) type = 2;
+            else if (r < 0.9) type = 3;
+            else type = 5; // Снайперы (новый тип)
         }
         
         // Ускоренный спавн врагов
@@ -320,9 +360,15 @@ function update() {
     // Волна завершена
     else if (enemies.length === 0 && !bossActive) {
         if (waveEnemiesKilled >= waveEnemiesCount) {
-            gameState = "wave_break";
-            resources += 80 + wave * 30; // Больше ресурсов за волну
-            waveBreakTimer = 180;
+            // Если это была 3-я волна - переход на новый уровень
+            if (wave % 3 === 0) {
+                gameState = "level_transition";
+                resources += 150 + level * 50;
+            } else {
+                gameState = "wave_break";
+                resources += 80 + wave * 30 + level * 20; // Больше ресурсов за волну
+                waveBreakTimer = 180;
+            }
         }
     }
     
@@ -426,11 +472,11 @@ function render() {
     else if (gameState === "game_over") {
         drawGameOverScreen();
     }
-    else if (bossDefeated) {
-        drawLevelTransition();
-    }
     else if (gameState === "wave_break") {
         drawWaveBreakScreen();
+    }
+    else if (gameState === "level_transition") {
+        drawLevelTransition();
     }
     
     ctx.restore();
@@ -450,7 +496,7 @@ function drawHUD() {
     drawText(levelText, WIDTH - levelTextWidth - 20, 40, "white", "smaller");
     
     // Волна
-    const waveText = `Волна: ${wave}`;
+    const waveText = `Волна: ${wave}/3`;
     const waveTextWidth = ctx.measureText(waveText).width;
     drawText(waveText, WIDTH - waveTextWidth - 20, 70, "white", "smaller");
     
@@ -475,7 +521,7 @@ function drawWaveBreakScreen() {
     drawText(`ВОЛНА ${wave} ЗАВЕРШЕНА!`, WIDTH/2, 100, GREEN, "title", true);
     
     // Заработанные ресурсы
-    drawText(`+${80 + wave * 30} Ресурсов`, WIDTH/2, 170, YELLOW, "large", true);
+    drawText(`+${80 + wave * 30 + level * 20} Ресурсов`, WIDTH/2, 170, YELLOW, "large", true);
     
     // Всего ресурсов
     drawText(`Всего ресурсов: ${resources}`, WIDTH/2, 220, YELLOW, "medium", true);
@@ -503,8 +549,49 @@ function drawWaveBreakScreen() {
     drawText("6. Щиты игрока", 200, 580, WHITE, "medium");
     drawText(`(${upgrades.playerShield}) - ${upgradeCosts.playerShield}`, 700, 580, YELLOW, "medium");
     
+    drawText("7. Скорость игрока", 200, 630, WHITE, "medium");
+    drawText(`(${upgrades.playerSpeed}) - ${upgradeCosts.playerSpeed}`, 700, 630, YELLOW, "medium");
+    
     // Подсказка продолжения
     drawText("Нажмите ENTER для перехода к следующей волне", WIDTH/2, HEIGHT - 50, GREEN, "medium", true);
+}
+
+// Отрисовка перехода уровня
+function drawLevelTransition() {
+    // Полупрозрачный фон
+    ctx.fillStyle = "rgba(0, 0, 40, 0.9)";
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    
+    // Заголовок
+    drawText(`УРОВЕНЬ ${level} ЗАВЕРШЕН!`, WIDTH/2, 150, GREEN, "title", true);
+    
+    // Заработанные ресурсы
+    drawText(`+${150 + level * 50} Ресурсов`, WIDTH/2, 220, YELLOW, "large", true);
+    
+    // Всего ресурсов
+    drawText(`Всего ресурсов: ${resources}`, WIDTH/2, 280, YELLOW, "medium", true);
+    
+    // Статистика уровня
+    drawText(`Уничтожено врагов: ${waveEnemiesCount}`, WIDTH/2, 340, WHITE, "medium", true);
+    drawText(`Сохранено баз: ${bases.length}/3`, WIDTH/2, 390, WHITE, "medium", true);
+    
+    // Новые враги на следующем уровне
+    drawText("На следующем уровне:", WIDTH/2, 460, CYAN, "large", true);
+    
+    if (level === 1) {
+        drawText("- Появятся быстрые истребители", WIDTH/2, 510, ORANGE, "medium", true);
+    } else if (level === 2) {
+        drawText("- Появятся тяжелые танки", WIDTH/2, 510, ORANGE, "medium", true);
+    } else if (level === 3) {
+        drawText("- Появятся бомбардировщики", WIDTH/2, 510, ORANGE, "medium", true);
+    } else if (level === 4) {
+        drawText("- Появятся снайперы", WIDTH/2, 510, ORANGE, "medium", true);
+    } else {
+        drawText("- Враги станут сильнее и быстрее", WIDTH/2, 510, ORANGE, "medium", true);
+    }
+    
+    // Подсказка продолжения
+    drawText("Нажмите ENTER для перехода на уровень " + (level + 1), WIDTH/2, HEIGHT - 50, GREEN, "medium", true);
 }
 
 // Отрисовка меню
@@ -552,24 +639,10 @@ function drawGameOverScreen() {
     drawText(`Финальный счет: ${player.score}`, WIDTH/2, 300, WHITE, "large", true);
     
     // Достигнутая волна
-    drawText(`Достигнутая волна: ${wave}`, WIDTH/2, 350, YELLOW, "large", true);
+    drawText(`Достигнутый уровень: ${level}`, WIDTH/2, 350, YELLOW, "large", true);
     
     // Подсказка рестарта
     drawText("Нажмите ENTER для перезапуска", WIDTH/2, 450, GREEN, "medium", true);
-}
-
-// Отрисовка перехода на следующий уровень
-function drawLevelTransition() {
-    // Полупрозрачный фон
-    const alpha = 0.7 * (levelTransitionTimer / 180);
-    ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    
-    // Текст завершения уровня
-    drawText(`УРОВЕНЬ ${level} ЗАВЕРШЕН!`, WIDTH/2, HEIGHT/2 - 50, GREEN, "title", true);
-    
-    // Текст следующего уровня
-    drawText(`Подготовка к уровню ${level + 1}...`, WIDTH/2, HEIGHT/2 + 50, YELLOW, "medium", true);
 }
 
 // Вспомогательная функция отрисовки текста
@@ -611,13 +684,13 @@ function spawnBoss() {
 
 // Спавн улучшения
 function spawnPowerup(x, y) {
-    const powerType = Math.floor(Math.random() * 4);
+    const powerType = Math.floor(Math.random() * 5);
     powerups.push(new PowerUp(x, y, powerType));
 }
 
 // Спавн ресурса
 function spawnResource(x, y) {
-    powerups.push(new PowerUp(x, y, 4)); // Тип 4 - ресурс
+    powerups.push(new PowerUp(x, y, 5)); // Тип 5 - ресурс
 }
 
 // Эффект тряски экрана
@@ -799,8 +872,11 @@ function checkCollisions() {
                 case 3: // Жизнь
                     player.lives++;
                     break;
-                case 4: // Ресурс
-                    resources += 15 + wave;
+                case 4: // Неуязвимость (новое)
+                    player.invincible = 180;
+                    break;
+                case 5: // Ресурс
+                    resources += 15 + wave + level * 5;
                     break;
             }
             
@@ -840,7 +916,8 @@ function resetGame() {
         baseTurret: 0,
         playerDamage: 1,
         playerFireRate: 1,
-        playerShield: 0
+        playerShield: 0,
+        playerSpeed: 0
     };
     
     upgradeCosts = {
@@ -849,7 +926,8 @@ function resetGame() {
         baseTurret: 100,
         playerDamage: 60,
         playerFireRate: 70,
-        playerShield: 80
+        playerShield: 80,
+        playerSpeed: 50
     };
     
     createBases();
@@ -976,7 +1054,7 @@ class Base {
     }
     
     update() {
-        // Автоматическая турель
+        // Автоматическая турель (ИСПРАВЛЕНО)
         if (this.turretLevel > 0) {
             this.shootCooldown -= deltaTime;
             
@@ -1273,7 +1351,7 @@ class Enemy {
     
     setupEnemy() {
         // Базовые характеристики с учетом уровня и волны
-        const healthMultiplier = 1 + (this.level * 0.1) + (this.wave * 0.2);
+        const healthMultiplier = 1 + (this.level * 0.2) + (this.wave * 0.1);
         
         if (this.type === 0) { // Маленький враг
             this.health = Math.floor((20 + this.level * 5) * healthMultiplier);
@@ -1317,6 +1395,17 @@ class Enemy {
             this.damage = 20;
             this.behavior = "bomber";
             this.bombTimer = 0;
+        } else if (this.type === 5) { // Снайпер (новый тип)
+            this.health = Math.floor((50 + this.level * 10) * healthMultiplier);
+            this.maxHealth = this.health;
+            this.speed = Math.random() * 0.7 + 0.7;
+            this.scoreValue = 40;
+            this.shootChance = 0.01;
+            this.color = "#3296FF";
+            this.size = 22;
+            this.damage = 30;
+            this.behavior = "sniper";
+            this.sniperTimer = 0;
         } else { // Босс
             this.health = Math.floor((500 + this.level * 200) * healthMultiplier);
             this.maxHealth = this.health;
@@ -1366,6 +1455,12 @@ class Enemy {
                 this.dropBomb();
                 this.bombTimer = 0;
             }
+        } else if (this.behavior === "sniper") {
+            this.sniperTimer += deltaTime;
+            if (this.sniperTimer > 180) {
+                this.sniperShot();
+                this.sniperTimer = 0;
+            }
         }
         
         if (this.shootCooldown > 0) {
@@ -1405,6 +1500,29 @@ class Enemy {
     
     dropBomb() {
         bullets.push(new Bullet(this.x, this.y + this.size, 0, 4, PURPLE, 15));
+    }
+    
+    sniperShot() {
+        // Мощный выстрел в базу
+        if (this.targetBase) {
+            const targetX = this.targetBase.x + this.targetBase.width / 2;
+            const targetY = this.targetBase.y + this.targetBase.height / 2;
+            
+            const dx = targetX - this.x;
+            const dy = targetY - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > 0) {
+                const speed = 8;
+                bullets.push(new Bullet(
+                    this.x, this.y + this.size,
+                    (dx / distance) * speed,
+                    (dy / distance) * speed,
+                    BLUE,
+                    25 // Большой урон
+                ));
+            }
+        }
     }
     
     shoot() {
@@ -1471,6 +1589,27 @@ class Enemy {
             ctx.fillRect(this.x - this.size*1.5, this.y - 5, this.size, 10);
             ctx.fillRect(this.x + this.size*0.5, this.y - 5, this.size, 10);
         }
+        else if (this.type === 5) { // Снайпер (новый)
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            
+            // Прицел
+            ctx.strokeStyle = WHITE;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(this.x - this.size, this.y);
+            ctx.lineTo(this.x + this.size, this.y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y - this.size);
+            ctx.lineTo(this.x, this.y + this.size);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size/2, 0, Math.PI * 2);
+            ctx.stroke();
+        }
         else { // Босс
             // Отрисовка босса в классе Boss
         }
@@ -1499,6 +1638,10 @@ class Boss extends Enemy {
         this.attackCooldown = 0;
         this.specialAttackTimer = 0;
         this.pulse = 0;
+        // Усиливаем босса в зависимости от уровня
+        this.maxHealth = 500 + level * 300;
+        this.health = this.maxHealth;
+        this.damage = 40 + level * 5;
     }
     
     update() {
@@ -1511,7 +1654,7 @@ class Boss extends Enemy {
             // Смена паттерна атаки
             if (this.attackTimer > 180) {
                 this.attackTimer = 0;
-                this.attackPattern = Math.floor(Math.random() * 3);
+                this.attackPattern = Math.floor(Math.random() * 4); // Добавлен новый паттерн
                 this.attackCooldown = 30;
             }
             
@@ -1554,6 +1697,15 @@ class Boss extends Enemy {
                 bullets.push(new Bullet(this.x - 40, this.y + 30, -1, 4, BLUE, 12));
                 bullets.push(new Bullet(this.x + 40, this.y + 30, 1, 4, BLUE, 12));
                 bullets.push(new Bullet(this.x, this.y + 30, 0, 4, BLUE, 15));
+            } else if (this.attackPattern === 3) { // Круговой обстрел (новый)
+                for (let angle = 0; angle < 360; angle += 30) {
+                    const rad = angle * Math.PI / 180;
+                    bullets.push(new Bullet(
+                        this.x, this.y + 30,
+                        Math.sin(rad) * 3, Math.cos(rad) * 3,
+                        GREEN, 7
+                    ));
+                }
             }
             
             this.attackCooldown = 20;
@@ -1564,7 +1716,7 @@ class Boss extends Enemy {
     }
     
     specialAttack() {
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < 12; i++) { // Больше пуль
             const angle = Math.random() * Math.PI * 2;
             const speed = Math.random() * 2 + 2;
             bullets.push(new Bullet(
@@ -1666,8 +1818,8 @@ class PowerUp {
         this.size = 20;
         this.rotation = 0;
         this.active = true;
-        this.colors = [GREEN, YELLOW, CYAN, PURPLE, YELLOW];
-        this.shapes = ["circle", "square", "triangle", "diamond", "star"];
+        this.colors = [GREEN, YELLOW, CYAN, PURPLE, "#FFA500", YELLOW]; // Добавлен новый цвет
+        this.shapes = ["circle", "square", "triangle", "diamond", "star", "hexagon"]; // Добавлена новая форма
     }
     
     update() {
@@ -1727,6 +1879,19 @@ class PowerUp {
                 ctx.lineTo(
                     Math.cos(angle) * radius,
                     Math.sin(angle) * radius
+                );
+            }
+            ctx.closePath();
+            ctx.fillStyle = color;
+            ctx.fill();
+        }
+        else if (shape === "hexagon") { // Новая форма
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const angle = i * Math.PI / 3;
+                ctx.lineTo(
+                    Math.cos(angle) * this.size,
+                    Math.sin(angle) * this.size
                 );
             }
             ctx.closePath();
