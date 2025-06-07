@@ -288,7 +288,7 @@ body {
 
 .screen-content {
     height: 100%;
-    max-width: 90%;
+    max-width: 100%;
     padding: 30px;
     background: rgba(20, 15, 45, 0.8);
     border-radius: 20px;
