@@ -25,7 +25,7 @@ let particles = [];
 let level = 1;
 let wave = 1;
 let score = 0;
-let resources = 200; // Увеличено стартовое количество ресурсов
+let resources = 200;
 let enemySpawnTimer = 0;
 let boss = null;
 let bossActive = false;
@@ -66,39 +66,24 @@ const fonts = {
     large: { size: 42, weight: "bold" },
     medium: { size: 32, weight: "normal" },
     small: { size: 24, weight: "normal" },
-    smaller: { size: 20, weight: "normal" } // Добавлен меньший размер шрифта
+    smaller: { size: 20, weight: "normal" }
 };
 
-// Инициализация игры
 function init() {
     canvas = document.getElementById("gameCanvas");
     ctx = canvas.getContext("2d");
-    
-    // Создание звезд
-    for (let i = 0; i < 200; i++) {
-        stars.push(new Star());
-    }
-    
-    // Инициализация игрока
+    for (let i = 0; i < 200; i++) stars.push(new Star());
     player = new Player();
-    
-    // Создание баз
     createBases();
-    
-    // Обработчики событий
     window.addEventListener("keydown", e => keys[e.key] = true);
     window.addEventListener("keyup", e => keys[e.key] = false);
-    
-    // Запуск игрового цикла
     requestAnimationFrame(gameLoop);
 }
 
-// Создание оборонительных баз
 function createBases() {
     bases = [];
     const baseWidth = 100;
     const baseSpacing = (WIDTH - baseWidth * 3) / 4;
-    
     for (let i = 0; i < 3; i++) {
         bases.push(new Base(
             baseSpacing * (i + 1) + baseWidth * i,
@@ -109,489 +94,150 @@ function createBases() {
     }
 }
 
-// Игровой цикл
 function gameLoop(timestamp) {
-    // Расчет времени между кадрами
     deltaTime = (timestamp - lastTime) / 16.666;
     lastTime = timestamp;
-    
-    // Обработка ввода
     handleInput();
-    
-    // Обновление состояния игры
     update();
-    
-    // Отрисовка игры
     render();
-    
     requestAnimationFrame(gameLoop);
 }
 
-// Обработка пользовательского ввода
 function handleInput() {
     if (gameState === "menu") {
-        if (keys["Enter"]) {
-            resetGame();
-            gameState = "playing";
-            keys["Enter"] = false;
-        }
+        if (keys["Enter"]) { resetGame(); gameState = "playing"; keys["Enter"] = false; }
     }
     else if (gameState === "playing") {
-        if (keys["Escape"]) {
-            gameState = "pause";
-            keys["Escape"] = false;
-        }
-        
-        // Движение игрока
+        if (keys["Escape"]) { gameState = "pause"; keys["Escape"] = false; }
         let dx = (keys["ArrowRight"] ? 1 : 0) - (keys["ArrowLeft"] ? 1 : 0);
         let dy = (keys["ArrowDown"] ? 1 : 0) - (keys["ArrowUp"] ? 1 : 0);
         player.move(dx, dy);
-        
-        // Стрельба
-        if (keys[" "]) {
-            player.shoot();
-        }
+        if (keys[" "]) player.shoot();
     }
     else if (gameState === "pause") {
-        if (keys["Escape"]) {
-            gameState = "playing";
-            keys["Escape"] = false;
-        }
-        else if (keys["m"]) {
-            gameState = "menu";
-            keys["m"] = false;
-        }
+        if (keys["Escape"]) { gameState = "playing"; keys["Escape"] = false; }
+        else if (keys["m"]) { gameState = "menu"; keys["m"] = false; }
     }
     else if (gameState === "game_over") {
-        if (keys["Enter"]) {
-            resetGame();
-            gameState = "playing";
-            keys["Enter"] = false;
-        }
+        if (keys["Enter"]) { resetGame(); gameState = "playing"; keys["Enter"] = false; }
     }
     else if (gameState === "wave_break") {
-        // Выбор улучшений
-        if (keys["1"]) {
-            buyUpgrade("baseHealth");
-            keys["1"] = false;
-        }
-        if (keys["2"]) {
-            buyUpgrade("baseShield");
-            keys["2"] = false;
-        }
-        if (keys["3"]) {
-            buyUpgrade("baseTurret");
-            keys["3"] = false;
-        }
-        if (keys["4"]) {
-            buyUpgrade("playerDamage");
-            keys["4"] = false;
-        }
-        if (keys["5"]) {
-            buyUpgrade("playerFireRate");
-            keys["5"] = false;
-        }
-        if (keys["6"]) {
-            buyUpgrade("playerShield");
-            keys["6"] = false;
-        }
-        if (keys["7"]) {
-            buyUpgrade("playerSpeed");
-            keys["7"] = false;
-        }
-        if (keys["Enter"]) {
-            startNextWave();
-            keys["Enter"] = false;
-        }
+        ["1","2","3","4","5","6","7"].forEach((k,i) => {
+            if (keys[k]) { const types=["baseHealth","baseShield","baseTurret","playerDamage","playerFireRate","playerShield","playerSpeed"]; buyUpgrade(types[i]); keys[k]=false;} });
+        if (keys["Enter"]) { startNextWave(); keys["Enter"] = false; }
     }
     else if (gameState === "level_transition") {
-        if (keys["Enter"]) {
-            startNextLevel();
-            keys["Enter"] = false;
-        }
+        if (keys["Enter"]) { startNextLevel(); keys["Enter"] = false; }
     }
 }
 
-// Покупка улучшения
 function buyUpgrade(type) {
     if (resources >= upgradeCosts[type]) {
         resources -= upgradeCosts[type];
         upgrades[type]++;
         upgradeCosts[type] = Math.floor(upgradeCosts[type] * 1.5);
-        
-        // Применение улучшения
-        if (type === "baseHealth") {
-            bases.forEach(base => {
-                base.maxHealth = 150 + 100 * upgrades.baseHealth; // Усиленное улучшение
-                base.health = base.maxHealth;
-            });
-        }
-        else if (type === "baseShield") {
-            bases.forEach(base => {
-                base.maxShield = 75 * upgrades.baseShield; // Усиленное улучшение
-                base.shield = base.maxShield;
-            });
-        }
-        else if (type === "playerDamage") {
-            player.damageMultiplier = 1 + 0.4 * upgrades.playerDamage; // Усиленное улучшение
-        }
-        else if (type === "playerFireRate") {
-            player.fireRateMultiplier = 1 + 0.25 * upgrades.playerFireRate; // Усиленное улучшение
-        }
-        else if (type === "playerShield") {
-            player.maxShield = 60 * upgrades.playerShield; // Усиленное улучшение
-            player.shield = player.maxShield;
-        }
-        else if (type === "playerSpeed") {
-            player.speed = 5 + 1 * upgrades.playerSpeed;
-        }
+        if (type === "baseHealth") bases.forEach(b=>{b.maxHealth=150+100*upgrades.baseHealth; b.health=b.maxHealth;});
+        else if (type === "baseShield") bases.forEach(b=>{b.maxShield=75*upgrades.baseShield; b.shield=b.maxShield;});
+        else if (type === "baseTurret") bases.forEach(b=>{b.turretLevel=upgrades.baseTurret;});
+        else if (type === "playerDamage") player.damageMultiplier = 1 + 0.4 * upgrades.playerDamage;
+        else if (type === "playerFireRate") player.fireRateMultiplier = 1 + 0.25 * upgrades.playerFireRate;
+        else if (type === "playerShield") { player.maxShield=60*upgrades.playerShield; player.shield=player.maxShield; }
+        else if (type === "playerSpeed") player.speed = 5 + upgrades.playerSpeed;
     }
 }
 
-// Начать следующую волну
-function startNextWave() {
-    wave++;
-    waveEnemiesKilled = 0;
-    gameState = "playing";
-    generateWave();
-}
+function startNextWave() { wave++; waveEnemiesKilled = 0; gameState = "playing"; generateWave(); }
+function startNextLevel() { level++; wave=1; waveEnemiesKilled=0; gameState="playing"; generateWave(); bases.forEach(b=>{b.health=b.maxHealth; b.shield=b.maxShield}); player.health=player.maxHealth; player.shield=player.maxShield; }
 
-// Начать следующий уровень
-function startNextLevel() {
-    level++;
-    wave = 1;
-    waveEnemiesKilled = 0;
-    gameState = "playing";
-    generateWave();
-    
-    // Восстановление здоровья баз
-    bases.forEach(base => {
-        base.health = base.maxHealth;
-        base.shield = base.maxShield;
-    });
-    
-    // Восстановление здоровья игрока
-    player.health = player.maxHealth;
-    player.shield = player.maxShield;
-}
-
-// Генерация волны врагов
 function generateWave() {
     enemyQueue = [];
-    // Количество врагов зависит от уровня и волны
-    waveEnemiesCount = 8 + wave * 3 + level * 2; 
-    
-    // Состав волны
+    waveEnemiesCount = 8 + wave * 3 + level * 2;
     for (let i = 0; i < waveEnemiesCount; i++) {
-        // На высоких волнах и уровнях более сильные враги
         let type;
         const r = Math.random();
         const waveLevelFactor = Math.min(10, wave + level);
-        
-        if (waveLevelFactor < 3) {
-            if (r < 0.9) type = 0; // Обычные
-            else type = 1; // Быстрые
-        } 
-        else if (waveLevelFactor < 6) {
-            if (r < 0.6) type = 0;
-            else if (r < 0.9) type = 1;
-            else type = 2; // Танки
-        }
-        else if (waveLevelFactor < 9) {
-            if (r < 0.4) type = 0;
-            else if (r < 0.7) type = 1;
-            else if (r < 0.9) type = 2;
-            else type = 3; // Бомбардировщики
-        }
-        else {
-            if (r < 0.3) type = 0;
-            else if (r < 0.5) type = 1;
-            else if (r < 0.7) type = 2;
-            else if (r < 0.9) type = 3;
-            else type = 5; // Снайперы (новый тип)
-        }
-        
-        // Ускоренный спавн врагов
-        enemyQueue.push({
-            type: type,
-            delay: i * (15 - Math.min(10, wave)) // Значительно ускорено появление
-        });
+        if (waveLevelFactor < 3) type = r < 0.9 ? 0 : 1;
+        else if (waveLevelFactor < 6) type = r < 0.6 ? 0 : (r<0.9?1:2);
+        else if (waveLevelFactor < 9) type = r < 0.4 ? 0 : (r<0.7?1:(r<0.9?2:3));
+        else type = r<0.3?0:(r<0.5?1:(r<0.7?2:(r<0.9?3:5)));
+        enemyQueue.push({ type: type, delay: i * (15 - Math.min(10, wave)) });
     }
-    
-    // Босс каждые 3 волны
     if (wave % 3 === 0) {
-        enemyQueue.push({
-            type: 4, // Босс
-            delay: enemyQueue[enemyQueue.length - 1].delay + 100
-        });
+        enemyQueue.push({ type: 4, delay: enemyQueue[enemyQueue.length-1].delay + 100 });
         waveEnemiesCount++;
     }
-    
     enemySpawnTimer = 0;
 }
 
-// Обновление состояния игры
 function update() {
-    // Обновление эффекта тряски камеры
-    updateCamera();
-    
-    // Обновление звезд
-    stars.forEach(star => star.update());
-    
-    if (gameState !== "playing") return;
-    
-    // Обновление игрока
-    player.update();
-    
-    // Обновление баз
-    bases.forEach(base => base.update());
-    
-    // Спавн врагов из очереди
-    if (enemyQueue.length > 0) {
+    updateCamera(); stars.forEach(s=>s.update()); if (gameState!="playing") return;
+    player.update(); bases.forEach(b=>b.update());
+    if (enemyQueue.length>0) {
         enemySpawnTimer += deltaTime;
-        const nextEnemy = enemyQueue[0];
-        
-        if (enemySpawnTimer >= nextEnemy.delay) {
-            spawnEnemy(nextEnemy.type);
-            enemyQueue.shift();
-            enemySpawnTimer = 0;
+        const next = enemyQueue[0];
+        if (enemySpawnTimer >= next.delay) {
+            if (next.type===4) spawnBoss(); else spawnEnemy(next.type);
+            enemyQueue.shift(); enemySpawnTimer=0;
         }
+    } else if (enemies.length===0 && !bossActive && waveEnemiesKilled>=waveEnemiesCount) {
+        if (wave%3===0) { gameState="level_transition"; resources+=150+level*50; }
+        else { gameState="wave_break"; resources+=80+wave*30+level*20; waveBreakTimer=180; }
     }
-    // Волна завершена
-    else if (enemies.length === 0 && !bossActive) {
-        if (waveEnemiesKilled >= waveEnemiesCount) {
-            // Если это была 3-я волна - переход на новый уровень
-            if (wave % 3 === 0) {
-                gameState = "level_transition";
-                resources += 150 + level * 50;
-            } else {
-                gameState = "wave_break";
-                resources += 80 + wave * 30 + level * 20; // Больше ресурсов за волну
-                waveBreakTimer = 180;
-            }
-        }
-    }
-    
-    // Обновление врагов
-    enemies.forEach(enemy => enemy.update());
-    
-    // Обновление босса
-    if (bossActive) {
-        boss.update();
-    }
-    
-    // Обновление пуль
-    bullets.forEach(bullet => bullet.update());
-    
-    // Обновление улучшений
-    powerups.forEach(powerup => powerup.update());
-    
-    // Обновление взрывов
-    explosions.forEach(explosion => explosion.update());
-    
-    // Обновление частиц
-    particles.forEach(particle => particle.update());
-    
-    // Очистка массивов
-    bullets = bullets.filter(bullet => bullet.active);
-    enemies = enemies.filter(enemy => enemy.active);
-    powerups = powerups.filter(powerup => powerup.active);
-    explosions = explosions.filter(explosion => explosion.active);
-    particles = particles.filter(particle => particle.active);
-    bases = bases.filter(base => base.health > 0);
-    
-    // Проверка уничтожения всех баз
-    if (bases.length === 0) {
-        gameState = "game_over";
-    }
-    
-    // Проверка столкновений
+    enemies.forEach(e=>e.update()); if (bossActive) boss.update(); bullets.forEach(b=>b.update()); powerups.forEach(p=>p.update()); explosions.forEach(e=>e.update()); particles.forEach(p=>p.update());
+    bullets=bullets.filter(b=>b.active); enemies=enemies.filter(e=>e.active); powerups=powerups.filter(p=>p.active);
+    explosions=explosions.filter(e=>e.active); particles=particles.filter(p=>p.active); bases=bases.filter(b=>b.health>0);
+    if (bases.length===0) gameState="game_over";
     checkCollisions();
-    
-    // Переход на следующий уровень после босса
-    if (bossDefeated) {
-        levelTransitionTimer -= deltaTime;
-        if (levelTransitionTimer <= 0) {
-            level++;
-            bossDefeated = false;
-            player.health = player.maxHealth;
-            player.shield = player.maxShield;
-        }
-    }
+    if (bossDefeated) { levelTransitionTimer-=deltaTime; if (levelTransitionTimer<=0) { level++; bossDefeated=false; player.health=player.maxHealth; player.shield=player.maxShield; } }
 }
 
-// Отрисовка игры
 function render() {
-    // Очистка холста
-    ctx.fillStyle = DARK_BLUE;
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    
-    // Применение смещения камеры
-    ctx.save();
-    ctx.translate(cameraOffset[0], cameraOffset[1]);
-    
-    // Отрисовка звезд
-    stars.forEach(star => star.draw());
-    
+    ctx.fillStyle = DARK_BLUE; ctx.fillRect(0,0,WIDTH,HEIGHT);
+    ctx.save(); ctx.translate(cameraOffset[0],cameraOffset[1]);
+    stars.forEach(s=>s.draw());
     if (gameState === "playing") {
-        // Отрисовка баз
-        bases.forEach(base => base.draw());
-        
-        // Отрисовка врагов
-        enemies.forEach(enemy => enemy.draw());
-        
-        // Отрисовка босса
-        if (bossActive) {
-            boss.draw();
-        }
-        
-        // Отрисовка пуль
-        bullets.forEach(bullet => bullet.draw());
-        
-        // Отрисовка улучшений
-        powerups.forEach(powerup => powerup.draw());
-        
-        // Отрисовка взрывов
-        explosions.forEach(explosion => explosion.draw());
-        
-        // Отрисовка частиц
-        particles.forEach(particle => particle.draw());
-        
-        // Отрисовка игрока
-        player.draw();
-        
-        // Отрисовка интерфейса
-        drawHUD();
-    }
-    else if (gameState === "menu") {
-        drawMenu();
-    }
-    else if (gameState === "pause") {
-        drawPauseScreen();
-    }
-    else if (gameState === "game_over") {
-        drawGameOverScreen();
-    }
-    else if (gameState === "wave_break") {
-        drawWaveBreakScreen();
-    }
-    else if (gameState === "level_transition") {
-        drawLevelTransition();
-    }
-    
+        bases.forEach(b=>b.draw()); enemies.forEach(e=>e.draw()); if(bossActive) boss.draw(); bullets.forEach(b=>b.draw()); powerups.forEach(p=>p.draw()); explosions.forEach(e=>e.draw()); particles.forEach(p=>p.draw()); player.draw(); drawHUD();
+    } else if (gameState==="menu") drawMenu(); else if (gameState==="pause") drawPauseScreen(); else if (gameState==="game_over") drawGameOverScreen(); else if (gameState==="wave_break") drawWaveBreakScreen(); else if (gameState==="level_transition") drawLevelTransition();
     ctx.restore();
 }
 
-// Отрисовка интерфейса
 function drawHUD() {
-    // Счет
-    drawText(`Счет: ${player.score}`, 20, 40, "white", "smaller");
-    
-    // Ресурсы
-    drawText(`Ресурсы: ${resources}`, 20, 70, YELLOW, "smaller");
-    
-    // Уровень
-    const levelText = `Уровень: ${level}`;
-    const levelTextWidth = ctx.measureText(levelText).width;
-    drawText(levelText, WIDTH - levelTextWidth - 20, 40, "white", "smaller");
-    
-    // Волна
-    const waveText = `Волна: ${wave}/3`;
-    const waveTextWidth = ctx.measureText(waveText).width;
-    drawText(waveText, WIDTH - waveTextWidth - 20, 70, "white", "smaller");
-    
-    // Оставшиеся враги
-    const enemiesText = `Врагов: ${waveEnemiesCount - waveEnemiesKilled}`;
-    const enemiesTextWidth = ctx.measureText(enemiesText).width;
-    drawText(enemiesText, WIDTH - enemiesTextWidth - 20, 100, "white", "smaller");
-    
-    // Индикатор босса
-    if (bossActive) {
-        drawText("БОСС БИТВА!", WIDTH/2 - ctx.measureText("БОСС БИТВА!").width/2, 60, RED, "medium");
-    }
+    drawText(`Счет: ${player.score}`,20,40,"white","smaller");
+    drawText(`Ресурсы: ${resources}`,20,70,YELLOW,"smaller");
+    const lvl=`Уровень: ${level}`; drawText(lvl,WIDTH-ctx.measureText(lvl).width-20,40,"white","smaller");
+    const wv=`Волна: ${wave}/3`; drawText(wv,WIDTH-ctx.measureText(wv).width-20,70,"white","smaller");
+    const en=`Врагов: ${waveEnemiesCount-waveEnemiesKilled}`; drawText(en,WIDTH-ctx.measureText(en).width-20,100,"white","smaller");
+    if (bossActive) drawText("БОСС БИТВА!",WIDTH/2-ctx.measureText("БОСС БИТВА!").width/2,60,RED,"medium");
 }
 
-// Отрисовка экрана перерыва
 function drawWaveBreakScreen() {
-    // Полупрозрачный фон
-    ctx.fillStyle = "rgba(0, 0, 40, 0.9)";
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    
-    // Заголовок
-    drawText(`ВОЛНА ${wave} ЗАВЕРШЕНА!`, WIDTH/2, 100, GREEN, "title", true);
-    
-    // Заработанные ресурсы
-    drawText(`+${80 + wave * 30 + level * 20} Ресурсов`, WIDTH/2, 170, YELLOW, "large", true);
-    
-    // Всего ресурсов
-    drawText(`Всего ресурсов: ${resources}`, WIDTH/2, 220, YELLOW, "medium", true);
-    
-    // Меню улучшений
-    drawText("УЛУЧШЕНИЯ:", WIDTH/2, 280, CYAN, "large", true);
-    
-    // Улучшения баз
-    drawText("1. Здоровье баз", 200, 330, WHITE, "medium");
-    drawText(`(${upgrades.baseHealth}) - ${upgradeCosts.baseHealth}`, 700, 330, YELLOW, "medium");
-    
-    drawText("2. Щиты баз", 200, 380, WHITE, "medium");
-    drawText(`(${upgrades.baseShield}) - ${upgradeCosts.baseShield}`, 700, 380, YELLOW, "medium");
-    
-    drawText("3. Турели баз", 200, 430, WHITE, "medium");
-    drawText(`(${upgrades.baseTurret}) - ${upgradeCosts.baseTurret}`, 700, 430, YELLOW, "medium");
-    
-    // Улучшения игрока
-    drawText("4. Урон игрока", 200, 480, WHITE, "medium");
-    drawText(`(${upgrades.playerDamage}) - ${upgradeCosts.playerDamage}`, 700, 480, YELLOW, "medium");
-    
-    drawText("5. Скорость стрельбы", 200, 530, WHITE, "medium");
-    drawText(`(${upgrades.playerFireRate}) - ${upgradeCosts.playerFireRate}`, 700, 530, YELLOW, "medium");
-    
-    drawText("6. Щиты игрока", 200, 580, WHITE, "medium");
-    drawText(`(${upgrades.playerShield}) - ${upgradeCosts.playerShield}`, 700, 580, YELLOW, "medium");
-    
-    drawText("7. Скорость игрока", 200, 630, WHITE, "medium");
-    drawText(`(${upgrades.playerSpeed}) - ${upgradeCosts.playerSpeed}`, 700, 630, YELLOW, "medium");
-    
-    // Подсказка продолжения
-    drawText("Нажмите ENTER для перехода к следующей волне", WIDTH/2, HEIGHT - 50, GREEN, "medium", true);
+    ctx.fillStyle="rgba(0,0,40,0.9)";ctx.fillRect(0,0,WIDTH,HEIGHT);
+    drawText(`ВОЛНА ${wave} ЗАВЕРШЕНА!`,WIDTH/2,100,GREEN,"title",true);
+    drawText(`+${80+wave*30+level*20} Ресурсов`,WIDTH/2,170,YELLOW,"large",true);
+    drawText(`Всего ресурсов: ${resources}`,WIDTH/2,220,YELLOW,"medium",true);
+    drawText("УЛУЧШЕНИЯ:",WIDTH/2,280,CYAN,"large",true);
+    const items=["Здоровье баз","Щиты баз","Турели баз","Урон игрока","Скорость стрельбы","Щиты игрока","Скорость игрока"];
+    items.forEach((t,i)=>{ drawText(`${i+1}. ${t}`,200,330+i*50,WHITE,"small"); drawText(`(${Object.values(upgrades)[i]}) - ${Object.values(upgradeCosts)[i]}`,700,330+i*50,YELLOW,"small");});
+    drawText("Нажмите ENTER для следующей волны",WIDTH/2,HEIGHT-50,GREEN,"medium",true);
 }
 
-// Отрисовка перехода уровня
 function drawLevelTransition() {
-    // Полупрозрачный фон
-    ctx.fillStyle = "rgba(0, 0, 40, 0.9)";
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    
-    // Заголовок
-    drawText(`УРОВЕНЬ ${level} ЗАВЕРШЕН!`, WIDTH/2, 150, GREEN, "title", true);
-    
-    // Заработанные ресурсы
-    drawText(`+${150 + level * 50} Ресурсов`, WIDTH/2, 220, YELLOW, "large", true);
-    
-    // Всего ресурсов
-    drawText(`Всего ресурсов: ${resources}`, WIDTH/2, 280, YELLOW, "medium", true);
-    
-    // Статистика уровня
-    drawText(`Уничтожено врагов: ${waveEnemiesCount}`, WIDTH/2, 340, WHITE, "medium", true);
-    drawText(`Сохранено баз: ${bases.length}/3`, WIDTH/2, 390, WHITE, "medium", true);
-    
-    // Новые враги на следующем уровне
-    drawText("На следующем уровне:", WIDTH/2, 460, CYAN, "large", true);
-    
-    if (level === 1) {
-        drawText("- Появятся быстрые истребители", WIDTH/2, 510, ORANGE, "medium", true);
-    } else if (level === 2) {
-        drawText("- Появятся тяжелые танки", WIDTH/2, 510, ORANGE, "medium", true);
-    } else if (level === 3) {
-        drawText("- Появятся бомбардировщики", WIDTH/2, 510, ORANGE, "medium", true);
-    } else if (level === 4) {
-        drawText("- Появятся снайперы", WIDTH/2, 510, ORANGE, "medium", true);
-    } else {
-        drawText("- Враги станут сильнее и быстрее", WIDTH/2, 510, ORANGE, "medium", true);
-    }
-    
-    // Подсказка продолжения
-    drawText("Нажмите ENTER для перехода на уровень " + (level + 1), WIDTH/2, HEIGHT - 50, GREEN, "medium", true);
+    ctx.fillStyle="rgba(0,0,40,0.9)";ctx.fillRect(0,0,WIDTH,HEIGHT);
+    drawText(`УРОВЕНЬ ${level} ЗАВЕРШЕН!`,WIDTH/2,150,GREEN,"title",true);
+    drawText(`+${150+level*50} Ресурсов`,WIDTH/2,220,YELLOW,"large",true);
+    drawText(`Всего ресурсов: ${resources}`,WIDTH/2,280,YELLOW,"medium",true);
+    drawText(`Уничтожено врагов: ${waveEnemiesCount}`,WIDTH/2,340,WHITE,"medium",true);
+    drawText(`Сохранено баз: ${bases.length}/3`,WIDTH/2,390,WHITE,"medium",true);
+    drawText("На следующем уровне:",WIDTH/2,460,CYAN,"large",true);
+    const nextEnemy=[
+        "- Появятся быстрые истребители",
+        "- Появятся тяжелые танки",
+        "- Появятся бомбардировщики",
+        "- Появятся снайперы",
+        "- Враги станут сильнее и быстрее"
+    ][Math.min(level-1,4)];
+    drawText(nextEnemy,WIDTH/2,510,ORANGE,"medium",true);
+    drawText(`Нажмите ENTER на уровень ${level+1}`,WIDTH/2,HEIGHT-50,GREEN,"medium",true);
 }
 
 // Отрисовка меню
