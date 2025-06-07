@@ -1,6 +1,3 @@
-[file name]: game.js
-[file content begin]
-// Константы игры
 const WIDTH = 1000;
 const HEIGHT = 700;
 const BLACK = "#000000";
