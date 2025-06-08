@@ -24,6 +24,22 @@ document.addEventListener('DOMContentLoaded', () => {
   let answerTimeout  = null;
   let answeredCall = false;
 
+  // Контекстное меню
+const contextMenu = document.createElement('div');
+contextMenu.className = 'context-menu';
+contextMenu.innerHTML = `
+  <ul>
+    <li id="ctx-delete">Удалить чат</li>
+    <li id="ctx-clear">Очистить историю</li>
+    <li id="ctx-leave">Покинуть</li>
+  </ul>
+`;
+document.body.appendChild(contextMenu);
+
+// Закрытие меню при клике вне его
+document.addEventListener('click', () => {
+  contextMenu.style.display = 'none';
+});
 // ─── Планировщик уведомлений календаря ───────────────────────────
 ;(function(){
   const pad = n => String(n).padStart(2,'0');
@@ -1495,6 +1511,97 @@ document.addEventListener('click', (e) => {
   if (!globalSearch.contains(e.target) && !searchResults.contains(e.target)) {
     searchResults.style.display = 'none';
     usersList.style.display = 'block';
+  }
+});
+
+// Обработчик ПКМ для элементов списка чатов
+document.getElementById('rooms-list').addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  
+  const roomItem = e.target.closest('li');
+  if (!roomItem) return;
+  
+  const roomId = roomItem.dataset.id;
+  const roomInfo = roomMeta[roomId];
+  if (!roomInfo) return;
+  
+  // Позиционируем меню
+  contextMenu.style.display = 'block';
+  contextMenu.style.left = `${e.pageX}px`;
+  contextMenu.style.top = `${e.pageY}px`;
+  
+  // Настраиваем видимость пунктов меню
+  document.getElementById('ctx-delete').style.display = 'none';
+  document.getElementById('ctx-clear').style.display = 'none';
+  document.getElementById('ctx-leave').style.display = 'none';
+  
+  // Для приватных чатов
+  if (!roomInfo.is_group && !roomInfo.is_channel) {
+    document.getElementById('ctx-delete').style.display = 'block';
+    document.getElementById('ctx-clear').style.display = 'block';
+  } 
+  // Для групп и каналов
+  else {
+    document.getElementById('ctx-leave').style.display = 'block';
+  }
+  
+  // Сохраняем текущую комнату для обработки действий
+  contextMenu.dataset.roomId = roomId;
+});
+
+// Обработчики действий контекстного меню
+document.getElementById('ctx-delete').addEventListener('click', async () => {
+  const roomId = contextMenu.dataset.roomId;
+  try {
+    const res = await fetch(`${API_URL}/rooms/${roomId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error(await res.text());
+    await loadRooms();
+    if (currentRoom === roomId) {
+      document.getElementById('chat-section').classList.remove('active');
+      currentRoom = null;
+    }
+  } catch (err) {
+    console.error('Ошибка удаления чата:', err);
+    alert('Не удалось удалить чат');
+  }
+});
+
+document.getElementById('ctx-clear').addEventListener('click', async () => {
+  const roomId = contextMenu.dataset.roomId;
+  try {
+    const res = await fetch(`${API_URL}/rooms/${roomId}/messages`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error(await res.text());
+    if (currentRoom === roomId) {
+      document.getElementById('chat-box').innerHTML = '';
+    }
+  } catch (err) {
+    console.error('Ошибка очистки истории:', err);
+    alert('Не удалось очистить историю');
+  }
+});
+
+document.getElementById('ctx-leave').addEventListener('click', async () => {
+  const roomId = contextMenu.dataset.roomId;
+  try {
+    const res = await fetch(`${API_URL}/rooms/${roomId}/members/${userNickname}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error(await res.text());
+    await loadRooms();
+    if (currentRoom === roomId) {
+      document.getElementById('chat-section').classList.remove('active');
+      currentRoom = null;
+    }
+  } catch (err) {
+    console.error('Ошибка выхода из комнаты:', err);
+    alert('Не удалось покинуть комнату');
   }
 });
   // Initialization
