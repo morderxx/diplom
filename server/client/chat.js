@@ -1583,24 +1583,22 @@ document.getElementById('ctx-clear').addEventListener('click', async () => {
     
     if (!res.ok) throw new Error(await res.text());
     
+    // Если очищаем текущую комнату - немедленно обновляем UI
     if (currentRoom === roomId) {
       // 1. Очищаем видимый чат
       document.getElementById('chat-box').innerHTML = '';
       
-      // 2. Обновляем данные комнаты (ключевое изменение!)
-      const updatedRoom = await fetchRoomData(roomId); // Новая функция
-      
-      // 3. Обновляем UI комнаты
-      updateRoomUI(updatedRoom); // Новая функция
-      
-      // 4. Обновляем список комнат в сайдбаре
-      await loadRooms();
+      // 2. Вызываем joinRoom для текущей комнаты, чтобы обновить данные
+      joinRoom(roomId);
     }
+    
+    // Закрываем контекстное меню
+    contextMenu.style.display = 'none';
   } catch (err) {
     console.error('Ошибка очистки истории:', err);
     alert('Не удалось очистить историю');
+    contextMenu.style.display = 'none';
   }
-  contextMenu.style.display = 'none';
 });
 
 // Новая функция: получение актуальных данных комнаты
