@@ -1433,7 +1433,7 @@ function renderSearchResults(results, type) {
     const li = document.createElement('li');
     li.textContent = type === 'user' ? item.nickname : item.name;
     
-   li.onclick = async () => {
+  li.onclick = async () => {
   if (type === 'user') {
     openPrivateChat(item.nickname);
   } else {
@@ -1475,10 +1475,6 @@ function renderSearchResults(results, type) {
   searchResults.style.display = 'none';
   usersList.style.display = 'block';
 };
-
-  searchResults.style.display = 'block';
-  usersList.style.display = 'none';
-}
 
 // Обработчик ввода в поле поиска
 globalSearch.addEventListener('input', () => {
