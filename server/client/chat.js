@@ -1028,7 +1028,18 @@ async function joinRoom(roomId) {
       break;
 
 
-
+// В обработке WebSocket-сообщений
+case 'history-cleared':
+  // Рассылаем событие всем участникам комнаты
+  wss.clients.forEach(client => {
+    if (client.roomId === msg.roomId && client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify({
+        type: 'history-cleared',
+        roomId: msg.roomId
+      }));
+    }
+  });
+  break;
       
     case 'webrtc-cancel':
       // рисуем только если это сделал НЕ мы сами
