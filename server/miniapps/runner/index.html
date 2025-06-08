@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dino Runner - Игра про динозаврика</title>
+    <title>Dino Runner - Расширенный обзор</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -32,18 +32,18 @@
         <div class="features">
             <div class="feature">
                 <div class="feature-icon">🦖</div>
-                <h3>Динамический геймплей</h3>
-                <p>Игра ускоряется со временем, увеличивая сложность</p>
+                <h3>Расширенный обзор</h3>
+                <p>Большая область видимости для лучшего планирования</p>
             </div>
             <div class="feature">
-                <div class="feature-icon">🌵</div>
-                <h3>Два типа препятствий</h3>
-                <p>Перепрыгивайте кактусы и уклоняйтесь от птеродактилей</p>
+                <div class="feature-icon">🌄</div>
+                <h3>Плавная сложность</h3>
+                <p>Скорость увеличивается очень постепенно</p>
             </div>
             <div class="feature">
-                <div class="feature-icon">🏆</div>
-                <h3>Система рекордов</h3>
-                <p>Сохраняйте и улучшайте свои достижения</p>
+                <div class="feature-icon">🎨</div>
+                <h3>Улучшенная графика</h3>
+                <p>Детализированные объекты и фон</p>
             </div>
         </div>
     </div>
@@ -51,8 +51,9 @@
     <div id="game-modal" class="modal">
         <div class="modal-content game-modal-content">
             <span class="close-game">&times;</span>
-            <canvas id="game-canvas" width="1200" height="500"></canvas>
+            <canvas id="game-canvas" width="1400" height="500"></canvas>
             <div id="score-display">Счет: 0</div>
+            <div id="speed-display">Скорость: 1x</div>
             <div id="game-over" class="hidden">
                 <h2>Игра окончена!</h2>
                 <p>Ваш счет: <span id="final-score">0</span></p>
