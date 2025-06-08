@@ -663,3 +663,25 @@ body.lightbox-open {
   max-height: 300px;
   overflow-y: auto;
 }
+
+/* Стили для экрана капчи */
+#captcha-screen .form-container {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    width: 350px;
+    margin: 0 auto;
+}
+
+.g-recaptcha {
+    margin: 20px 0;
+    display: flex;
+    justify-content: center;
+}
+
+/* Анимации */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
