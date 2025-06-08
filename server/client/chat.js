@@ -30,7 +30,6 @@ contextMenu.className = 'context-menu';
 contextMenu.innerHTML = `
   <ul>
     <li id="ctx-delete">Удалить чат</li>
-    <li id="ctx-clear">Очистить историю</li>
     <li id="ctx-leave">Покинуть</li>
   </ul>
 `;
@@ -1562,28 +1561,15 @@ document.getElementById('ctx-delete').addEventListener('click', async () => {
     if (currentRoom === roomId) {
       document.getElementById('chat-section').classList.remove('active');
       currentRoom = null;
+      // Очищаем чат и скрываем элементы интерфейса
+      document.getElementById('chat-box').innerHTML = '';
+      document.getElementById('chat-header').classList.add('hidden');
     }
   } catch (err) {
     console.error('Ошибка удаления чата:', err);
     alert('Не удалось удалить чат');
   }
-});
-
-document.getElementById('ctx-clear').addEventListener('click', async () => {
-  const roomId = contextMenu.dataset.roomId;
-  try {
-    const res = await fetch(`${API_URL}/rooms/${roomId}/messages`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!res.ok) throw new Error(await res.text());
-    if (currentRoom === roomId) {
-      document.getElementById('chat-box').innerHTML = '';
-    }
-  } catch (err) {
-    console.error('Ошибка очистки истории:', err);
-    alert('Не удалось очистить историю');
-  }
+  contextMenu.style.display = 'none';
 });
 
 document.getElementById('ctx-leave').addEventListener('click', async () => {
@@ -1598,11 +1584,15 @@ document.getElementById('ctx-leave').addEventListener('click', async () => {
     if (currentRoom === roomId) {
       document.getElementById('chat-section').classList.remove('active');
       currentRoom = null;
+      // Очищаем чат и скрываем элементы интерфейса
+      document.getElementById('chat-box').innerHTML = '';
+      document.getElementById('chat-header').classList.add('hidden');
     }
   } catch (err) {
     console.error('Ошибка выхода из комнаты:', err);
     alert('Не удалось покинуть комнату');
   }
+  contextMenu.style.display = 'none';
 });
   // Initialization
   loadRooms();
