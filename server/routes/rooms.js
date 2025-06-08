@@ -256,4 +256,95 @@ router.get('/:roomId', authMiddleware, async (req, res) => {
   }
 });
 
+// DELETE /api/rooms/:roomId - удалить комнату (только для приватных чатов)
+router.delete('/:roomId', authMiddleware, async (req, res) => {
+  const { roomId } = req.params;
+  try {
+    // Проверяем, что это приватный чат и текущий пользователь участник
+    const room = await pool.query(
+      `SELECT is_group, is_channel 
+       FROM rooms 
+       WHERE id = $1`,
+      [roomId]
+    );
+    
+    if (room.rows.length === 0) {
+      return res.status(404).send('Room not found');
+    }
+    
+    if (room.rows[0].is_group || room.rows[0].is_channel) {
+      return res.status(400).send('Can only delete private chats');
+    }
+    
+    // Удаляем комнату
+    await pool.query('DELETE FROM rooms WHERE id = $1', [roomId]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Error deleting room:', err);
+    res.status(500).send('Error deleting room');
+  }
+});
+
+// DELETE /api/rooms/:roomId/messages - очистить историю
+router.delete('/:roomId/messages', authMiddleware, async (req, res) => {
+  const { roomId } = req.params;
+  try {
+    // Проверяем членство
+    const isMember = await pool.query(
+      'SELECT 1 FROM room_members WHERE room_id = $1 AND nickname = $2',
+      [roomId, req.userNickname]
+    );
+    if (!isMember.rowCount) {
+      return res.status(403).send('Not a member');
+    }
+    
+    // Удаляем сообщения
+    await pool.query('DELETE FROM messages WHERE room_id = $1', [roomId]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Error clearing messages:', err);
+    res.status(500).send('Error clearing messages');
+  }
+});
+
+// DELETE /api/rooms/:roomId/members/:nickname - покинуть комнату
+router.delete('/:roomId/members/:nickname', authMiddleware, async (req, res) => {
+  const { roomId, nickname } = req.params;
+  
+  if (nickname !== req.userNickname) {
+    return res.status(403).send('Can only leave yourself');
+  }
+  
+  try {
+    // Проверяем, что пользователь участник
+    const isMember = await pool.query(
+      'SELECT 1 FROM room_members WHERE room_id = $1 AND nickname = $2',
+      [roomId, nickname]
+    );
+    if (!isMember.rowCount) {
+      return res.status(400).send('Not a member');
+    }
+    
+    // Проверяем тип комнаты
+    const room = await pool.query(
+      'SELECT is_group, is_channel FROM rooms WHERE id = $1',
+      [roomId]
+    );
+    
+    if (!room.rows[0].is_group && !room.rows[0].is_channel) {
+      return res.status(400).send('Cannot leave private chat');
+    }
+    
+    // Удаляем из участников
+    await pool.query(
+      'DELETE FROM room_members WHERE room_id = $1 AND nickname = $2',
+      [roomId, nickname]
+    );
+    
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Error leaving room:', err);
+    res.status(500).send('Error leaving room');
+  }
+});
 module.exports = router;
