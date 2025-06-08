@@ -1414,7 +1414,7 @@ async function searchUsersAndChannels(query) {
   }
 
   try {
-    const res = await fetch(`${API_URL}/search?q=${encodeURIComponent(searchTerm)}&type=${
+       const res = await fetch(`${API_URL}/users/search?q=${encodeURIComponent(searchTerm)}&type=${
       isUserSearch ? 'user' : 'channel'
     }`, {
       headers: { Authorization: `Bearer ${token}` }
