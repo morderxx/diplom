@@ -23,23 +23,38 @@ const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET;
 // Маршрут для проверки reCAPTCHA
 app.post('/api/verify-captcha', async (req, res) => {
     try {
+        console.log('Request body:', req.body); // Добавьте для отладки
+        
+        if (!req.body || !req.body.captcha) {
+            console.error('CAPTCHA token is missing');
+            return res.status(400).json({ 
+                success: false, 
+                'error-codes': ['missing-input-response'] 
+            });
+        }
+        
         const { captcha } = req.body;
+        console.log('Verifying CAPTCHA:', captcha); // Логирование токена
         
         const response = await axios.post(
             'https://www.google.com/recaptcha/api/siteverify',
             null,
             {
                 params: {
-                    secret: RECAPTCHA_SECRET,
+                    secret: process.env.RECAPTCHA_SECRET,
                     response: captcha
                 }
             }
         );
         
+        console.log('CAPTCHA verification response:', response.data);
         res.json(response.data);
     } catch (error) {
         console.error('CAPTCHA verification error:', error);
-        res.status(500).json({ success: false, 'error-codes': ['server-error'] });
+        res.status(500).json({ 
+            success: false, 
+            'error-codes': ['server-error'] 
+        });
     }
 });
 // 1) Middleware
