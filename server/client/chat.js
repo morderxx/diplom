@@ -491,11 +491,6 @@ function showCallWindow(peer, incoming = false) {
   }, 30_000);
 }
 
-
-
-
-
-
   // Скрыть окно звонка
   function hideCallWindow() {
     clearInterval(callTimerIntvl);
@@ -1027,13 +1022,25 @@ async function joinRoom(roomId) {
       answeredCall = false;
       break;
 
-
-  // В socket.onmessage
 case 'history-cleared':
+  console.log(`Received history-cleared for room ${msg.roomId}, current room is ${currentRoom}`);
   if (msg.roomId === currentRoom) {
-    // Показываем уведомление и перезагружаем страницу через короткую задержку
-    appendSystem("История сообщений была очищена. Страница будет перезагружена...");
-    setTimeout(() => location.reload(), 1000);
+    // Добавим более заметное уведомление
+    const notification = document.createElement('div');
+    notification.className = 'global-notification';
+    notification.innerHTML = `
+      <div class="notification-content">
+        <p>История сообщений была очищена администратором</p>
+        <p>Страница будет перезагружена через 3 секунды...</p>
+      </div>
+    `;
+    document.body.appendChild(notification);
+    
+    // Увеличим задержку перед перезагрузкой
+    setTimeout(() => {
+      console.log('Reloading page due to history cleared');
+      location.reload();
+    }, 3000);
   }
   break;
       
