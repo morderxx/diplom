@@ -256,27 +256,21 @@ router.get('/:roomId', authMiddleware, async (req, res) => {
   }
 });
 
-// DELETE /api/rooms/:roomId - удалить комнату (только для приватных чатов)
+// DELETE /api/rooms/:roomId - удалить приватный чат
 router.delete('/:roomId', authMiddleware, async (req, res) => {
   const { roomId } = req.params;
   try {
-    // Проверяем, что это приватный чат и текущий пользователь участник
+    // Проверяем, что это приватный чат (не группа/канал)
     const room = await pool.query(
-      `SELECT is_group, is_channel 
-       FROM rooms 
-       WHERE id = $1`,
+      `SELECT is_group, is_channel FROM rooms WHERE id = $1`,
       [roomId]
     );
-    
-    if (room.rows.length === 0) {
-      return res.status(404).send('Room not found');
-    }
-    
+    if (room.rows.length === 0) return res.status(404).send('Room not found');
     if (room.rows[0].is_group || room.rows[0].is_channel) {
       return res.status(400).send('Can only delete private chats');
     }
-    
-    // Удаляем комнату
+
+    // Удаляем комнату (каскадно удалит сообщения и звонки)
     await pool.query('DELETE FROM rooms WHERE id = $1', [roomId]);
     res.json({ ok: true });
   } catch (err) {
@@ -285,7 +279,7 @@ router.delete('/:roomId', authMiddleware, async (req, res) => {
   }
 });
 
-// DELETE /api/rooms/:roomId/messages - очистить историю
+// DELETE /api/rooms/:roomId/messages - очистить историю (сообщения + звонки)
 router.delete('/:roomId/messages', authMiddleware, async (req, res) => {
   const { roomId } = req.params;
   try {
@@ -294,53 +288,40 @@ router.delete('/:roomId/messages', authMiddleware, async (req, res) => {
       'SELECT 1 FROM room_members WHERE room_id = $1 AND nickname = $2',
       [roomId, req.userNickname]
     );
-    if (!isMember.rowCount) {
-      return res.status(403).send('Not a member');
-    }
-    
-    // Удаляем сообщения
+    if (!isMember.rowCount) return res.status(403).send('Not a member');
+
+    // Удаляем сообщения и звонки
     await pool.query('DELETE FROM messages WHERE room_id = $1', [roomId]);
+    await pool.query('DELETE FROM calls WHERE room_id = $1', [roomId]);
+    
     res.json({ ok: true });
   } catch (err) {
-    console.error('Error clearing messages:', err);
-    res.status(500).send('Error clearing messages');
+    console.error('Error clearing history:', err);
+    res.status(500).send('Error clearing history');
   }
 });
 
-// DELETE /api/rooms/:roomId/members/:nickname - покинуть комнату
+// DELETE /api/rooms/:roomId/members/:nickname - покинуть группу/канал
 router.delete('/:roomId/members/:nickname', authMiddleware, async (req, res) => {
   const { roomId, nickname } = req.params;
-  
   if (nickname !== req.userNickname) {
     return res.status(403).send('Can only leave yourself');
   }
-  
   try {
-    // Проверяем, что пользователь участник
-    const isMember = await pool.query(
-      'SELECT 1 FROM room_members WHERE room_id = $1 AND nickname = $2',
-      [roomId, nickname]
-    );
-    if (!isMember.rowCount) {
-      return res.status(400).send('Not a member');
-    }
-    
-    // Проверяем тип комнаты
+    // Проверяем, что это группа/канал
     const room = await pool.query(
       'SELECT is_group, is_channel FROM rooms WHERE id = $1',
       [roomId]
     );
-    
     if (!room.rows[0].is_group && !room.rows[0].is_channel) {
       return res.status(400).send('Cannot leave private chat');
     }
-    
-    // Удаляем из участников
+
+    // Удаляем пользователя из участников
     await pool.query(
       'DELETE FROM room_members WHERE room_id = $1 AND nickname = $2',
       [roomId, nickname]
     );
-    
     res.json({ ok: true });
   } catch (err) {
     console.error('Error leaving room:', err);
