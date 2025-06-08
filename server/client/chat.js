@@ -1580,12 +1580,16 @@ document.getElementById('ctx-clear').addEventListener('click', async () => {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` }
     });
+    
     if (!res.ok) throw new Error(await res.text());
+    
     if (currentRoom === roomId) {
-      // Полностью очищаем чат, включая системные сообщения
+      // Полностью очищаем чат
       document.getElementById('chat-box').innerHTML = '';
-      // Перезагружаем комнату, чтобы обновить интерфейс
-      joinRoom(roomId);
+      
+      // ОБНОВЛЯЕМ ДАННЫЕ О КОМНАТЕ
+      await loadRooms(); // Перезагружаем список комнат
+      joinRoom(roomId); // Перезагружаем текущую комнату
     }
   } catch (err) {
     console.error('Ошибка очистки истории:', err);
