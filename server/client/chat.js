@@ -932,7 +932,10 @@ async function joinRoom(roomId) {
   if (socket) socket.close();
   renderedFileIds.clear();
   currentRoom = roomId;
-
+  if (!roomMeta[roomId]) {
+    console.error('Канал не найден в roomMeta');
+    return;
+  }
   // readonly для каналов
   const m = roomMeta[roomId] || {};
   const readOnly = m.is_channel && m.creator !== userNickname;
@@ -1430,21 +1433,25 @@ function renderSearchResults(results, type) {
     const li = document.createElement('li');
     li.textContent = type === 'user' ? item.nickname : item.name;
     
-    if (type === 'user') {
-      li.onclick = () => {
+    li.onclick = async () => {
+      if (type === 'user') {
         openPrivateChat(item.nickname);
-        globalSearch.value = '';
-        searchResults.style.display = 'none';
-        usersList.style.display = 'block';
-      };
-    } else {
-      li.onclick = () => {
-        joinRoom(item.id);
-        globalSearch.value = '';
-        searchResults.style.display = 'none';
-        usersList.style.display = 'block';
-      };
-    }
+      } else {
+        // Для каналов: обновляем roomMeta перед вызовом joinRoom
+        if (!roomMeta[item.id]) {
+          roomMeta[item.id] = {
+            is_channel: true,
+            name: item.name,
+            creator: null, // или актуальное значение, если есть
+            members: []   // или актуальное значение, если есть
+          };
+        }
+        await joinRoom(item.id);
+      }
+      globalSearch.value = '';
+      searchResults.style.display = 'none';
+      usersList.style.display = 'block';
+    };
     
     searchResults.appendChild(li);
   });
