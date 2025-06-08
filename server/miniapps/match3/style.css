@@ -287,30 +287,21 @@ body {
 }
 
 .screen-content {
-    /* Основные размеры */
     height: 100%;
     max-width: 100%;
-    
-    /* Визуальные стили */
-    padding: 30px;
+    padding: 50px 30px 30px; /* Изменено: увеличен верхний отступ */
     background: rgba(20, 15, 45, 0.8);
     border-radius: 20px;
     box-shadow: 0 0 40px rgba(120, 50, 255, 0.5);
     border: 2px solid #6a4cff;
-    
-    /* Центрирование */
     display: flex;
     flex-direction: column;
-    justify-content: center; /* Вертикальное центрирование */
-    align-items: center;     /* Горизонтальное центрирование */
+    justify-content: flex-start; /* Изменено: контент начинается сверху */
+    align-items: center;
     text-align: center;
-    
-    /* Убираем прокрутку */
-    overflow: hidden;        /* Заменяем overflow-y: auto */
+    overflow: hidden;
     box-sizing: border-box;
-    
-    /* Новое свойство для контента */
-    position: relative;      /* Для корректной работы внутренних элементов */
+    position: relative;
 }
 
 /* Для внутренних элементов */
@@ -335,19 +326,19 @@ body {
 }
 
 .screen-title {
-    font-size: 42px;
+    font-size: 40px;
     background: linear-gradient(45deg, #9d7aff, #6a4cff, #00eaff);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    margin-bottom: 20px;
+    margin-bottom: 10px; /* Уменьшен отступ */
     text-shadow: 0 0 15px rgba(106, 76, 255, 0.4);
     font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif;
 }
 
 .screen-text {
-    font-size: 22px;
-    margin-bottom: 30px;
+    font-size: 20px;
+    margin-bottom: 15px; /* Уменьшен отступ */
     max-width: 90%;
     line-height: 1.5;
     color: #e0d6ff;
@@ -487,6 +478,10 @@ body {
 
 /* Адаптивность */
 @media (max-width: 600px) {
+    .screen-content {
+        padding: 30px 20px 20px; /* Адаптивный отступ */
+    }
+    
     .cell {
         width: 40px;
         height: 40px;
