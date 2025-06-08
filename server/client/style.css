@@ -1,665 +1,441 @@
 /* =================== */
-/*  СТИЛИ ДЛЯ ФОРМ    */
+/*  ОБЩИЕ СТИЛИ       */
 /* =================== */
-
 body {
     margin: 0;
-    font-family: Arial, sans-serif;
-    background: #f0f2f5;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
+    color: #333;
 }
 
-.form-container {
-    background: white;
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    width: 350px;
-}
-
-h1 {
-    text-align: center;
-    margin-bottom: 20px;
-}
-
-input, textarea {
-    width: 100%;
-    margin-bottom: 15px;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    font-size: 14px;
-    box-sizing: border-box;
-}
-
-.button-container {
+/* =================== */
+/*  САЙДБАР            */
+/* =================== */
+.rooms-sidebar {
+    width: 280px;
+    background: rgba(255, 255, 255, 0.95);
+    border-right: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 20px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    margin-bottom: 15px;
-}
-
-button {
-    width: 100%;
-    padding: 10px;
-    background: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    font-size: 14px;
-}
-
-button:hover {
-    background: #45a049;
-}
-
-#registerButton {
-    background-color: #007bff;
-    margin-top: 15px;
-}
-
-#registerButton:hover {
-    background-color: #0056b3;
-}
-
-#message {
-    margin-top: 10px;
-    font-size: 14px;
-    color: red;
-    text-align: center;
-}
-
-/* =================== */
-/*   СТИЛИ ДЛЯ ЧАТА    */
-/* =================== */
-.hidden { display: none; }
-.chat-wrapper {
-  display: flex;
-  width: 90%;
-  max-width: 1200px;
-  height: 90vh;
-  background: #fff;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-}
-
-/* Сайдбар с чатами и пользователями */
-.rooms-sidebar {
-  width: 260px;
-  background: #fafafa;
-  border-right: 1px solid #ddd;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  overflow-y: auto;
+    gap: 20px;
+    overflow-y: auto;
+    border-radius: 16px 0 0 16px;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
 }
 
 .rooms-sidebar .current-user {
-  font-weight: bold;
-  margin-bottom: 10px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
 .rooms-sidebar h2 {
-  margin: 0;
-  font-size: 16px;
-  border-bottom: 1px solid #ddd;
-  padding-bottom: 5px;
+    margin: 0;
+    font-size: 18px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e9ecef;
+    color: #495057;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .rooms-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .rooms-list li {
-  padding: 8px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.2s;
+    padding: 12px 15px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: #ffffff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    border: 1px solid #f1f3f5;
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.rooms-list li:before {
+    content: "";
+    display: block;
+    width: 8px;
+    height: 8px;
+    background: #4CAF50;
+    border-radius: 50%;
+    margin-right: 10px;
 }
 
 .rooms-list li:hover {
-  background: #e0e0e0;
+    background: #f1f3ff;
+    transform: translateX(5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
 }
 
-/* Основная зона чата */
+.rooms-list li.active {
+    background: #eef7ff;
+    border-left: 4px solid #007bff;
+}
+
+/* Кнопки в сайдбаре */
+.rooms-sidebar > button {
+    padding: 14px 20px;
+    border-radius: 12px;
+    background: #ffffff;
+    border: none;
+    text-align: left;
+    font-size: 15px;
+    font-weight: 500;
+    color: #495057;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    border: 1px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.rooms-sidebar > button:before {
+    font-size: 18px;
+}
+
+.rooms-sidebar > button:hover {
+    background: #f8f9fa;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+/* Поиск */
+.search-container {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+#global-search {
+    width: 100%;
+    padding: 12px 15px 12px 40px;
+    border: 1px solid #e9ecef;
+    border-radius: 30px;
+    font-size: 14px;
+    box-sizing: border-box;
+    background: #f8f9fa url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="%236c757d" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg>') no-repeat 15px center;
+    transition: all 0.3s;
+}
+
+#global-search:focus {
+    background-color: #fff;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+    outline: none;
+}
+
+#search-results {
+    position: absolute;
+    width: 100%;
+    background: white;
+    z-index: 10;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    border-radius: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 5px;
+    padding: 10px 0;
+}
+
+/* =================== */
+/*  ОСНОВНОЙ ЧАТ       */
+/* =================== */
+.chat-wrapper {
+    display: flex;
+    width: 95%;
+    max-width: 1400px;
+    height: 92vh;
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
 .chat-container {
-  flex: 1;
-  display: none;
-  flex-direction: column;
-  padding: 20px;
-  background: #f0f2f5;
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    padding: 0;
+    background: #f0f2f5;
 }
 
 .chat-container.active {
-  display: flex;
+    display: flex;
 }
 
-/* Область сообщений */
 .chat-message-area {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid #ccc;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
-  margin-bottom: 8px;
-  overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    background: #fff;
+    border-radius: 0 16px 0 0;
+    overflow: hidden;
 }
 
-.chat-header__actions {
-  display: flex;
-  gap: 8px;
-}
-
-/* Шапка чата */
 .chat-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 20px;
-  background: #f7faff;
-  border-bottom: 1px solid #ddd;
-  font-weight: 600;
-  font-size: 15px;
-  color: #333;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 25px;
+    background: linear-gradient(to right, #4a69e2, #6a5af9);
+    color: white;
+    font-weight: 600;
+    font-size: 17px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
 .chat-header__call-btn {
-  width: 32px;
-  height: 32px;
-  background: #4CAF50;
-  color: #fff;
-  font-size: 16px;
-  border: none;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s ease;
-}
-
-.chat-header__call-btn:hover {
-  background: #45a049;
-}
-
-/* Бокс с сообщениями */
-.chat-box {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background: #fff;
-}
-
-/* Инпут снизу */
-.input-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px;
-  background: #fff;
-  margin-top: 8px;
-  border-radius: 12px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-}
-
-/* Кнопки */
-.icon-btn {
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: 50%;
-  font-size: 18px;
-  color: #fff;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s ease;
-}
-
-#attach-btn {
-  background: #4CAF50;
-}
-
-#attach-btn:hover {
-  background: #45a049;
-}
-
-#send-btn,
-#voice-btn {
-  background: #007bff;
-}
-
-#send-btn:hover,
-#voice-btn:hover {
-  background: #0056b3;
-}
-
-/* Текстовое поле */
-textarea#message {
-  flex: 1;
-  padding: 10px 12px;
-  border-radius: 20px;
-  border: 1px solid #ccc;
-  font-size: 14px;
-  line-height: 1.4em;
-  max-height: calc(1.4em * 3 + 24px);
-  overflow-y: auto;
-  resize: none;
-  box-sizing: border-box;
-}
-
-/* Сообщения */
-.message-wrapper {
-  display: flex;
-  width: 100%;
-}
-
-.my-message,
-.other-message {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-}
-
-.my-message {
-  align-items: flex-end;
-}
-
-.other-message {
-  align-items: flex-start;
-}
-
-.message-bubble {
-  background-color: #dcf8c6;
-  padding: 8px 12px;
-  border-radius: 12px;
-  max-width: 70%;
-  word-break: break-word;
-}
-
-.other-message .message-bubble {
-  background-color: #fff;
-  border: 1px solid #ddd;
-}
-
-.message-info {
-  font-size: 10px;
-  color: #555;
-  margin-bottom: 2px;
-}
-
-.message-text {
-  font-size: 14px;
-  color: #000;
-}
-
-/* Системные сообщения */
-.system-call-wrapper {
-  display: flex;
-  justify-content: center;
-  margin: 10px 0;
-}
-
-.system-call {
-  background-color: #E0F7FF;
-  color: #003366;
-  padding: 8px 12px;
-  border: 1px solid #99CCFF;
-  border-radius: 8px;
-  max-width: 60%;
-  text-align: center;
-  font-style: italic;
-}
-
-/* =============================== */
-/*  Специальные стили для media   */
-/* =============================== */
-
-/* Для медиа в чате: аккуратный размер, без пузыря */
-.media-bubble {
-    background: transparent !important;
-    padding: 0 !important;
-    max-width: none !important;
-}
-
-.media-bubble img,
-.media-bubble video {
-    display: block;
-    width: auto !important;
-    max-width: 250px !important;
-    max-height: 250px !important;
-    margin: 4px 0;
-    border-radius: 8px;
-}
-
-/* ======= Lightbox Overlay ======= */
-#lightbox-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.7);
-    backdrop-filter: blur(6px);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-
-#lightbox-overlay.hidden {
-    display: none;
-}
-
-/* Контейнер для изображения + кнопок */
-#lightbox-content {
-    position: relative;
-    max-width: 90vw;
-    max-height: 90vh;
-}
-
-/* Сама картинка */
-#lightbox-content img {
-    display: block;
-    width: auto;
-    height: auto;
-    max-width: 90vw;
-    max-height: 90vh;
-    object-fit: contain;
-    border-radius: 8px;
-    margin: 0 auto;
-}
-
-/* Общий стиль кнопок в лайтбоксе */
-#lightbox-close,
-#lightbox-download {
-    position: absolute;
-    top: 8px;
-    width: 36px;
-    height: 36px;
-    background: rgba(0,0,0,0.6);
+    width: 38px;
+    height: 38px;
+    background: rgba(255,255,255,0.2);
     color: #fff;
+    font-size: 17px;
     border: none;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
+    transition: all 0.3s ease;
     cursor: pointer;
-    transition: background 0.2s;
-    z-index: 1001;
 }
 
-/* Размещение кнопок: скачать — левее, закрыть — правее */
-#lightbox-download { right: 52px; }
-#lightbox-close    { right: 8px; }
-
-#lightbox-close:hover,
-#lightbox-download:hover {
-    background: rgba(0,0,0,0.8);
+.chat-header__call-btn:hover {
+    background: rgba(255,255,255,0.3);
+    transform: scale(1.1);
 }
 
-/* Отключаем скролл основной страницы при открытом лайтбоксе */
-body.lightbox-open {
-    overflow: hidden;
-}
-
-/* =============== Окно звонка =============== */
-.call-window {
-  position: fixed;
-  top: 120px;
-  left: 120px;
-  width: 300px;
-  background: #fff;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-  z-index: 1000;
-  font-family: Arial, sans-serif;
-  border: 1px solid #ccc;
-  transition: transform 0.2s;
-}
-.call-window.hidden {
-  display: none;
-}
-.call-header {
-  background: #4CAF50;
-  color: #fff;
-  padding: 8px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: move;
-}
-.call-header button {
-  background: none;
-  border: none;
-  color: #fff;
-  font-size: 16px;
-  cursor: pointer;
-  margin-left: 8px;
-}
-.call-body {
-  padding: 16px;
-  text-align: center;
-}
-#call-status {
-  margin-bottom: 12px;
-  font-weight: bold;
-}
-#call-timer {
-  font-size: 20px;
-  font-weight: bold;
-  margin-bottom: 12px;
-}
-.call-controls {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-}
-.action-btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 20px;
-  background: #4CAF50;
-  color: #fff;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background 0.2s;
-}
-.action-btn:hover {
-  background: #45a049;
-}
-.action-btn.cancel {
-  background: #f44336;
-}
-.action-btn.cancel:hover {
-  background: #d32f2f;
-}
-/* ============================================ */
-/* Внутри контейнера .message-wrapper */
-.call-message {
-    background-color: #e0f7fa;       /* светло-голубой фон */
-    border-radius: 8px;              /* скруглённые углы */
-    margin: 4px 0;                   /* вертикальные отступы */
-    padding: 8px;                    /* внутренние отступы */
-    max-width: 70%;                  /* чтобы не растягивались на всю ширину */
-  }
-  
-  /* Контейнер с текстом звонка */
-  .call-info {
+.chat-box {
+    flex: 1;
+    overflow-y: auto;
+    padding: 25px;
     display: flex;
     flex-direction: column;
-    font-size: 0.9em;
-  }
-  
-  /* Отступы между строками внутри .call-info */
-  .call-info div {
-    margin: 2px 0;
-  }
-  
-  /* При желании можно отличать свои звонки от чужих, например: */
-  .my-message .call-message {
-    background-color: #b2ebf2;       /* чуть более тёмный, если это ты звонил */
-  }
-  .other-message .call-message {
-    background-color: #e0f7fa;
-  }
-
-/* Фон и окно */
-#group-modal .modal-overlay {
-  position: fixed; top:0; left:0; right:0; bottom:0;
-  background: rgba(0,0,0,0.5);
-}
-#group-modal .modal-window {
-  position: fixed; top:50%; left:50%;
-  transform: translate(-50%,-50%);
-  background: #fff; padding: 16px; border-radius: 4px;
-  width: 300px;
-}
-.suggestions-list {
-  list-style: none; padding:0; margin:4px 0; max-height:120px;
-  overflow-y: auto; border: 1px solid #ccc;
-}
-.suggestions-list li {
-  padding: 4px; cursor: pointer;
-}
-.suggestions-list li:hover { background: #f0f0f0; }
-.selected-list {
-  margin: 8px 0; display: flex; flex-wrap: wrap; gap:4px;
-}
-.selected-list .tag {
-  background: #e0e0e0; padding:2px 6px; border-radius:12px;
-  display: inline-flex; align-items: center;
-}
-.selected-list .tag .remove {
-  margin-left:4px; cursor: pointer;
-}
-.modal-actions { text-align: right; margin-top: 8px; }
-.modal-actions button { margin-left: 4px; }
-
-#modal {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 999;
+    gap: 15px;
+    background: #f5f7fb;
+    background-image: radial-gradient(#e6e9f0 1px, transparent 1px);
+    background-size: 20px 20px;
 }
 
-#modal-content {
-  background: white;
-  border-radius: 10px;
-  padding: 10px;
-  width: 400px;
-  height: 600px;
-  position: relative;
+.input-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px;
+    background: #fff;
+    border-top: 1px solid #e9ecef;
 }
 
-#modal-close {
-  position: absolute;
-  right: 10px;
-  top: 5px;
-  font-size: 20px;
-  cursor: pointer;
+textarea#message {
+    flex: 1;
+    padding: 14px 20px;
+    border-radius: 30px;
+    border: 1px solid #e9ecef;
+    font-size: 15px;
+    resize: none;
+    transition: all 0.3s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.03);
 }
 
-#modal-frame {
-  width: 100%;
-  height: 100%;
-  border: none;
+textarea#message:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+    outline: none;
 }
 
-/* Модальное окно для игр */
-#game-modal {
-  display: none;
-  position: fixed;
-  z-index: 1000;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0,0,0,0.9);
-  justify-content: center;
-  align-items: center;
+.icon-btn {
+    width: 42px;
+    height: 42px;
+    border: none;
+    border-radius: 50%;
+    font-size: 18px;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
+.icon-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 7px 14px rgba(0,0,0,0.15);
+}
+
+#attach-btn { background: #6a5af9; }
+#send-btn, #voice-btn { background: #4a69e2; }
+
+/* =================== */
+/*  СООБЩЕНИЯ          */
+/* =================== */
+.message-bubble {
+    padding: 14px 18px;
+    border-radius: 18px;
+    max-width: 75%;
+    word-break: break-word;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+    position: relative;
+    animation: messageAppear 0.3s ease-out;
+}
+
+@keyframes messageAppear {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.my-message .message-bubble {
+    background: linear-gradient(135deg, #6a5af9, #4a69e2);
+    color: white;
+    border-bottom-right-radius: 5px;
+}
+
+.other-message .message-bubble {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-bottom-left-radius: 5px;
+}
+
+.message-info {
+    font-size: 11px;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.other-message .message-info {
+    color: #868e96;
+}
+
+.message-text {
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+/* =================== */
+/*  ЛАЙТБОКС           */
+/* =================== */
+#lightbox-overlay {
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(10px);
+}
+
+#lightbox-content {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+}
+
+#lightbox-content img {
+    border-radius: 12px;
+}
+
+/* =================== */
+/*  ОКНО ЗВОНКА        */
+/* =================== */
+.call-window {
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3);
+}
+
+.call-header {
+    background: linear-gradient(to right, #4a69e2, #6a5af9);
+    padding: 12px 20px;
+}
+
+.call-body {
+    padding: 25px;
+}
+
+.call-controls {
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.action-btn {
+    padding: 12px 25px;
+    border-radius: 30px;
+    font-weight: 500;
+    transition: all 0.3s;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.action-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 7px 14px rgba(0,0,0,0.15);
+}
+
+/* =================== */
+/*  МОДАЛЬНЫЕ ОКНА     */
+/* =================== */
+.modal-window {
+    background: white;
+    border-radius: 16px;
+    padding: 25px;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+    width: 380px;
+}
+
+.modal-overlay {
+    backdrop-filter: blur(5px);
+}
+
+/* =================== */
+/*  ИГРЫ               */
+/* =================== */
 .game-modal-content {
-  width: 95%;
-  height: 90%;
-  max-width: 1200px;
-  max-height: 800px;
-  background-color: #0a0a28;
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 0 30px rgba(0, 150, 255, 0.7);
-  position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 0 40px rgba(100, 108, 255, 0.8);
 }
 
-.close-game {
-  position: absolute;
-  right: 20px;
-  top: 10px;
-  color: #fff;
-  font-size: 40px;
-  font-weight: bold;
-  z-index: 1001;
-  cursor: pointer;
-  text-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+/* =================== */
+/*  АДАПТИВНОСТЬ       */
+/* =================== */
+@media (max-width: 768px) {
+    .chat-wrapper {
+        flex-direction: column;
+        height: 95vh;
+    }
+    
+    .rooms-sidebar {
+        width: 100%;
+        height: auto;
+        border-radius: 16px 16px 0 0;
+        max-height: 40vh;
+    }
+    
+    .chat-container {
+        border-radius: 0 0 16px 16px;
+    }
 }
 
-.close-game:hover,
-.close-game:focus {
-  color: #ff3232;
-  text-decoration: none;
-}
-
-.game-frame {
-  width: 100%;
-  height: 100%;
-  border: none;
-  border-radius: 8px;
-}
-
-.game-frame:focus {
-  outline: none;
-}
-
-/* Добавим в конец файла */
-.search-container {
-  margin-bottom: 15px;
-  position: relative;
-}
-
-#global-search {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 14px;
-  box-sizing: border-box;
-  margin-bottom: 5px;
-}
-
-#search-results {
-  position: absolute;
-  width: 100%;
-  background: white;
-  z-index: 10;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-  max-height: 300px;
-  overflow-y: auto;
+/* =================== */
+/*  АНИМАЦИИ           */
+/* =================== */
+.rooms-list li, .rooms-sidebar > button, .icon-btn {
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
