@@ -213,10 +213,10 @@ loadAllUsers();
 
 // Открыть модалку
 createGroupBtn.onclick = () => {
-  // Установка заголовка и типа
   document.querySelector('#group-modal h3').textContent = 'Новая группа';
   groupNameInput.placeholder = 'Введите название группы';
-  groupModal.dataset.mode = 'group';
+  groupModal.dataset.mode = 'create';
+  groupModal.dataset.roomType = 'group';
 
   groupNameInput.value = '';
   userSearchInput.value = '';
@@ -334,10 +334,10 @@ addCancelBtn.onclick = () => {
 };
 
 createChannelBtn.onclick = () => {
-  // Установка заголовка и типа
   document.querySelector('#group-modal h3').textContent = 'Новый канал';
   groupNameInput.placeholder = 'Введите название канала';
-  groupModal.dataset.mode = 'channel';
+  groupModal.dataset.mode = 'create';
+  groupModal.dataset.roomType = 'channel';
 
   groupModal.classList.remove('hidden');
   userSearchInput.value = '';
@@ -347,77 +347,75 @@ createChannelBtn.onclick = () => {
   userSearchInput.focus();
 };
 
-  createGroupBtn2.onclick = async () => {
-  // Определяем контекст: создание или добавление
-  const mode      = groupModal.dataset.mode || 'create'; // 'create' или 'add'
-  const title     = document.querySelector('#group-modal h3').textContent;
-  const isChannel = mode === 'channel';
-  const name      = groupNameInput.value.trim();
-  const members   = Array.from(selectedUsers);
 
-  // ========== Проверки для mode='create' ==========
+createGroupBtn2.onclick = async () => {
+  const mode = groupModal.dataset.mode;
+  const roomType = groupModal.dataset.roomType;
+  const name = groupNameInput.value.trim();
+  const members = Array.from(selectedUsers);
+
   if (mode === 'create') {
+    const isChannel = roomType === 'channel';
+    
     if (!name) {
-      return alert(isChannel ? 'Укажи название канала' : 'Укажи название группы');
+      return alert(isChannel ? 'Укажите название канала' : 'Укажите название группы');
     }
     if (members.length === 0) {
-      return alert('Добавь хотя бы одного участника');
+      return alert('Добавьте хотя бы одного участника');
     }
 
-    // Обязательно добавить себя
+    // Добавляем текущего пользователя
     members.push(userNickname);
 
-    // Формируем тело запроса
     const payload = {
-      is_group:   !isChannel,
+      is_group: !isChannel,
       is_channel: isChannel,
       name,
       members
     };
 
-    // Создаём группу или канал
     try {
       const res = await fetch(`${API_URL}/rooms`, {
-        method:  'POST',
+        method: 'POST',
         headers: {
-          'Content-Type':  'application/json',
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(payload)
       });
+      
       if (!res.ok) throw new Error(await res.text());
-
-      const { roomId } = await res.json();
+      
+      const data = await res.json();
       groupModal.classList.add('hidden');
       await loadRooms();
-      joinRoom(roomId);
-
+      joinRoom(data.roomId);
+      
     } catch (err) {
       console.error(err);
       alert(`Не удалось создать ${isChannel ? 'канал' : 'группу'}: ${err.message}`);
     }
-
-  // ========== Добавление участников в существующую группу ==========
-  } else {
+  } else if (mode === 'add') {
     if (members.length === 0) {
       return alert('Выберите хотя бы одного участника');
     }
 
     try {
       const res = await fetch(`${API_URL}/rooms/${currentRoom}/members`, {
-        method:  'POST',
+        method: 'POST',
         headers: {
-          'Content-Type':  'application/json',
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ members })
       });
+      
       if (!res.ok) throw new Error(await res.text());
-
+      
       groupModal.classList.add('hidden');
       await loadRooms();
       joinRoom(currentRoom);
-
+      
     } catch (err) {
       console.error(err);
       alert('Не удалось добавить участников: ' + err.message);
