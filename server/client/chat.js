@@ -1028,11 +1028,12 @@ async function joinRoom(roomId) {
       break;
 
 
-// В socket.onmessage
+  // В socket.onmessage
 case 'history-cleared':
   if (msg.roomId === currentRoom) {
-    // Перезагружаем страницу только если пользователь находится в очищенной комнате
-    location.reload();
+    // Показываем уведомление и перезагружаем страницу через короткую задержку
+    appendSystem("История сообщений была очищена. Страница будет перезагружена...");
+    setTimeout(() => location.reload(), 1000);
   }
   break;
       
@@ -1589,7 +1590,7 @@ document.getElementById('ctx-clear').addEventListener('click', async () => {
     
     if (!res.ok) throw new Error(await res.text());
     
-    // 1. Уведомляем сервер для рассылки события очистки
+    // Уведомляем сервер для рассылки события очистки
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({
         type: 'history-cleared',
@@ -1597,8 +1598,9 @@ document.getElementById('ctx-clear').addEventListener('click', async () => {
       }));
     }
     
-    // 2. Немедленная перезагрузка страницы для текущего пользователя
-    location.reload();
+    // Немедленная перезагрузка для текущего пользователя
+    appendSystem("История сообщений была очищена. Страница будет перезагружена...");
+    setTimeout(() => location.reload(), 1000);
     
   } catch (err) {
     console.error('Ошибка очистки истории:', err);
@@ -1606,7 +1608,6 @@ document.getElementById('ctx-clear').addEventListener('click', async () => {
   }
   contextMenu.style.display = 'none';
 });
-
 // Новая функция: получение актуальных данных комнаты
 async function fetchRoomData(roomId) {
   const res = await fetch(`${API_URL}/rooms/${roomId}`, {
