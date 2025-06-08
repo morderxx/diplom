@@ -57,6 +57,12 @@
         .hidden {
             display: none;
         }
+        
+        #captcha-message {
+            color: red;
+            margin: 10px 0;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -71,7 +77,10 @@
     <div id="captcha-screen" class="hidden">
         <div class="form-container">
             <h1>Подтвердите, что вы не робот</h1>
-            <div class="g-recaptcha" data-sitekey="ВАШ_КЛЮЧ_RECAPTCHA"></div>
+            <div id="captcha-container">
+                <div class="g-recaptcha" data-sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"></div>
+            </div>
+            <div id="captcha-message"></div>
             <button onclick="verifyCaptcha()">Подтвердить</button>
             <button onclick="goBack('welcome-screen')" style="background: #f0f0f0; color: #333; margin-top: 10px;">Назад</button>
         </div>
