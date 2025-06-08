@@ -136,7 +136,7 @@ function formatCallText({ initiator, recipient, status, duration, time }) {
      // Добавим в начало, рядом с другими DOM элементами
   const globalSearch = document.getElementById('global-search');
   const searchResults = document.getElementById('search-results');
-
+  const usersList = document.getElementById('users-list');
 
   // File input
   const fileInput    = document.createElement('input');
