@@ -1573,6 +1573,7 @@ document.getElementById('ctx-delete').addEventListener('click', async () => {
   contextMenu.style.display = 'none';
 });
 
+// Изменяем обработчик очистки истории
 document.getElementById('ctx-clear').addEventListener('click', async () => {
   const roomId = contextMenu.dataset.roomId;
   try {
@@ -1587,11 +1588,14 @@ document.getElementById('ctx-clear').addEventListener('click', async () => {
       // 1. Очищаем видимый чат
       document.getElementById('chat-box').innerHTML = '';
       
-      // 2. Обновляем данные комнаты (ключевое изменение!)
-      const updatedRoom = await fetchRoomData(roomId); // Новая функция
+      // 2. Обновляем данные комнаты на клиенте
+      if (roomMeta[roomId]) {
+        roomMeta[roomId].lastMessage = null;
+        roomMeta[roomId].updatedAt = new Date().toISOString();
+      }
       
-      // 3. Обновляем UI комнаты
-      updateRoomUI(updatedRoom); // Новая функция
+      // 3. Принудительно обновляем UI комнаты
+      updateRoomUI(roomId);
       
       // 4. Обновляем список комнат в сайдбаре
       await loadRooms();
@@ -1603,6 +1607,38 @@ document.getElementById('ctx-clear').addEventListener('click', async () => {
   contextMenu.style.display = 'none';
 });
 
+// Обновляем функцию updateRoomUI
+function updateRoomUI(roomId) {
+  const room = roomMeta[roomId];
+  if (!room) return;
+  
+  // Обновляем заголовок чата
+  const header = document.querySelector('.chat-header h3');
+  if (header) {
+    header.textContent = room.is_channel 
+      ? `Канал: ${room.name}`
+      : room.is_group 
+        ? `Группа: ${room.name}` 
+        : `Собеседник: ${room.members?.find(m => m !== userNickname) || ''}`;
+  }
+  
+  // Обновляем элемент в сайдбаре
+  const roomElement = document.querySelector(`li[data-id="${roomId}"]`);
+  if (roomElement) {
+    const lastMsgEl = roomElement.querySelector('.last-message');
+    const timeEl = roomElement.querySelector('.timestamp');
+    
+    if (lastMsgEl) lastMsgEl.textContent = '';
+    if (timeEl) timeEl.textContent = formatTime(room.updatedAt);
+  }
+}
+
+// Добавляем функцию форматирования времени
+function formatTime(dateString) {
+  const date = new Date(dateString);
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 // Новая функция: получение актуальных данных комнаты
 async function fetchRoomData(roomId) {
   const res = await fetch(`${API_URL}/rooms/${roomId}`, {
@@ -1611,18 +1647,6 @@ async function fetchRoomData(roomId) {
   return await res.json();
 }
 
-// Новая функция: обновление UI комнаты
-function updateRoomUI(room) {
-  // Обновляем заголовок чата (кол-во сообщений и т.д.)
-  document.querySelector('.chat-header h3').textContent = room.name;
-  
-  // Обновляем последнее сообщение в сайдбаре
-  const roomElement = document.querySelector(`.room[data-room-id="${room._id}"]`);
-  if (roomElement) {
-    roomElement.querySelector('.last-message').textContent = room.lastMessage?.text || '';
-    roomElement.querySelector('.timestamp').textContent = formatTime(room.updatedAt);
-  }
-}
 
 document.getElementById('ctx-leave').addEventListener('click', async () => {
   const roomId = contextMenu.dataset.roomId;
