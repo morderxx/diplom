@@ -1514,6 +1514,7 @@ document.addEventListener('click', (e) => {
 });
 
 // Обработчик ПКМ для элементов списка чатов
+// Обработчик ПКМ для элементов списка чатов
 document.getElementById('rooms-list').addEventListener('contextmenu', (e) => {
   e.preventDefault();
   
@@ -1539,7 +1540,13 @@ document.getElementById('rooms-list').addEventListener('contextmenu', (e) => {
   } 
   // Для групп и каналов
   else {
+    // Показываем "Покинуть" всем участникам
     document.getElementById('ctx-leave').style.display = 'block';
+    
+    // Дополнительно показываем "Удалить" создателю
+    if (roomInfo.creator === userNickname) {
+      document.getElementById('ctx-delete').style.display = 'block';
+    }
   }
   
   // Сохраняем текущую комнату для обработки действий
@@ -1555,14 +1562,10 @@ document.getElementById('ctx-delete').addEventListener('click', async () => {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (!res.ok) throw new Error(await res.text());
-    await loadRooms();
-    if (currentRoom === roomId) {
-      document.getElementById('chat-section').classList.remove('active');
-      currentRoom = null;
-      // Очищаем чат и скрываем элементы интерфейса
-      document.getElementById('chat-box').innerHTML = '';
-      document.getElementById('chat-header').classList.add('hidden');
-    }
+    
+    // Полностью обновляем страницу после удаления
+    window.location.reload();
+    
   } catch (err) {
     console.error('Ошибка удаления чата:', err);
     alert('Не удалось удалить чат');
@@ -1578,14 +1581,10 @@ document.getElementById('ctx-leave').addEventListener('click', async () => {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (!res.ok) throw new Error(await res.text());
-    await loadRooms();
-    if (currentRoom === roomId) {
-      document.getElementById('chat-section').classList.remove('active');
-      currentRoom = null;
-      // Очищаем чат и скрываем элементы интерфейса
-      document.getElementById('chat-box').innerHTML = '';
-      document.getElementById('chat-header').classList.add('hidden');
-    }
+    
+    // Полностью обновляем страницу после выхода
+    window.location.reload();
+    
   } catch (err) {
     console.error('Ошибка выхода из комнаты:', err);
     alert('Не удалось покинуть комнату');
