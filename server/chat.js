@@ -171,6 +171,19 @@ function setupWebSocket(server) {
         return;
       }
 
+// Добавим новый тип события для обновления списка чатов
+if (msg.type === 'rooms-updated') {
+  wss.clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify({
+        type: 'rooms-updated',
+        roomId: msg.roomId // может быть null для глобального обновления
+      }));
+    }
+  });
+  return;
+}
+      
   if (msg.type === 'history-cleared') {
   console.log(`Broadcasting history-cleared to room ${msg.roomId}`);
   let count = 0;
