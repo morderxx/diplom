@@ -18,14 +18,16 @@
             <span>Присесть</span>
         </div>
         
-        <button id="play-game" class="play-btn">
-            <span>Играть</span>
-            <div class="dino-icon">
-                <div class="dino-head"></div>
-                <div class="dino-body"></div>
-                <div class="dino-leg"></div>
-            </div>
-        </button>
+        <div class="center-button">
+            <button id="play-game" class="play-btn">
+                <span>Играть</span>
+                <div class="dino-icon">
+                    <div class="dino-head"></div>
+                    <div class="dino-body"></div>
+                    <div class="dino-leg"></div>
+                </div>
+            </button>
+        </div>
         
         <div class="features">
             <div class="feature">
@@ -46,11 +48,10 @@
         </div>
     </div>
     
-    <!-- Модальное окно игры -->
     <div id="game-modal" class="modal">
         <div class="modal-content game-modal-content">
             <span class="close-game">&times;</span>
-            <canvas id="game-canvas" width="800" height="400"></canvas>
+            <canvas id="game-canvas" width="1200" height="500"></canvas>
             <div id="score-display">Счет: 0</div>
             <div id="game-over" class="hidden">
                 <h2>Игра окончена!</h2>
