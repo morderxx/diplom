@@ -181,7 +181,7 @@ router.post(
       [roomId]
     );
     if (!room.rows.length) return res.status(404).send('Room not found');
-    if (!room.rows[0].is_group) return res.status(400).send('Cannot add members to a private chat');
+    if (!room.rows[0].is_group && !room.rows[0].is_channel) {   return res.status(400).send('Cannot add members to a private chat'); }
     // (если нужно, можно разрешить только создателю для каналов)
 
     // 2) проверяем, что вызывающий уже в комнате
