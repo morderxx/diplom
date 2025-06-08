@@ -171,34 +171,42 @@ router.post(
   authMiddleware,
   async (req, res) => {
     const { roomId } = req.params;
-    const { members } = req.body; // массив новых никнеймов
+    const { members } = req.body;
 
-    // 1) проверяем, что это группа (is_group = true) и что вызывающий — участник
+    // 1) Проверяем, что комната существует и является группой или каналом
     const room = await pool.query(
-      `SELECT is_group, creator_nickname
-         FROM rooms
-        WHERE id = $1`,
+      `SELECT is_group, is_channel, creator_nickname
+       FROM rooms
+       WHERE id = $1`,
       [roomId]
     );
-    if (!room.rows.length) return res.status(404).send('Room not found');
-    if (!room.rows[0].is_group && !room.rows[0].is_channel) {   return res.status(400).send('Cannot add members to a private chat'); }
-    // (если нужно, можно разрешить только создателю для каналов)
 
-    // 2) проверяем, что вызывающий уже в комнате
+    if (!room.rows.length) {
+      return res.status(404).send('Room not found');
+    }
+
+    // Разрешаем добавление участников только в группы или каналы
+    if (!room.rows[0].is_group && !room.rows[0].is_channel) {
+      return res.status(400).send('Cannot add members to a private chat');
+    }
+
+    // 2) Проверяем, что вызывающий уже участник комнаты
     const isMember = await pool.query(
       `SELECT 1 FROM room_members WHERE room_id = $1 AND nickname = $2`,
       [roomId, req.userNickname]
     );
-    if (!isMember.rowCount) return res.status(403).send('Not a member');
+    if (!isMember.rowCount) {
+      return res.status(403).send('Not a member');
+    }
 
-    // 3) добавляем новых участников (игнорируем уже существующих)
+    // 3) Добавляем новых участников (игнорируем уже существующих)
     const ins = members.map(nick =>
       pool.query(
         `INSERT INTO room_members (room_id, nickname)
-           SELECT $1, $2
-          WHERE NOT EXISTS(
-            SELECT 1 FROM room_members WHERE room_id = $1 AND nickname = $2
-          )`,
+         SELECT $1, $2
+         WHERE NOT EXISTS(
+           SELECT 1 FROM room_members WHERE room_id = $1 AND nickname = $2
+         )`,
         [roomId, nick]
       )
     );
