@@ -1433,12 +1433,13 @@ function renderSearchResults(results, type) {
     const li = document.createElement('li');
     li.textContent = type === 'user' ? item.nickname : item.name;
     
+// Изменяем обработчик клика в поиске
 li.onclick = async () => {
   if (type === 'user') {
     openPrivateChat(item.nickname);
   } else {
     try {
-      // Проверяем, что комната является каналом (is_channel = true)
+      // Проверяем информацию о канале
       const roomInfo = await fetch(`${API_URL}/rooms/${item.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -1450,14 +1451,14 @@ li.onclick = async () => {
         throw new Error('This is not a channel');
       }
 
-      // Отправляем запрос на добавление в канал
+      // Отправляем запрос на добавление ТОЛЬКО СЕБЯ
       const res = await fetch(`${API_URL}/rooms/${item.id}/members`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ members: [userNickname] })
+        body: JSON.stringify({ members: [userNickname] }) // Только текущий пользователь
       });
 
       if (!res.ok) throw new Error(await res.text());
