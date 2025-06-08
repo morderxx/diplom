@@ -18,9 +18,9 @@ body {
 }
 
 .container {
-    max-width: 1400px;
+    max-width: 1200px;
     text-align: center;
-    padding: 60px;
+    padding: 40px;
     background: rgba(10, 15, 40, 0.85);
     border-radius: 25px;
     box-shadow: 0 15px 50px rgba(0, 100, 255, 0.6);
@@ -30,10 +30,10 @@ body {
 }
 
 h1 {
-    font-size: 5rem;
-    margin-bottom: 30px;
-    text-shadow: 0 0 20px #00eaff, 0 0 40px #0066ff;
-    letter-spacing: 4px;
+    font-size: 3.5rem;
+    margin-bottom: 20px;
+    text-shadow: 0 0 15px #00eaff, 0 0 30px #0066ff;
+    letter-spacing: 3px;
     background: linear-gradient(to right, #ff00cc, #00ccff, #ff00cc);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -43,50 +43,50 @@ h1 {
 
 @keyframes glow {
     0% { text-shadow: 0 0 10px #ff00cc, 0 0 20px #0066ff; }
-    100% { text-shadow: 0 0 30px #ff00cc, 0 0 50px #0066ff; }
+    100% { text-shadow: 0 0 25px #ff00cc, 0 0 40px #0066ff; }
 }
 
 p {
-    font-size: 1.5rem;
-    margin-bottom: 40px;
-    max-width: 900px;
+    font-size: 1.2rem;
+    margin-bottom: 30px;
+    max-width: 800px;
     margin-left: auto;
     margin-right: auto;
-    line-height: 1.8;
+    line-height: 1.6;
     color: #a0e0ff;
-    text-shadow: 0 0 10px rgba(0, 150, 255, 0.5);
+    text-shadow: 0 0 8px rgba(0, 150, 255, 0.5);
 }
 
 .controls {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 25px;
-    margin: 40px 0;
+    gap: 15px;
+    margin: 30px 0;
     flex-wrap: wrap;
 }
 
 .key {
-    width: 85px;
-    height: 85px;
+    width: 70px;
+    height: 70px;
     background: rgba(0, 80, 200, 0.3);
     border: 2px solid #00ffff;
-    border-radius: 15px;
+    border-radius: 12px;
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 2.5rem;
+    font-size: 2rem;
     font-weight: bold;
-    box-shadow: 0 8px 0 rgba(0, 200, 255, 0.7), 
-                inset 0 0 25px rgba(0, 230, 255, 0.6);
+    box-shadow: 0 6px 0 rgba(0, 200, 255, 0.7), 
+                inset 0 0 20px rgba(0, 230, 255, 0.6);
     transition: all 0.2s;
-    text-shadow: 0 0 15px #00ffff;
+    text-shadow: 0 0 12px #00ffff;
 }
 
 .key:hover {
     transform: translateY(-5px);
-    box-shadow: 0 10px 0 rgba(0, 200, 255, 0.7), 
-                inset 0 0 30px rgba(0, 255, 255, 0.8);
+    box-shadow: 0 8px 0 rgba(0, 200, 255, 0.7), 
+                inset 0 0 25px rgba(0, 255, 255, 0.8);
     background: rgba(0, 100, 255, 0.4);
 }
 
@@ -94,7 +94,7 @@ p {
     display: flex;
     justify-content: center;
     width: 100%;
-    margin: 60px 0;
+    margin: 40px 0;
 }
 
 .play-btn {
@@ -102,19 +102,19 @@ p {
     background-size: 200% auto;
     color: white;
     border: none;
-    padding: 30px 100px;
-    font-size: 2.2rem;
+    padding: 20px 70px;
+    font-size: 1.8rem;
     font-weight: bold;
-    border-radius: 70px;
+    border-radius: 60px;
     cursor: pointer;
     margin: 0;
     transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     display: flex;
     align-items: center;
-    gap: 30px;
+    gap: 20px;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 15px 40px rgba(255, 0, 204, 0.6);
+    box-shadow: 0 10px 30px rgba(255, 0, 204, 0.6);
     z-index: 1;
     animation: gradientMove 3s infinite linear;
 }
@@ -137,8 +137,8 @@ p {
 }
 
 .play-btn:hover {
-    transform: translateY(-10px) scale(1.08);
-    box-shadow: 0 20px 50px rgba(255, 0, 204, 0.8);
+    transform: translateY(-8px) scale(1.05);
+    box-shadow: 0 15px 40px rgba(255, 0, 204, 0.8);
 }
 
 .play-btn:hover::before {
@@ -147,43 +147,43 @@ p {
 
 .dino-icon {
     position: relative;
-    width: 100px;
-    height: 70px;
-    transform: scale(1.3);
+    width: 80px;
+    height: 55px;
+    transform: scale(1.2);
 }
 
 .dino-head {
     position: absolute;
-    width: 50px;
-    height: 50px;
+    width: 40px;
+    height: 40px;
     background: linear-gradient(to bottom, #ff6600, #ff3300);
     border-radius: 50% 50% 40% 40%;
     top: 0;
     left: 0;
-    box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.3);
+    box-shadow: inset -4px -4px 8px rgba(0, 0, 0, 0.3);
 }
 
 .dino-body {
     position: absolute;
-    width: 60px;
-    height: 35px;
+    width: 50px;
+    height: 30px;
     background: linear-gradient(to bottom, #ff6600, #ff3300);
-    border-radius: 15px;
-    top: 25px;
-    left: 30px;
-    box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    top: 20px;
+    left: 25px;
+    box-shadow: inset -4px -4px 8px rgba(0, 0, 0, 0.3);
 }
 
 .dino-leg {
     position: absolute;
-    width: 25px;
-    height: 20px;
+    width: 20px;
+    height: 16px;
     background: #cc2900;
-    border-radius: 10px;
-    top: 50px;
-    left: 60px;
+    border-radius: 8px;
+    top: 40px;
+    left: 48px;
     animation: legMove 0.7s infinite alternate;
-    box-shadow: inset -3px -3px 6px rgba(0, 0, 0, 0.3);
+    box-shadow: inset -2px -2px 4px rgba(0, 0, 0, 0.3);
 }
 
 @keyframes legMove {
@@ -194,52 +194,52 @@ p {
 .features {
     display: flex;
     justify-content: center;
-    gap: 50px;
-    margin-top: 70px;
+    gap: 30px;
+    margin-top: 50px;
     flex-wrap: wrap;
 }
 
 .feature {
     background: rgba(20, 30, 80, 0.6);
-    border-radius: 25px;
-    padding: 35px;
-    width: 360px;
+    border-radius: 20px;
+    padding: 25px;
+    width: 320px;
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     border: 2px solid rgba(100, 200, 255, 0.3);
     backdrop-filter: blur(8px);
-    box-shadow: 0 10px 30px rgba(0, 80, 200, 0.4);
+    box-shadow: 0 8px 25px rgba(0, 80, 200, 0.4);
 }
 
 .feature:hover {
-    transform: translateY(-20px) scale(1.05);
+    transform: translateY(-15px) scale(1.03);
     background: rgba(40, 60, 150, 0.8);
-    box-shadow: 0 20px 50px rgba(0, 150, 255, 0.6);
+    box-shadow: 0 15px 40px rgba(0, 150, 255, 0.6);
     border-color: rgba(100, 255, 255, 0.5);
 }
 
 .feature-icon {
-    font-size: 4.5rem;
-    margin-bottom: 25px;
-    text-shadow: 0 0 25px rgba(0, 200, 255, 0.9);
+    font-size: 3.5rem;
+    margin-bottom: 20px;
+    text-shadow: 0 0 20px rgba(0, 200, 255, 0.9);
     animation: float 3s infinite ease-in-out;
 }
 
 @keyframes float {
     0% { transform: translateY(0px); }
-    50% { transform: translateY(-15px); }
+    50% { transform: translateY(-12px); }
     100% { transform: translateY(0px); }
 }
 
 .feature h3 {
-    font-size: 2.2rem;
-    margin-bottom: 20px;
+    font-size: 1.8rem;
+    margin-bottom: 15px;
     color: #66ffff;
     font-weight: 700;
-    text-shadow: 0 0 15px rgba(102, 255, 255, 0.8);
+    text-shadow: 0 0 12px rgba(102, 255, 255, 0.8);
 }
 
 .feature p {
-    font-size: 1.4rem;
+    font-size: 1.1rem;
     color: #c2f0ff;
 }
 
@@ -259,12 +259,12 @@ p {
 .game-modal-content {
     width: 98%;
     height: 96%;
-    max-width: 1900px;
-    max-height: 1000px;
+    max-width: 1800px;
+    max-height: 900px;
     background: radial-gradient(circle at center, #0a0a28, #000033, #000);
     border-radius: 20px;
     overflow: hidden;
-    box-shadow: 0 0 60px rgba(0, 200, 255, 0.8);
+    box-shadow: 0 0 50px rgba(0, 200, 255, 0.8);
     position: relative;
     display: flex;
     flex-direction: column;
@@ -273,17 +273,17 @@ p {
 
 .close-game {
     position: absolute;
-    right: 30px;
-    top: 20px;
+    right: 25px;
+    top: 15px;
     color: #fff;
-    font-size: 50px;
+    font-size: 40px;
     font-weight: bold;
     z-index: 1001;
     cursor: pointer;
-    text-shadow: 0 0 20px rgba(255, 50, 50, 1);
+    text-shadow: 0 0 15px rgba(255, 50, 50, 1);
     transition: all 0.3s;
-    width: 60px;
-    height: 60px;
+    width: 50px;
+    height: 50px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -305,32 +305,32 @@ p {
 
 #score-display, #speed-display, #energy-display {
     position: absolute;
-    font-size: 32px;
+    font-size: 28px;
     font-weight: bold;
     color: #fff;
     background: rgba(10, 20, 50, 0.7);
-    padding: 12px 30px;
-    border-radius: 40px;
+    padding: 10px 25px;
+    border-radius: 35px;
     z-index: 10;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
     border: 2px solid rgba(0, 200, 255, 0.4);
-    text-shadow: 0 0 10px rgba(0, 200, 255, 0.8);
+    text-shadow: 0 0 8px rgba(0, 200, 255, 0.8);
     backdrop-filter: blur(5px);
 }
 
 #score-display {
-    top: 25px;
-    left: 25px;
+    top: 20px;
+    left: 20px;
 }
 
 #speed-display {
-    top: 25px;
-    left: 300px;
+    top: 20px;
+    left: 250px;
 }
 
 #energy-display {
-    top: 25px;
-    left: 600px;
+    top: 20px;
+    left: 500px;
 }
 
 #game-over {
@@ -349,10 +349,10 @@ p {
 }
 
 #game-over h2 {
-    font-size: 80px;
-    margin-bottom: 40px;
+    font-size: 60px;
+    margin-bottom: 30px;
     color: #ff00cc;
-    text-shadow: 0 0 30px rgba(255, 0, 204, 0.9);
+    text-shadow: 0 0 25px rgba(255, 0, 204, 0.9);
     font-weight: 900;
     background: linear-gradient(to right, #ff00cc, #6600ff);
     -webkit-background-clip: text;
@@ -361,30 +361,30 @@ p {
 }
 
 #game-over p {
-    font-size: 40px;
-    margin: 20px 0;
+    font-size: 32px;
+    margin: 15px 0;
     color: #e0f7ff;
 }
 
 #final-score, #high-score {
     color: #66ffff;
     font-weight: bold;
-    font-size: 48px;
-    text-shadow: 0 0 15px rgba(102, 255, 255, 0.9);
+    font-size: 40px;
+    text-shadow: 0 0 12px rgba(102, 255, 255, 0.9);
 }
 
 #restart-btn {
     background: linear-gradient(to right, #00ffcc, #0066ff);
     color: white;
     border: none;
-    padding: 25px 70px;
-    font-size: 32px;
+    padding: 20px 60px;
+    font-size: 28px;
     font-weight: bold;
-    border-radius: 70px;
+    border-radius: 60px;
     cursor: pointer;
-    margin-top: 50px;
+    margin-top: 40px;
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    box-shadow: 0 12px 35px rgba(0, 255, 204, 0.6);
+    box-shadow: 0 10px 30px rgba(0, 255, 204, 0.6);
     position: relative;
     overflow: hidden;
     z-index: 1;
@@ -404,9 +404,9 @@ p {
 }
 
 #restart-btn:hover {
-    transform: translateY(-10px) scale(1.1);
-    box-shadow: 0 20px 50px rgba(0, 255, 204, 0.8), 
-                0 20px 50px rgba(0, 102, 255, 0.8);
+    transform: translateY(-8px) scale(1.08);
+    box-shadow: 0 15px 40px rgba(0, 255, 204, 0.8), 
+                0 15px 40px rgba(0, 102, 255, 0.8);
 }
 
 #restart-btn:hover::before {
@@ -419,38 +419,38 @@ p {
 
 @media (max-width: 1100px) {
     .container {
-        padding: 40px;
+        padding: 30px;
     }
     
     h1 {
-        font-size: 3.8rem;
+        font-size: 2.8rem;
     }
     
     .feature {
         width: 100%;
-        max-width: 600px;
+        max-width: 500px;
     }
     
     .play-btn {
-        padding: 25px 70px;
-        font-size: 2rem;
+        padding: 18px 60px;
+        font-size: 1.6rem;
     }
     
     .dino-icon {
-        width: 80px;
-        height: 60px;
+        width: 70px;
+        height: 50px;
     }
     
     #game-over h2 {
-        font-size: 50px;
+        font-size: 40px;
     }
     
     #game-over p {
-        font-size: 28px;
+        font-size: 24px;
     }
     
     #restart-btn {
-        padding: 20px 50px;
-        font-size: 26px;
+        padding: 18px 45px;
+        font-size: 22px;
     }
 }
