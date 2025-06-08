@@ -276,7 +276,10 @@ router.delete('/:roomId', authMiddleware, async (req, res) => {
       return res.status(400).send('Can only delete private chats');
     }
     
-    // Удаляем комнату
+    // Удаляем комнату и все связанные данные
+    await pool.query('DELETE FROM calls WHERE room_id = $1', [roomId]);
+    await pool.query('DELETE FROM messages WHERE room_id = $1', [roomId]);
+    await pool.query('DELETE FROM room_members WHERE room_id = $1', [roomId]);
     await pool.query('DELETE FROM rooms WHERE id = $1', [roomId]);
     res.json({ ok: true });
   } catch (err) {
@@ -298,8 +301,9 @@ router.delete('/:roomId/messages', authMiddleware, async (req, res) => {
       return res.status(403).send('Not a member');
     }
     
-    // Удаляем сообщения
+    // Удаляем сообщения И звонки
     await pool.query('DELETE FROM messages WHERE room_id = $1', [roomId]);
+    await pool.query('DELETE FROM calls WHERE room_id = $1', [roomId]);
     res.json({ ok: true });
   } catch (err) {
     console.error('Error clearing messages:', err);
