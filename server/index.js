@@ -4,7 +4,7 @@ const http          = require('http');
 const cors          = require('cors');
 const path          = require('path');
 require('dotenv').config();
-
+const axios = require('axios'); 
 const authRoutes     = require('./auth');
 const usersRoutes    = require('./routes/users');
 const messagesRoutes = require('./routes/messages');
@@ -18,6 +18,30 @@ const { setupWebSocket } = require('./chat');
 const app    = express();
 const server = http.createServer(app);
 
+const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET || '6LczulkrAAAAAM9eFdasmJWGXZT-Nc4SIP4YxJEH';
+
+// Маршрут для проверки reCAPTCHA
+app.post('/api/verify-captcha', async (req, res) => {
+    try {
+        const { captcha } = req.body;
+        
+        const response = await axios.post(
+            'https://www.google.com/recaptcha/api/siteverify',
+            null,
+            {
+                params: {
+                    secret: RECAPTCHA_SECRET,
+                    response: captcha
+                }
+            }
+        );
+        
+        res.json(response.data);
+    } catch (error) {
+        console.error('CAPTCHA verification error:', error);
+        res.status(500).json({ success: false, 'error-codes': ['server-error'] });
+    }
+});
 // 1) Middleware
 app.use(cors());
 // важно: JSON-парсер должен быть ДО роутов, обрабатывающих POST /calls и POST /messages
