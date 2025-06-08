@@ -905,21 +905,6 @@ async function loadRooms() {
 }
 
 
-  async function loadUsers() {
-    const res = await fetch(`${API_URL}/users`, { headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) return console.error(await res.text());
-    const users = await res.json();
-    const ul = document.getElementById('users-list');
-    ul.innerHTML = '';
-    users.forEach(u => {
-      if (u.nickname === userNickname) return;
-      const li = document.createElement('li');
-      li.textContent = u.nickname;
-      li.onclick = () => openPrivateChat(u.nickname);
-      ul.appendChild(li);
-    });
-  }
-
   async function openPrivateChat(otherNick) {
     currentPeer = otherNick;
     const rr = await fetch(`${API_URL}/rooms`, { headers: { Authorization: `Bearer ${token}` } });
@@ -1484,5 +1469,4 @@ document.addEventListener('click', (e) => {
 });
   // Initialization
   loadRooms();
-  loadUsers();
 });
