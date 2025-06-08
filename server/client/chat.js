@@ -1437,24 +1437,39 @@ li.onclick = async () => {
   if (type === 'user') {
     openPrivateChat(item.nickname);
   } else {
-    // Добавляем канал в roomMeta
-    roomMeta[item.id] = {
-      is_channel: true,
-      name: item.name,
-      creator: null,
-      members: [userNickname] // Добавляем текущего пользователя в участники
-    };
-    
-    // Вручную добавляем канал в список чатов
-    const ul = document.getElementById('rooms-list');
-    const li = document.createElement('li');
-    li.textContent = item.name || `Канал #${item.id}`;
-    li.dataset.id = item.id;
-    li.onclick = () => joinRoom(item.id);
-    ul.appendChild(li);
-    
-    // Переходим в канал
-    await joinRoom(item.id);
+    try {
+      // Проверяем, что комната является каналом (is_channel = true)
+      const roomInfo = await fetch(`${API_URL}/rooms/${item.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (!roomInfo.ok) throw new Error('Failed to fetch room info');
+      const roomData = await roomInfo.json();
+
+      if (!roomData.is_channel) {
+        throw new Error('This is not a channel');
+      }
+
+      // Отправляем запрос на добавление в канал
+      const res = await fetch(`${API_URL}/rooms/${item.id}/members`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ members: [userNickname] })
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+
+      // Обновляем список чатов
+      await loadRooms();
+      await joinRoom(item.id);
+    } catch (err) {
+      console.error('Ошибка добавления в канал:', err);
+      alert('Не удалось присоединиться к каналу: ' + err.message);
+      return;
+    }
   }
   globalSearch.value = '';
   searchResults.style.display = 'none';
