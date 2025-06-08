@@ -333,7 +333,7 @@ addCancelBtn.onclick = () => {
   }
 };
 
-  // Нажали «Создать канал»
+createChannelBtn.onclick = () => {
   // Установка заголовка и типа
   document.querySelector('#group-modal h3').textContent = 'Новый канал';
   groupNameInput.placeholder = 'Введите название канала';
