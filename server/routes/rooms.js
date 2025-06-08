@@ -166,6 +166,7 @@ router.get('/:roomId/messages', authMiddleware, async (req, res) => {
 });
 
 // POST /api/rooms/:roomId/members — добавить участников в группу или канал
+// Изменяем POST /api/rooms/:roomId/members
 router.post(
   '/:roomId/members',
   authMiddleware,
@@ -173,7 +174,7 @@ router.post(
     const { roomId } = req.params;
     const { members } = req.body;
 
-    // 1) Проверяем, что комната существует и является группой или каналом
+    // 1) Проверяем, что комната существует
     const room = await pool.query(
       `SELECT is_group, is_channel, creator_nickname
        FROM rooms
@@ -185,21 +186,29 @@ router.post(
       return res.status(404).send('Room not found');
     }
 
-    // Разрешаем добавление участников только в группы или каналы
-    if (!room.rows[0].is_group && !room.rows[0].is_channel) {
-      return res.status(400).send('Cannot add members to a private chat');
+    const roomData = room.rows[0];
+    
+    // 2) Разрешаем self-join для каналов
+    const isSelfJoin = members.length === 1 && members[0] === req.userNickname;
+    
+    if (roomData.is_channel && isSelfJoin) {
+      // Пропускаем проверку членства для self-join
+    } else {
+      // Для всех остальных случаев проверяем членство
+      if (!roomData.is_group && !roomData.is_channel) {
+        return res.status(400).send('Cannot add members to a private chat');
+      }
+
+      const isMember = await pool.query(
+        `SELECT 1 FROM room_members WHERE room_id = $1 AND nickname = $2`,
+        [roomId, req.userNickname]
+      );
+      if (!isMember.rowCount) {
+        return res.status(403).send('Not a member');
+      }
     }
 
-    // 2) Проверяем, что вызывающий уже участник комнаты
-    const isMember = await pool.query(
-      `SELECT 1 FROM room_members WHERE room_id = $1 AND nickname = $2`,
-      [roomId, req.userNickname]
-    );
-    if (!isMember.rowCount) {
-      return res.status(403).send('Not a member');
-    }
-
-    // 3) Добавляем новых участников (игнорируем уже существующих)
+    // 3) Добавляем участников
     const ins = members.map(nick =>
       pool.query(
         `INSERT INTO room_members (room_id, nickname)
@@ -210,12 +219,13 @@ router.post(
         [roomId, nick]
       )
     );
+    
     await Promise.all(ins);
-
     res.json({ ok: true });
   }
 );
 
+// В rooms.js добавим
 // GET /api/rooms/:roomId - get room details
 router.get('/:roomId', authMiddleware, async (req, res) => {
   const { roomId } = req.params;
