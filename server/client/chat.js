@@ -133,7 +133,10 @@ function formatCallText({ initiator, recipient, status, duration, time }) {
   const createGroupBtn = document.getElementById('create-group-btn');
   const inputContainer = document.getElementById('input-container');
   const readonlyNote   = document.getElementById('readonly-note');
- 
+     // Добавим в начало, рядом с другими DOM элементами
+  const globalSearch = document.getElementById('global-search');
+  const searchResults = document.getElementById('search-results');
+  const usersList = document.getElementById('users-list');
 
 
   // File input
@@ -1389,6 +1392,96 @@ document.getElementById('btn-match3-game')
   .addEventListener('click', () => openGame('/miniapps/match3/index.html'));
 document.getElementById('btn-runner-game')
   .addEventListener('click', () => openGame('/miniapps/runner/index.html'));
+
+
+
+// Новая функция для поиска
+async function searchUsersAndChannels(query) {
+  if (!query) {
+    searchResults.style.display = 'none';
+    usersList.style.display = 'block';
+    return;
+  }
+
+  const isUserSearch = query.startsWith('@');
+  const isChannelSearch = query.startsWith('&');
+  const searchTerm = query.slice(1).toLowerCase();
+
+  if (!isUserSearch && !isChannelSearch) {
+    searchResults.style.display = 'none';
+    usersList.style.display = 'block';
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_URL}/search?q=${encodeURIComponent(searchTerm)}&type=${
+      isUserSearch ? 'user' : 'channel'
+    }`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (!res.ok) throw new Error(await res.text());
+    
+    const results = await res.json();
+    renderSearchResults(results, isUserSearch ? 'user' : 'channel');
+    
+  } catch (err) {
+    console.error('Search error:', err);
+    searchResults.innerHTML = '<li>Ошибка поиска</li>';
+  }
+}
+
+// Функция отображения результатов поиска
+function renderSearchResults(results, type) {
+  searchResults.innerHTML = '';
+  
+  if (results.length === 0) {
+    searchResults.innerHTML = '<li>Ничего не найдено</li>';
+    searchResults.style.display = 'block';
+    usersList.style.display = 'none';
+    return;
+  }
+
+  results.forEach(item => {
+    const li = document.createElement('li');
+    li.textContent = type === 'user' ? item.nickname : item.name;
+    
+    if (type === 'user') {
+      li.onclick = () => {
+        openPrivateChat(item.nickname);
+        globalSearch.value = '';
+        searchResults.style.display = 'none';
+        usersList.style.display = 'block';
+      };
+    } else {
+      li.onclick = () => {
+        joinRoom(item.id);
+        globalSearch.value = '';
+        searchResults.style.display = 'none';
+        usersList.style.display = 'block';
+      };
+    }
+    
+    searchResults.appendChild(li);
+  });
+
+  searchResults.style.display = 'block';
+  usersList.style.display = 'none';
+}
+
+// Обработчик ввода в поле поиска
+globalSearch.addEventListener('input', () => {
+  const query = globalSearch.value.trim();
+  searchUsersAndChannels(query);
+});
+
+// Обработчик клика вне поля поиска
+document.addEventListener('click', (e) => {
+  if (!globalSearch.contains(e.target) && !searchResults.contains(e.target)) {
+    searchResults.style.display = 'none';
+    usersList.style.display = 'block';
+  }
+});
   // Initialization
   loadRooms();
   loadUsers();
