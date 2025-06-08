@@ -45,31 +45,35 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
-// Пример для серверной части (не в chat.js)
-router.get('/search', async (req, res) => {
+// Поиск пользователей и каналов
+router.get('/search', authMiddleware, async (req, res) => {
   const { q, type } = req.query;
   
   try {
     if (type === 'user') {
-      const users = await db.query(
-        'SELECT nickname FROM users WHERE nickname ILIKE $1 AND nickname != $2 LIMIT 10',
-        [`%${q}%`, req.user.nickname]
+      const { rows: users } = await pool.query(
+        `SELECT u.nickname 
+         FROM users u
+         JOIN secret_profile sp ON sp.id = u.id
+         WHERE u.nickname ILIKE $1 AND sp.login <> $2 LIMIT 10`,
+        [`%${q}%`, req.userLogin]
       );
-      res.json(users.rows);
+      res.json(users);
     } else if (type === 'channel') {
-      const channels = await db.query(
+      const { rows: channels } = await pool.query(
         `SELECT id, name FROM rooms 
          WHERE (is_group = true OR is_channel = true) 
          AND name ILIKE $1 LIMIT 10`,
         [`%${q}%`]
       );
-      res.json(channels.rows);
+      res.json(channels);
     } else {
       res.status(400).json({ error: 'Invalid search type' });
     }
   } catch (err) {
-    console.error(err);
+    console.error('Search error:', err);
     res.status(500).json({ error: 'Search failed' });
   }
 });
+
 module.exports = router;
