@@ -1437,18 +1437,24 @@ function renderSearchResults(results, type) {
       if (type === 'user') {
         openPrivateChat(item.nickname);
       } else {
-        // Для каналов: обновляем roomMeta перед вызовом joinRoom
-        if (!roomMeta[item.id]) {
-          roomMeta[item.id] = {
-            is_channel: true,
-            name: item.name,
-            creator: null,
-            members: []
-          };
-        }
+        // Добавляем канал в roomMeta
+        roomMeta[item.id] = {
+          is_channel: true,
+          name: item.name,
+          creator: null,
+          members: [userNickname] // Добавляем текущего пользователя в участники
+        };
+        
+        // Вручную добавляем канал в список чатов
+        const ul = document.getElementById('rooms-list');
+        const li = document.createElement('li');
+        li.textContent = item.name || `Канал #${item.id}`;
+        li.dataset.id = item.id;
+        li.onclick = () => joinRoom(item.id);
+        ul.appendChild(li);
+        
+        // Переходим в канал
         await joinRoom(item.id);
-        // Добавляем обновление списка чатов после входа в канал
-        await loadRooms();
       }
       globalSearch.value = '';
       searchResults.style.display = 'none';
