@@ -256,14 +256,13 @@ router.get('/:roomId', authMiddleware, async (req, res) => {
   }
 });
 
-// DELETE /api/rooms/:roomId - удалить комнату (только для приватных чатов)
-// DELETE /api/rooms/:roomId - удалить комнату (только для приватных чатов)
+// DELETE /api/rooms/:roomId - удалить комнату
 router.delete('/:roomId', authMiddleware, async (req, res) => {
   const { roomId } = req.params;
   try {
-    // Проверяем, что это приватный чат и текущий пользователь участник
+    // Проверяем, что комната существует
     const room = await pool.query(
-      `SELECT is_group, is_channel 
+      `SELECT is_group, is_channel, creator_nickname 
        FROM rooms 
        WHERE id = $1`,
       [roomId]
@@ -273,16 +272,30 @@ router.delete('/:roomId', authMiddleware, async (req, res) => {
       return res.status(404).send('Room not found');
     }
     
-    if (room.rows[0].is_group || room.rows[0].is_channel) {
-      return res.status(400).send('Can only delete private chats');
+    const roomData = room.rows[0];
+    const isCreator = roomData.creator_nickname === req.userNickname;
+    
+    // Для приватного чата: разрешаем удаление любому участнику
+    if (!roomData.is_group && !roomData.is_channel) {
+      // Удаляем комнату и все связанные данные
+      await pool.query('DELETE FROM calls WHERE room_id = $1', [roomId]);
+      await pool.query('DELETE FROM messages WHERE room_id = $1', [roomId]);
+      await pool.query('DELETE FROM room_members WHERE room_id = $1', [roomId]);
+      await pool.query('DELETE FROM rooms WHERE id = $1', [roomId]);
+      return res.json({ ok: true });
     }
     
-    // Удаляем комнату и все связанные данные
-    await pool.query('DELETE FROM calls WHERE room_id = $1', [roomId]);
-    await pool.query('DELETE FROM messages WHERE room_id = $1', [roomId]);
-    await pool.query('DELETE FROM room_members WHERE room_id = $1', [roomId]);
-    await pool.query('DELETE FROM rooms WHERE id = $1', [roomId]);
-    res.json({ ok: true });
+    // Для групп/каналов: только создатель может удалить
+    if (isCreator) {
+      // Удаляем комнату и все связанные данные
+      await pool.query('DELETE FROM calls WHERE room_id = $1', [roomId]);
+      await pool.query('DELETE FROM messages WHERE room_id = $1', [roomId]);
+      await pool.query('DELETE FROM room_members WHERE room_id = $1', [roomId]);
+      await pool.query('DELETE FROM rooms WHERE id = $1', [roomId]);
+      return res.json({ ok: true });
+    }
+    
+    return res.status(403).send('Only creator can delete this room');
   } catch (err) {
     console.error('Error deleting room:', err);
     res.status(500).send('Error deleting room');
