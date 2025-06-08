@@ -11,80 +11,69 @@ document.addEventListener('DOMContentLoaded', () => {
     const highScoreDisplay = document.getElementById('high-score');
     const restartBtn = document.getElementById('restart-btn');
     
-    // Размеры canvas
-    const CANVAS_WIDTH = canvas.width = 800;
-    const CANVAS_HEIGHT = canvas.height = 400;
+    // Размеры canvas (увеличенные для большего обзора)
+    const CANVAS_WIDTH = canvas.width = 1200;
+    const CANVAS_HEIGHT = canvas.height = 500;
     
-    // Игровые переменные
-    let gameSpeed = 5;
+    // Игровые переменные (замедленные)
+    let gameSpeed = 4;
     let gameFrame = 0;
     let score = 0;
     let highScore = localStorage.getItem('dinoHighScore') || 0;
     let gameRunning = false;
     let obstacles = [];
     
-    // Игровые объекты
+    // Игрок
     const player = {
-        x: 50,
-        y: CANVAS_HEIGHT - 100,
-        width: 50,
-        height: 70,
-        gravity: 0.6,
+        x: 100, // Сдвигаем игрока правее для лучшего обзора
+        y: CANVAS_HEIGHT - 150,
+        width: 60,
+        height: 90,
+        gravity: 0.5,
         velocity: 0,
-        jumpForce: 15,
+        jumpForce: 14,
         jumping: false,
         ducking: false,
-        normalHeight: 70,
-        duckHeight: 40,
+        normalHeight: 90,
+        duckHeight: 50,
         
         draw() {
             ctx.fillStyle = '#4CAF50';
             
-            // Рисуем динозавра в зависимости от состояния
             if (this.ducking) {
-                // Тело при приседании
                 ctx.fillRect(this.x, this.y + this.normalHeight - this.duckHeight, this.width, this.duckHeight);
-                // Голова
                 ctx.beginPath();
-                ctx.arc(this.x + 35, this.y + this.normalHeight - this.duckHeight - 15, 20, 0, Math.PI * 2);
+                ctx.arc(this.x + 45, this.y + this.normalHeight - this.duckHeight - 20, 25, 0, Math.PI * 2);
                 ctx.fill();
-                // Глаз
                 ctx.fillStyle = 'black';
                 ctx.beginPath();
-                ctx.arc(this.x + 40, this.y + this.normalHeight - this.duckHeight - 20, 5, 0, Math.PI * 2);
+                ctx.arc(this.x + 50, this.y + this.normalHeight - this.duckHeight - 25, 6, 0, Math.PI * 2);
                 ctx.fill();
             } else {
-                // Тело
                 ctx.fillRect(this.x, this.y, this.width, this.height);
-                // Шея и голова
                 ctx.beginPath();
-                ctx.arc(this.x + 35, this.y - 15, 20, 0, Math.PI * 2);
+                ctx.arc(this.x + 45, this.y - 20, 25, 0, Math.PI * 2);
                 ctx.fill();
-                // Глаз
                 ctx.fillStyle = 'black';
                 ctx.beginPath();
-                ctx.arc(this.x + 40, this.y - 20, 5, 0, Math.PI * 2);
+                ctx.arc(this.x + 50, this.y - 25, 6, 0, Math.PI * 2);
                 ctx.fill();
-                // Ноги
                 ctx.fillStyle = '#388E3C';
-                ctx.fillRect(this.x + 10, this.y + this.height, 10, 20);
-                ctx.fillRect(this.x + 30, this.y + this.height, 10, 20);
+                ctx.fillRect(this.x + 15, this.y + this.height, 12, 25);
+                ctx.fillRect(this.x + 40, this.y + this.height, 12, 25);
             }
         },
         
         update() {
-            // Применяем гравитацию
             this.velocity += this.gravity;
             this.y += this.velocity;
             
-            // Проверка земли
             if (this.y >= CANVAS_HEIGHT - this.height) {
                 this.y = CANVAS_HEIGHT - this.height;
                 this.velocity = 0;
                 this.jumping = false;
             }
             
-            // Обновление высоты при приседании
             if (this.ducking && !this.jumping) {
                 this.height = this.duckHeight;
             } else {
@@ -110,12 +99,37 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
-    // Класс для фона (земля)
-    class Background {
+    // Класс для фоновых гор (параллакс)
+    class Mountain {
+        constructor(y, height, color, speed) {
+            this.y = y;
+            this.height = height;
+            this.color = color;
+            this.speed = speed;
+            this.x = 0;
+        }
+        
+        draw() {
+            ctx.fillStyle = this.color;
+            
+            // Рисуем горы как серию треугольников
+            for (let i = -1; i < CANVAS_WIDTH / 200 + 1; i++) {
+                const startX = i * 200 + (gameFrame * this.speed) % 200;
+                ctx.beginPath();
+                ctx.moveTo(startX, this.y + this.height);
+                ctx.lineTo(startX + 100, this.y);
+                ctx.lineTo(startX + 200, this.y + this.height);
+                ctx.fill();
+            }
+        }
+    }
+    
+    // Класс для земли
+    class Ground {
         constructor() {
             this.x = 0;
             this.width = CANVAS_WIDTH;
-            this.height = 30;
+            this.height = 40;
             this.y = CANVAS_HEIGHT - this.height;
         }
         
@@ -125,33 +139,33 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Текстура земли
             ctx.fillStyle = '#A0522D';
-            for (let i = 0; i < this.width; i += 20) {
-                ctx.fillRect(i, this.y, 10, 5);
+            for (let i = 0; i < this.width; i += 30) {
+                ctx.fillRect(i, this.y, 15, 6);
             }
         }
         
         update() {
-            // Движение земли для создания эффекта бега
-            this.x = gameFrame * gameSpeed % 20;
+            this.x = gameFrame * gameSpeed % 30;
         }
     }
     
     // Класс для облаков
     class Cloud {
         constructor() {
-            this.width = 70 + Math.random() * 50;
-            this.height = 30 + Math.random() * 20;
-            this.x = CANVAS_WIDTH + Math.random() * 100;
-            this.y = 50 + Math.random() * 100;
-            this.speed = 0.5 + Math.random() * 0.5;
+            this.width = 80 + Math.random() * 60;
+            this.height = 35 + Math.random() * 25;
+            this.x = CANVAS_WIDTH + Math.random() * 300;
+            this.y = 50 + Math.random() * 150;
+            this.speed = 0.3 + Math.random() * 0.4;
         }
         
         draw() {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
             ctx.beginPath();
             ctx.arc(this.x, this.y, this.width/4, 0, Math.PI * 2);
             ctx.arc(this.x + this.width/3, this.y - this.height/3, this.width/5, 0, Math.PI * 2);
             ctx.arc(this.x + this.width/2, this.y, this.width/4, 0, Math.PI * 2);
+            ctx.arc(this.x + this.width/1.8, this.y + this.height/4, this.width/5, 0, Math.PI * 2);
             ctx.fill();
         }
         
@@ -163,77 +177,69 @@ document.addEventListener('DOMContentLoaded', () => {
     // Класс для препятствий
     class Obstacle {
         constructor() {
-            this.width = 30;
+            this.width = 35;
             this.x = CANVAS_WIDTH;
             this.type = Math.random() > 0.5 ? 'cactus' : 'bird';
             
             if (this.type === 'cactus') {
-                this.height = 50 + Math.random() * 30;
-                this.y = CANVAS_HEIGHT - this.height - 30;
+                this.height = 60 + Math.random() * 40;
+                this.y = CANVAS_HEIGHT - this.height - 40;
             } else {
-                this.height = 30;
-                this.y = CANVAS_HEIGHT - 150 - Math.random() * 100;
+                this.height = 35;
+                this.y = CANVAS_HEIGHT - 180 - Math.random() * 150;
             }
         }
         
         draw() {
             if (this.type === 'cactus') {
-                // Рисуем кактус
                 ctx.fillStyle = '#2E8B57';
                 ctx.fillRect(this.x, this.y, this.width, this.height);
                 
-                // Колючки
                 ctx.fillStyle = '#3CB371';
-                for (let i = 0; i < this.height; i += 10) {
+                for (let i = 0; i < this.height; i += 15) {
                     ctx.beginPath();
                     ctx.moveTo(this.x, this.y + i);
-                    ctx.lineTo(this.x - 10, this.y + i + 5);
-                    ctx.lineTo(this.x, this.y + i + 10);
+                    ctx.lineTo(this.x - 12, this.y + i + 6);
+                    ctx.lineTo(this.x, this.y + i + 12);
                     ctx.fill();
                     
                     ctx.beginPath();
                     ctx.moveTo(this.x + this.width, this.y + i);
-                    ctx.lineTo(this.x + this.width + 10, this.y + i + 5);
-                    ctx.lineTo(this.x + this.width, this.y + i + 10);
+                    ctx.lineTo(this.x + this.width + 12, this.y + i + 6);
+                    ctx.lineTo(this.x + this.width, this.y + i + 12);
                     ctx.fill();
                 }
             } else {
-                // Рисуем птицу (птеродактиль)
                 ctx.fillStyle = '#9370DB';
-                // Тело
                 ctx.beginPath();
-                ctx.ellipse(this.x + 15, this.y + 15, 15, 10, 0, 0, Math.PI * 2);
+                ctx.ellipse(this.x + 18, this.y + 18, 18, 12, 0, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // Крылья
                 ctx.beginPath();
-                const wingY = Math.sin(gameFrame * 0.2) * 5 + this.y;
-                ctx.moveTo(this.x, this.y + 15);
-                ctx.quadraticCurveTo(this.x - 10, wingY, this.x, this.y + 15);
+                const wingY = Math.sin(gameFrame * 0.12) * 6 + this.y;
+                ctx.moveTo(this.x, this.y + 18);
+                ctx.quadraticCurveTo(this.x - 15, wingY, this.x, this.y + 18);
                 ctx.fill();
                 
-                // Голова
                 ctx.beginPath();
-                ctx.arc(this.x + 25, this.y + 10, 8, 0, Math.PI * 2);
+                ctx.arc(this.x + 30, this.y + 12, 10, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // Глаз
                 ctx.fillStyle = 'white';
                 ctx.beginPath();
-                ctx.arc(this.x + 27, this.y + 8, 3, 0, Math.PI * 2);
+                ctx.arc(this.x + 33, this.y + 10, 4, 0, Math.PI * 2);
                 ctx.fill();
                 
                 ctx.fillStyle = 'black';
                 ctx.beginPath();
-                ctx.arc(this.x + 27, this.y + 8, 1.5, 0, Math.PI * 2);
+                ctx.arc(this.x + 33, this.y + 10, 2, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // Клюв
                 ctx.fillStyle = '#FF8C00';
                 ctx.beginPath();
-                ctx.moveTo(this.x + 30, this.y + 10);
-                ctx.lineTo(this.x + 40, this.y + 10);
-                ctx.lineTo(this.x + 30, this.y + 15);
+                ctx.moveTo(this.x + 35, this.y + 12);
+                ctx.lineTo(this.x + 50, this.y + 12);
+                ctx.lineTo(this.x + 35, this.y + 18);
                 ctx.fill();
             }
         }
@@ -243,20 +249,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // Создаем фон
-    const background = new Background();
+    // Создаем слои фона (параллакс)
+    const mountains = [
+        new Mountain(300, 100, 'rgba(80, 40, 20, 0.5)', 0.1), // Дальние горы
+        new Mountain(350, 150, 'rgba(100, 50, 30, 0.7)', 0.3), // Средние горы
+    ];
+    
+    const ground = new Ground();
     const clouds = [];
     
     // Функция для генерации облаков
     function generateClouds() {
-        if (gameFrame % 200 === 0) {
+        if (gameFrame % 300 === 0) {
             clouds.push(new Cloud());
         }
     }
     
     // Функция для генерации препятствий
     function generateObstacles() {
-        if (gameFrame % 100 === 0) {
+        if (gameFrame % 150 === 0) {
             obstacles.push(new Obstacle());
         }
     }
@@ -295,15 +306,16 @@ document.addEventListener('DOMContentLoaded', () => {
         score = Math.floor(gameFrame / 5);
         scoreDisplay.textContent = `Счет: ${score}`;
         
-        // Увеличиваем скорость игры каждые 500 очков
-        gameSpeed = 5 + Math.floor(score / 500);
+        // Плавное увеличение скорости
+        gameSpeed = 4 + Math.floor(score / 700);
+        if (gameSpeed > 10) gameSpeed = 10;
     }
     
     // Функция сброса игры
     function resetGame() {
         gameFrame = 0;
         score = 0;
-        gameSpeed = 5;
+        gameSpeed = 4;
         obstacles = [];
         clouds.length = 0;
         player.y = CANVAS_HEIGHT - player.normalHeight;
@@ -324,9 +336,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // Рисуем небо
         const gradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
         gradient.addColorStop(0, '#87CEEB');
-        gradient.addColorStop(1, '#E0F7FA');
+        gradient.addColorStop(0.7, '#E0F7FA');
+        gradient.addColorStop(1, '#87CEEB');
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        
+        // Рисуем горы (параллакс)
+        mountains.forEach(mountain => mountain.draw());
         
         // Обновляем и рисуем облака
         generateClouds();
@@ -340,9 +356,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
-        // Обновляем и рисуем фон
-        background.update();
-        background.draw();
+        // Обновляем и рисуем землю
+        ground.update();
+        ground.draw();
         
         // Генерируем препятствия
         generateObstacles();
