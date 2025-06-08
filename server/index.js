@@ -18,7 +18,7 @@ const { setupWebSocket } = require('./chat');
 const app    = express();
 const server = http.createServer(app);
 
-const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET || '6LczulkrAAAAAM9eFdasmJWGXZT-Nc4SIP4YxJEH';
+const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET;
 
 // Маршрут для проверки reCAPTCHA
 app.post('/api/verify-captcha', async (req, res) => {
