@@ -1437,47 +1437,28 @@ li.onclick = async () => {
   if (type === 'user') {
     openPrivateChat(item.nickname);
   } else {
-    try {
-      const roomInfo = await fetch(`${API_URL}/rooms/${item.id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      if (!roomInfo.ok) {
-        throw new Error(`Failed to fetch room info: ${roomInfo.status}`);
-      }
-      
-      const roomData = await roomInfo.json();
-      
-      if (!roomData.is_channel) {
-        throw new Error('This room is not a channel');
-      }
-
-      const res = await fetch(`${API_URL}/rooms/${item.id}/members`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ members: [userNickname] })
-      });
-      
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText || 'Failed to join channel');
-      }
-      
-      await loadRooms();
-      await joinRoom(item.id);
-    } catch (err) {
-      console.error('Channel join error:', err);
-      alert(`Не удалось присоединиться к каналу: ${err.message}`);
-      return;
-    }
+    // Добавляем канал в roomMeta
+    roomMeta[item.id] = {
+      is_channel: true,
+      name: item.name,
+      creator: null,
+      members: [userNickname] // Добавляем текущего пользователя в участники
+    };
     
-    globalSearch.value = '';
-    searchResults.style.display = 'none';
-    usersList.style.display = 'block';
+    // Вручную добавляем канал в список чатов
+    const ul = document.getElementById('rooms-list');
+    const li = document.createElement('li');
+    li.textContent = item.name || `Канал #${item.id}`;
+    li.dataset.id = item.id;
+    li.onclick = () => joinRoom(item.id);
+    ul.appendChild(li);
+    
+    // Переходим в канал
+    await joinRoom(item.id);
   }
+  globalSearch.value = '';
+  searchResults.style.display = 'none';
+  usersList.style.display = 'block';
 };
     
     searchResults.appendChild(li);
