@@ -24,6 +24,22 @@ document.addEventListener('DOMContentLoaded', () => {
   let answerTimeout  = null;
   let answeredCall = false;
 
+  // Контекстное меню
+const contextMenu = document.createElement('div');
+contextMenu.className = 'context-menu';
+contextMenu.innerHTML = `
+  <ul>
+    <li id="ctx-delete">Удалить чат</li>
+    <li id="ctx-clear">Очистить историю</li>
+    <li id="ctx-leave">Покинуть</li>
+  </ul>
+`;
+document.body.appendChild(contextMenu);
+
+// Закрытие меню при клике вне его
+document.addEventListener('click', () => {
+  contextMenu.style.display = 'none';
+});
 // ─── Планировщик уведомлений календаря ───────────────────────────
 ;(function(){
   const pad = n => String(n).padStart(2,'0');
