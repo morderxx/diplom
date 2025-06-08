@@ -13,16 +13,41 @@ function goBack(screenId) {
     document.getElementById(screenId).classList.remove('hidden');
 }
 
-// Проверка капчи
-function verifyCaptcha() {
-    // В реальном приложении здесь будет проверка ответа капчи
-    // Для примера просто переходим на экран входа
-    document.getElementById('captcha-screen').classList.add('hidden');
-    document.getElementById('login-screen').classList.remove('hidden');
+// Проверка капчи с реальной верификацией
+async function verifyCaptcha() {
+    const captchaResponse = grecaptcha.getResponse();
     
-    // Здесь должна быть реальная проверка:
-    // var response = grecaptcha.getResponse();
-    // if(response.length != 0) { ... }
+    if (!captchaResponse) {
+        document.getElementById('captcha-message').innerText = 'Пожалуйста, пройдите проверку reCAPTCHA';
+        return;
+    }
+    
+    try {
+        // Проверка капчи на сервере
+        const res = await fetch('/api/verify-captcha', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ captcha: captchaResponse })
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+            document.getElementById('captcha-screen').classList.add('hidden');
+            document.getElementById('login-screen').classList.remove('hidden');
+        } else {
+            document.getElementById('captcha-message').innerText = 'Ошибка проверки reCAPTCHA: ' + 
+                (data['error-codes'] ? data['error-codes'].join(', ') : 'Неизвестная ошибка');
+            
+            // Перезагружаем капчу
+            grecaptcha.reset();
+        }
+    } catch (error) {
+        console.error('Captcha verification error:', error);
+        document.getElementById('captcha-message').innerText = 'Ошибка соединения с сервером';
+    }
 }
 
 // Показ формы регистрации
