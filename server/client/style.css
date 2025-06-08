@@ -633,3 +633,7 @@ body.lightbox-open {
   border: none;
   border-radius: 8px;
 }
+
+.game-frame:focus {
+  outline: none;
+}
