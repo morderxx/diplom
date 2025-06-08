@@ -1442,11 +1442,13 @@ function renderSearchResults(results, type) {
           roomMeta[item.id] = {
             is_channel: true,
             name: item.name,
-            creator: null, // или актуальное значение, если есть
-            members: []   // или актуальное значение, если есть
+            creator: null,
+            members: []
           };
         }
         await joinRoom(item.id);
+        // Добавляем обновление списка чатов после входа в канал
+        await loadRooms();
       }
       globalSearch.value = '';
       searchResults.style.display = 'none';
