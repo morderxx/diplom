@@ -1,118 +1,121 @@
-// Добавляем обработчик для кнопки "Продолжить"
-document.getElementById('continue-btn').addEventListener('click', function() {
-    document.getElementById('welcome-screen').classList.add('hidden');
-    document.getElementById('captcha-screen').classList.remove('hidden');
-});
-
-// Функция для возврата назад
-function goBack(screenId) {
-    document.getElementById('welcome-screen').classList.add('hidden');
-    document.getElementById('captcha-screen').classList.add('hidden');
-    document.getElementById('login-screen').classList.add('hidden');
-    
-    document.getElementById(screenId).classList.remove('hidden');
+// Screen transitions
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+    });
+    document.getElementById(screenId).classList.add('active');
 }
 
-// Проверка капчи с реальной верификацией
+// Continue button
+document.getElementById('continue-btn').addEventListener('click', function() {
+    showScreen('captcha-screen');
+});
+
+// Back functionality
+function goBack(screenId) {
+    showScreen(screenId);
+}
+
+// CAPTCHA verification
 async function verifyCaptcha() {
     const captchaResponse = grecaptcha.getResponse();
     
     if (!captchaResponse) {
-        document.getElementById('captcha-message').innerText = 'Пожалуйста, пройдите проверку reCAPTCHA';
+        document.getElementById('captcha-message').textContent = 'Пожалуйста, пройдите проверку reCAPTCHA';
         return;
     }
     
     try {
-        // Проверка капчи на сервере
         const res = await fetch('/api/verify-captcha', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ captcha: captchaResponse })
         });
         
         const data = await res.json();
         
         if (data.success) {
-            document.getElementById('captcha-screen').classList.add('hidden');
-            document.getElementById('login-screen').classList.remove('hidden');
+            showScreen('login-screen');
         } else {
-            document.getElementById('captcha-message').innerText = 'Ошибка проверки reCAPTCHA: ' + 
-                (data['error-codes'] ? data['error-codes'].join(', ') : 'Неизвестная ошибка');
-            
-            // Перезагружаем капчу
+            document.getElementById('captcha-message').textContent = 
+                'Ошибка проверки: ' + (data['error-codes']?.join(', ') || 'Неизвестная ошибка');
             grecaptcha.reset();
         }
     } catch (error) {
-        console.error('Captcha verification error:', error);
-        document.getElementById('captcha-message').innerText = 'Ошибка соединения с сервером';
+        console.error('CAPTCHA error:', error);
+        document.getElementById('captcha-message').textContent = 'Ошибка соединения';
     }
 }
 
-// Показ формы регистрации
+// Toggle register form
 function showRegister() {
-    document.getElementById('keyword').classList.remove('hidden');
+    document.getElementById('keyword-group').classList.remove('hidden');
     document.getElementById('registerButton').classList.remove('hidden');
     document.getElementById('loginButton').classList.add('hidden');
     document.getElementById('registerToggleButton').classList.add('hidden');
 }
 
-// Остальной код остается как было
+// API functions
 const API_URL = '/api';
 
 async function login() {
-  const loginValue = document.getElementById('login').value;
-  const password   = document.getElementById('password').value;
+    const loginValue = document.getElementById('login').value;
+    const password = document.getElementById('password').value;
 
-  const res = await fetch(`${API_URL}/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ login: loginValue, pass: password })
-  });
-  
-  if (!res.ok) {
-    document.getElementById('message').innerText = 'Ошибка входа';
-    return;
-  }
-  
-  const { token } = await res.json();
-  localStorage.setItem('token', token);
+    try {
+        const res = await fetch(`${API_URL}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ login: loginValue, pass: password })
+        });
+        
+        if (!res.ok) {
+            throw new Error('Ошибка входа');
+        }
+        
+        const { token } = await res.json();
+        localStorage.setItem('token', token);
 
-  const profRes = await fetch(`${API_URL}/profile`, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
+        const profRes = await fetch(`${API_URL}/profile`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
 
-  if (profRes.ok) {
-    const prof = await profRes.json();
-    if (!prof.nickname) {
-      window.location.href = 'profile.html';
-      return;
+        if (profRes.ok) {
+            const prof = await profRes.json();
+            if (!prof.nickname) {
+                window.location.href = 'profile.html';
+                return;
+            }
+            localStorage.setItem('nickname', prof.nickname);
+        } else {
+            window.location.href = 'profile.html';
+            return;
+        }
+
+        window.location.href = 'chat.html';
+    } catch (error) {
+        document.getElementById('message').textContent = error.message;
     }
-    localStorage.setItem('nickname', prof.nickname);
-  } else {
-    window.location.href = 'profile.html';
-    return;
-  }
-
-  window.location.href = 'chat.html';
 }
 
 async function register() {
-  const loginInput = document.getElementById('login').value;
-  const password   = document.getElementById('password').value;
-  const keyword    = document.getElementById('keyword').value;
+    const loginInput = document.getElementById('login').value;
+    const password = document.getElementById('password').value;
+    const keyword = document.getElementById('keyword').value;
 
-  const res = await fetch(`${API_URL}/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ login: loginInput, pass: password, keyword })
-  });
-  
-  if (!res.ok) {
-    document.getElementById('message').innerText = 'Ошибка регистрации';
-    return;
-  }
+    try {
+        const res = await fetch(`${API_URL}/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ login: loginInput, pass: password, keyword })
+        });
+        
+        if (!res.ok) {
+            throw new Error('Ошибка регистрации');
+        }
 
-  await login();
+        await login();
+    } catch (error) {
+        document.getElementById('message').textContent = error.message;
+    }
 }
