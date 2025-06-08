@@ -1583,22 +1583,22 @@ document.getElementById('ctx-clear').addEventListener('click', async () => {
     
     if (!res.ok) throw new Error(await res.text());
     
-    // Если очищаем текущую комнату - немедленно обновляем UI
-    if (currentRoom === roomId) {
-      // 1. Очищаем видимый чат
-      document.getElementById('chat-box').innerHTML = '';
-      
-      // 2. Вызываем joinRoom для текущей комнаты, чтобы обновить данные
-      joinRoom(roomId);
+    // 1. Уведомляем сервер для рассылки события очистки
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type: 'history-cleared',
+        roomId: roomId
+      }));
     }
     
-    // Закрываем контекстное меню
-    contextMenu.style.display = 'none';
+    // 2. Немедленная перезагрузка страницы для текущего пользователя
+    location.reload();
+    
   } catch (err) {
     console.error('Ошибка очистки истории:', err);
     alert('Не удалось очистить историю');
-    contextMenu.style.display = 'none';
   }
+  contextMenu.style.display = 'none';
 });
 
 // Новая функция: получение актуальных данных комнаты
