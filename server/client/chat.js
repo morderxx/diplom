@@ -1028,17 +1028,12 @@ async function joinRoom(roomId) {
       break;
 
 
-// В обработке WebSocket-сообщений
+// В socket.onmessage
 case 'history-cleared':
-  // Рассылаем событие всем участникам комнаты
-  wss.clients.forEach(client => {
-    if (client.roomId === msg.roomId && client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify({
-        type: 'history-cleared',
-        roomId: msg.roomId
-      }));
-    }
-  });
+  if (msg.roomId === currentRoom) {
+    // Перезагружаем страницу только если пользователь находится в очищенной комнате
+    location.reload();
+  }
   break;
       
     case 'webrtc-cancel':
