@@ -213,6 +213,11 @@ loadAllUsers();
 
 // Открыть модалку
 createGroupBtn.onclick = () => {
+  // Установка заголовка и типа
+  document.querySelector('#group-modal h3').textContent = 'Новая группа';
+  groupNameInput.placeholder = 'Введите название группы';
+  groupModal.dataset.mode = 'group';
+
   groupNameInput.value = '';
   userSearchInput.value = '';
   suggestionsList.innerHTML = '';
@@ -329,10 +334,11 @@ addCancelBtn.onclick = () => {
 };
 
   // Нажали «Создать канал»
-createChannelBtn.onclick = () => {
-  // переиспользуем ту же модалку, но меняем текст заголовка
+  // Установка заголовка и типа
   document.querySelector('#group-modal h3').textContent = 'Новый канал';
   groupNameInput.placeholder = 'Введите название канала';
+  groupModal.dataset.mode = 'channel';
+
   groupModal.classList.remove('hidden');
   userSearchInput.value = '';
   suggestionsList.innerHTML = '';
@@ -345,7 +351,7 @@ createChannelBtn.onclick = () => {
   // Определяем контекст: создание или добавление
   const mode      = groupModal.dataset.mode || 'create'; // 'create' или 'add'
   const title     = document.querySelector('#group-modal h3').textContent;
-  const isChannel = /канал/i.test(title);
+  const isChannel = mode === 'channel';
   const name      = groupNameInput.value.trim();
   const members   = Array.from(selectedUsers);
 
@@ -1534,67 +1540,69 @@ document.getElementById('rooms-list').addEventListener('contextmenu', (e) => {
   const isCreator = roomInfo.creator === userNickname;
   
   // Скрываем все пункты меню
-  document.getElementById('ctx-delete').style.display = 'none';
-  document.getElementById('ctx-leave').style.display = 'none';
+  const ctxDelete = document.getElementById('ctx-delete');
+  const ctxLeave = document.getElementById('ctx-leave');
+  
+  ctxDelete.style.display = 'none';
+  ctxLeave.style.display = 'none';
+  
+  // Обновляем текст в зависимости от типа
+  if (roomInfo.is_channel) {
+    ctxDelete.textContent = 'Удалить канал';
+  } else if (roomInfo.is_group) {
+    ctxDelete.textContent = 'Удалить группу';
+  } else {
+    ctxDelete.textContent = 'Удалить чат';
+  }
   
   // Для приватных чатов
   if (!roomInfo.is_group && !roomInfo.is_channel) {
-    document.getElementById('ctx-delete').style.display = 'block';
+    ctxDelete.style.display = 'block';
   } 
   // Для групп и каналов
   else {
-    // Для создателя показываем "Удалить", для остальных - "Покинуть"
     if (isCreator) {
-      document.getElementById('ctx-delete').style.display = 'block';
+      ctxDelete.style.display = 'block';
     } else {
-      document.getElementById('ctx-leave').style.display = 'block';
+      ctxLeave.style.display = 'block';
     }
   }
   
-  // Сохраняем текущую комнату для обработки действий
   contextMenu.dataset.roomId = roomId;
 });
 
-// Обработчик удаления комнаты
 document.getElementById('ctx-delete').addEventListener('click', async () => {
   const roomId = contextMenu.dataset.roomId;
+  const roomInfo = roomMeta[roomId];
+  
   try {
     const res = await fetch(`${API_URL}/rooms/${roomId}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` }
     });
+    
     if (!res.ok) throw new Error(await res.text());
     
-    // Полная перезагрузка страницы
-    location.reload();
-  } catch (err) {
-    console.error('Ошибка удаления чата:', err);
-    alert('Не удалось удалить чат');
-  }
-  contextMenu.style.display = 'none';
-});
-
-// Обработчики действий контекстного меню
-document.getElementById('ctx-delete').addEventListener('click', async () => {
-  const roomId = contextMenu.dataset.roomId;
-  try {
-    const res = await fetch(`${API_URL}/rooms/${roomId}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!res.ok) throw new Error(await res.text());
     await loadRooms();
+    
     if (currentRoom === roomId) {
       document.getElementById('chat-section').classList.remove('active');
       currentRoom = null;
-      // Очищаем чат и скрываем элементы интерфейса
       document.getElementById('chat-box').innerHTML = '';
       document.getElementById('chat-header').classList.add('hidden');
     }
   } catch (err) {
-    console.error('Ошибка удаления чата:', err);
-    alert('Не удалось удалить чат');
+    console.error('Ошибка удаления:', err);
+    
+    let roomType = 'чат';
+    if (roomInfo) {
+      if (roomInfo.is_channel) roomType = 'канал';
+      else if (roomInfo.is_group) roomType = 'группу';
+    }
+    
+    alert(`Не удалось удалить ${roomType}: ${err.message}`);
   }
+  
   contextMenu.style.display = 'none';
 });
 
