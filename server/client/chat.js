@@ -998,6 +998,16 @@ async function joinRoom(roomId) {
   if (msg.roomId !== currentRoom) return;
 
   switch (msg.type) {
+    case 'rooms-updated':
+    // Принудительно обновляем список чатов
+    await loadRooms();
+    
+    // Если обновился текущий чат - перезагружаем его
+    if (msg.roomId && msg.roomId === currentRoom) {
+      joinRoom(currentRoom); 
+    }
+    break;
+      
     case 'webrtc-hangup':
       if (msg.from === userNickname) break; // не обрабатываем эхо
 
@@ -1022,27 +1032,27 @@ async function joinRoom(roomId) {
       answeredCall = false;
       break;
 
-case 'history-cleared':
-  console.log(`Received history-cleared for room ${msg.roomId}, current room is ${currentRoom}`);
-  if (msg.roomId === currentRoom) {
-    // Добавим более заметное уведомление
-    const notification = document.createElement('div');
-    notification.className = 'global-notification';
-    notification.innerHTML = `
-      <div class="notification-content">
-        <p>История сообщений была очищена администратором</p>
-        <p>Страница будет перезагружена через 3 секунды...</p>
-      </div>
-    `;
-    document.body.appendChild(notification);
-    
-    // Увеличим задержку перед перезагрузкой
-    setTimeout(() => {
-      console.log('Reloading page due to history cleared');
-      location.reload();
-    }, 3000);
-  }
-  break;
+      case 'history-cleared':
+        console.log(`Received history-cleared for room ${msg.roomId}, current room is ${currentRoom}`);
+        if (msg.roomId === currentRoom) {
+          // Добавим более заметное уведомление
+          const notification = document.createElement('div');
+          notification.className = 'global-notification';
+          notification.innerHTML = `
+            <div class="notification-content">
+              <p>История сообщений была очищена администратором</p>
+              <p>Страница будет перезагружена через 3 секунды...</p>
+            </div>
+          `;
+          document.body.appendChild(notification);
+          
+          // Увеличим задержку перед перезагрузкой
+          setTimeout(() => {
+            console.log('Reloading page due to history cleared');
+            location.reload();
+          }, 3000);
+        }
+        break;
       
     case 'webrtc-cancel':
       // рисуем только если это сделал НЕ мы сами
