@@ -1531,13 +1531,11 @@ document.getElementById('rooms-list').addEventListener('contextmenu', (e) => {
   
   // Настраиваем видимость пунктов меню
   document.getElementById('ctx-delete').style.display = 'none';
-  document.getElementById('ctx-clear').style.display = 'none';
   document.getElementById('ctx-leave').style.display = 'none';
   
   // Для приватных чатов
   if (!roomInfo.is_group && !roomInfo.is_channel) {
     document.getElementById('ctx-delete').style.display = 'block';
-    document.getElementById('ctx-clear').style.display = 'block';
   } 
   // Для групп и каналов
   else {
