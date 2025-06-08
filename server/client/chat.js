@@ -1437,24 +1437,27 @@ function renderSearchResults(results, type) {
       if (type === 'user') {
         openPrivateChat(item.nickname);
       } else {
-        // Добавляем канал в roomMeta
-        roomMeta[item.id] = {
-          is_channel: true,
-          name: item.name,
-          creator: null,
-          members: [userNickname] // Добавляем текущего пользователя в участники
-        };
-        
-        // Вручную добавляем канал в список чатов
-        const ul = document.getElementById('rooms-list');
-        const li = document.createElement('li');
-        li.textContent = item.name || `Канал #${item.id}`;
-        li.dataset.id = item.id;
-        li.onclick = () => joinRoom(item.id);
-        ul.appendChild(li);
-        
-        // Переходим в канал
-        await joinRoom(item.id);
+        try {
+          // Отправляем запрос на сервер для добавления пользователя в канал
+          const res = await fetch(`${API_URL}/rooms/${item.id}/members`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ members: [userNickname] })
+          });
+    
+          if (!res.ok) throw new Error(await res.text());
+    
+          // После успешного добавления обновляем список чатов
+          await loadRooms();
+          await joinRoom(item.id);
+        } catch (err) {
+          console.error('Ошибка добавления в канал:', err);
+          alert('Не удалось присоединиться к каналу');
+          return;
+        }
       }
       globalSearch.value = '';
       searchResults.style.display = 'none';
