@@ -1359,6 +1359,11 @@ function openGame(path) {
   
   // Блокируем скролл основного контента
   document.body.style.overflow = 'hidden';
+
+  gameFrame.onload = () => {
+    // задержка, чтобы браузер точно успел вставить iframe в DOM
+    setTimeout(() => gameFrame.focus(), 50);
+  };
 }
 
 // Закрытие игрового модального окна
