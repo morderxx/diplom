@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const CANVAS_HEIGHT = canvas.height = 600;
     
     // Игровые переменные
-    let gameSpeed = 5; // Высокая начальная скорость
+    let gameSpeed = 7; // Увеличенная начальная скорость
     let gameFrame = 0;
     let score = 0;
     let energy = 0;
@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let stars = [];
     let planets = [];
     let particles = [];
+    let nebulas = [];
     
     // Анимационные состояния динозавра
     let dinoLegState = 0;
@@ -36,16 +37,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Игрок
     const player = {
         x: 200,
-        y: CANVAS_HEIGHT - 200,
-        width: 80,
-        height: 120,
-        gravity: 0.5,
+        y: CANVAS_HEIGHT - 170,
+        width: 70,
+        height: 100,
+        gravity: 0.6,
         velocity: 0,
-        jumpForce: 18,
+        jumpForce: 16,
         jumping: false,
         ducking: false,
-        normalHeight: 120,
-        duckHeight: 70,
+        normalHeight: 100,
+        duckHeight: 60,
         boostActive: false,
         boostTime: 0,
         
@@ -65,20 +66,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Голова
                 ctx.beginPath();
-                ctx.arc(this.x + 60, this.y + this.normalHeight - this.duckHeight - 30, 35, 0, Math.PI * 2);
+                ctx.arc(this.x + 50, this.y + this.normalHeight - this.duckHeight - 25, 30, 0, Math.PI * 2);
                 ctx.fill();
                 
                 // Глаз
                 ctx.fillStyle = '#330000';
                 ctx.beginPath();
-                ctx.arc(this.x + 70, this.y + this.normalHeight - this.duckHeight - 35, 10, 0, Math.PI * 2);
+                ctx.arc(this.x + 60, this.y + this.normalHeight - this.duckHeight - 30, 8, 0, Math.PI * 2);
                 ctx.fill();
                 
                 // Улыбка
                 ctx.strokeStyle = '#330000';
-                ctx.lineWidth = 3;
+                ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.arc(this.x + 70, this.y + this.normalHeight - this.duckHeight - 30, 18, 0.2, Math.PI * 0.8);
+                ctx.arc(this.x + 60, this.y + this.normalHeight - this.duckHeight - 25, 15, 0.2, Math.PI * 0.8);
                 ctx.stroke();
             } else {
                 // Тело
@@ -86,30 +87,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Шея и голова
                 ctx.beginPath();
-                ctx.arc(this.x + 60, this.y - 30, 35, 0, Math.PI * 2);
+                ctx.arc(this.x + 50, this.y - 25, 30, 0, Math.PI * 2);
                 ctx.fill();
                 
                 // Глаз
                 ctx.fillStyle = '#330000';
                 ctx.beginPath();
-                ctx.arc(this.x + 70, this.y - 35, 10, 0, Math.PI * 2);
+                ctx.arc(this.x + 60, this.y - 30, 8, 0, Math.PI * 2);
                 ctx.fill();
                 
                 // Улыбка
                 ctx.strokeStyle = '#330000';
-                ctx.lineWidth = 3;
+                ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.arc(this.x + 70, this.y - 30, 25, 0.2, Math.PI * 0.8);
+                ctx.arc(this.x + 60, this.y - 25, 20, 0.2, Math.PI * 0.8);
                 ctx.stroke();
                 
                 // Ноги (анимированные)
                 ctx.fillStyle = '#cc3300';
-                const legOffset = dinoLegState === 0 ? 0 : 15;
+                const legOffset = dinoLegState === 0 ? 0 : 12;
                 
                 // Передняя нога
-                ctx.fillRect(this.x + 25, this.y + this.height, 20, 35);
+                ctx.fillRect(this.x + 20, this.y + this.height, 18, 30);
                 // Задняя нога
-                ctx.fillRect(this.x + 55 + legOffset, this.y + this.height, 20, 35);
+                ctx.fillRect(this.x + 45 + legOffset, this.y + this.height, 18, 30);
             }
             
             // Эффект ускорения
@@ -117,9 +118,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.fillStyle = '#ffff00';
                 ctx.globalAlpha = 0.6;
                 ctx.beginPath();
-                ctx.arc(this.x - 30, this.y + this.height/2, 40, 0, Math.PI * 2);
+                ctx.arc(this.x - 25, this.y + this.height/2, 35, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.globalAlpha = 1.0;
+                
+                // Частицы ускорения
+                if (gameFrame % 3 === 0) {
+                    createParticles(this.x - 30, this.y + this.height/2, 3, '#ffff00');
+                }
             }
             
             ctx.shadowBlur = 0;
@@ -138,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Анимация ног при беге
                 dinoLegTimer++;
-                if (dinoLegTimer > 8 - Math.min(6, gameSpeed/2)) {
+                if (dinoLegTimer > 6 - Math.min(5, gameSpeed/3)) {
                     dinoLegTimer = 0;
                     dinoLegState = dinoLegState === 0 ? 1 : 0;
                 }
@@ -167,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 dinoLegState = 0;
                 
                 // Эффект прыжка
-                createParticles(this.x + this.width/2, this.y + this.height, 15, '#ff6600');
+                createParticles(this.x + this.width/2, this.y + this.height, 12, '#ff6600');
             }
         },
         
@@ -184,8 +190,9 @@ document.addEventListener('DOMContentLoaded', () => {
         boost() {
             if (energy >= 10) {
                 this.boostActive = true;
-                this.boostTime = 180; // 3 секунды при 60fps
+                this.boostTime = 150; // 2.5 секунды при 60fps
                 energy -= 10;
+                createParticles(this.x + this.width/2, this.y + this.height/2, 20, '#ffff00');
             }
         }
     };
@@ -203,7 +210,16 @@ document.addEventListener('DOMContentLoaded', () => {
         draw() {
             ctx.shadowColor = this.color;
             ctx.shadowBlur = 40;
-            ctx.fillStyle = this.color;
+            
+            // Градиент для планет
+            const gradient = ctx.createRadialGradient(
+                this.x - this.size/3, this.y - this.size/3, 1,
+                this.x, this.y, this.size
+            );
+            gradient.addColorStop(0, '#ffffff');
+            gradient.addColorStop(1, this.color);
+            
+            ctx.fillStyle = gradient;
             ctx.beginPath();
             ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
             ctx.fill();
@@ -225,10 +241,39 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         update() {
-            this.x -= this.speed;
+            this.x -= this.speed * (player.boostActive ? 1.5 : 1);
             if (this.x < -this.size * 2) {
                 this.x = CANVAS_WIDTH + this.size * 2;
                 this.y = 50 + Math.random() * 200;
+            }
+        }
+    }
+    
+    // Класс для туманностей
+    class Nebula {
+        constructor() {
+            this.x = Math.random() * CANVAS_WIDTH * 2;
+            this.y = Math.random() * CANVAS_HEIGHT * 0.7;
+            this.width = 300 + Math.random() * 500;
+            this.height = 200 + Math.random() * 300;
+            this.speed = (Math.random() * 0.3 + 0.1) * (player.boostActive ? 1.5 : 1);
+            this.color = `hsla(${Math.random() * 360}, 70%, 60%, ${Math.random() * 0.1 + 0.05})`;
+        }
+        
+        draw() {
+            ctx.globalAlpha = 0.4;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.ellipse(this.x, this.y, this.width, this.height, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
+        
+        update() {
+            this.x -= this.speed;
+            if (this.x < -this.width * 2) {
+                this.x = CANVAS_WIDTH + this.width * 2;
+                this.y = Math.random() * CANVAS_HEIGHT * 0.7;
             }
         }
     }
@@ -237,31 +282,34 @@ document.addEventListener('DOMContentLoaded', () => {
     class Star {
         constructor() {
             this.x = Math.random() * CANVAS_WIDTH;
-            this.y = Math.random() * CANVAS_HEIGHT * 0.6;
+            this.y = Math.random() * CANVAS_HEIGHT * 0.8;
             this.size = Math.random() * 3 + 1;
             this.speed = Math.random() * 0.5 + 0.1;
             this.brightness = Math.random() * 0.5 + 0.5;
+            this.color = `hsl(${Math.random() * 60 + 180}, 100%, 80%)`;
         }
         
         draw() {
-            ctx.fillStyle = `rgba(255, 255, 255, ${this.brightness})`;
+            ctx.fillStyle = this.color;
+            ctx.globalAlpha = this.brightness;
             ctx.shadowColor = 'white';
             ctx.shadowBlur = 10;
             ctx.beginPath();
             ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
             ctx.fill();
             ctx.shadowBlur = 0;
+            ctx.globalAlpha = 1.0;
         }
         
         update() {
-            this.x -= this.speed;
+            this.x -= this.speed * (player.boostActive ? 1.5 : 1);
             if (this.x < -10) {
                 this.x = CANVAS_WIDTH + 10;
-                this.y = Math.random() * CANVAS_HEIGHT * 0.6;
+                this.y = Math.random() * CANVAS_HEIGHT * 0.8;
             }
             
             // Мерцание звезд
-            if (Math.random() < 0.01) {
+            if (Math.random() < 0.02) {
                 this.brightness = Math.random() * 0.5 + 0.5;
             }
         }
@@ -270,14 +318,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Класс для звездной энергии
     class EnergyStar {
         constructor() {
-            this.width = 30;
-            this.height = 30;
-            this.x = CANVAS_WIDTH + Math.random() * 500;
-            this.y = CANVAS_HEIGHT - 300 - Math.random() * 300;
-            this.speed = gameSpeed * 0.8;
+            this.width = 28;
+            this.height = 28;
+            this.x = CANVAS_WIDTH + Math.random() * 300; // Уменьшенное расстояние
+            this.y = CANVAS_HEIGHT - 280 - Math.random() * 280;
+            this.speed = gameSpeed * 0.9;
             this.rotation = 0;
             this.glow = 0;
             this.glowDirection = 1;
+            this.colors = ['#66ffff', '#ff66ff', '#66ff66'];
+            this.colorIndex = Math.floor(Math.random() * this.colors.length);
         }
         
         draw() {
@@ -286,11 +336,11 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.rotate(this.rotation);
             
             // Эффект свечения
-            ctx.shadowColor = '#66ffff';
+            ctx.shadowColor = this.colors[this.colorIndex];
             ctx.shadowBlur = 15 + this.glow;
             
             // Звезда
-            ctx.fillStyle = '#66ffff';
+            ctx.fillStyle = this.colors[this.colorIndex];
             ctx.beginPath();
             
             for (let i = 0; i < 5; i++) {
@@ -314,17 +364,23 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.closePath();
             ctx.fill();
             
+            // Внутреннее свечение
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(0, 0, this.width/6, 0, Math.PI * 2);
+            ctx.fill();
+            
             ctx.restore();
             ctx.shadowBlur = 0;
         }
         
         update() {
-            this.x -= this.speed;
+            this.x -= this.speed * (player.boostActive ? 1.5 : 1);
             this.rotation += 0.05;
             
             // Пульсация свечения
             this.glow += this.glowDirection * 0.2;
-            if (this.glow > 5 || this.glow < 0) {
+            if (this.glow > 6 || this.glow < 0) {
                 this.glowDirection *= -1;
             }
         }
@@ -333,10 +389,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Класс для астероидов
     class Asteroid {
         constructor() {
-            this.size = 60 + Math.random() * 80;
+            this.size = 50 + Math.random() * 70; // Уменьшенный размер
             this.x = CANVAS_WIDTH;
             this.y = CANVAS_HEIGHT - this.size - 50;
-            this.speed = gameSpeed * 0.9;
+            this.speed = gameSpeed * 0.95;
             this.rotation = 0;
             this.rotationSpeed = (Math.random() - 0.5) * 0.05;
             this.points = [];
@@ -358,7 +414,15 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.translate(this.x + this.size/2, this.y + this.size/2);
             ctx.rotate(this.rotation);
             
-            ctx.fillStyle = '#888888';
+            // Градиент для астероидов
+            const gradient = ctx.createRadialGradient(
+                0, 0, 1,
+                0, 0, this.size/2
+            );
+            gradient.addColorStop(0, '#cccccc');
+            gradient.addColorStop(1, '#666666');
+            
+            ctx.fillStyle = gradient;
             ctx.shadowColor = '#aaaaaa';
             ctx.shadowBlur = 15;
             ctx.beginPath();
@@ -372,8 +436,8 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.fill();
             
             // Детали поверхности
-            ctx.fillStyle = '#666666';
-            for (let i = 0; i < 5; i++) {
+            ctx.fillStyle = '#444444';
+            for (let i = 0; i < 6; i++) {
                 const idx = Math.floor(Math.random() * this.points.length);
                 const point = this.points[idx];
                 ctx.beginPath();
@@ -386,7 +450,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         update() {
-            this.x -= this.speed;
+            this.x -= this.speed * (player.boostActive ? 1.5 : 1);
             this.rotation += this.rotationSpeed;
         }
     }
@@ -396,7 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
         constructor(x, y, color) {
             this.x = x;
             this.y = y;
-            this.size = Math.random() * 8 + 3;
+            this.size = Math.random() * 8 + 2;
             this.speedX = Math.random() * 6 - 3;
             this.speedY = Math.random() * 6 - 3;
             this.color = color;
@@ -431,23 +495,30 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Инициализация фона
     function initEnvironment() {
-        // Планеты (3 слоя с параллаксом)
+        // Планеты (4 слоя с параллаксом)
         planets = [
-            new Planet(50, CANVAS_WIDTH + 100, 100, '#ff9966', 0.3),
-            new Planet(80, CANVAS_WIDTH + 400, 250, '#66ccff', 0.5),
-            new Planet(120, CANVAS_WIDTH + 700, 150, '#9966ff', 0.7)
+            new Planet(40, CANVAS_WIDTH + 100, 100, '#ff9966', 0.4),
+            new Planet(60, CANVAS_WIDTH + 400, 250, '#66ccff', 0.6),
+            new Planet(90, CANVAS_WIDTH + 700, 150, '#9966ff', 0.8),
+            new Planet(30, CANVAS_WIDTH + 900, 300, '#ff66cc', 1.0)
         ];
         
+        // Туманности
+        for (let i = 0; i < 5; i++) {
+            nebulas.push(new Nebula());
+        }
+        
         // Звезды на фоне
-        for (let i = 0; i < 200; i++) {
+        for (let i = 0; i < 300; i++) {
             stars.push(new Star());
         }
     }
     
     // Генерация препятствий и энергии
     function generateObjects() {
-        if (gameFrame % Math.floor(120 / (gameSpeed/2)) === 0) {
-            if (Math.random() > 0.5) {
+        // Уменьшенное расстояние между объектами
+        if (gameFrame % Math.floor(80 / (gameSpeed/3)) === 0) {
+            if (Math.random() > 0.4) {
                 obstacles.push(new Asteroid());
             } else {
                 obstacles.push(new EnergyStar());
@@ -458,10 +529,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Проверка коллизий
     function checkCollisions() {
         const playerRect = {
-            x: player.x + 15,
-            y: player.y + 10,
-            width: player.width - 30,
-            height: player.height - 20
+            x: player.x + 12,
+            y: player.y + 8,
+            width: player.width - 24,
+            height: player.height - 16
         };
         
         for (let i = obstacles.length - 1; i >= 0; i--) {
@@ -470,10 +541,10 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (obstacle instanceof Asteroid) {
                 obstacleRect = {
-                    x: obstacle.x + 10,
-                    y: obstacle.y + 10,
-                    width: obstacle.size - 20,
-                    height: obstacle.size - 20
+                    x: obstacle.x + 8,
+                    y: obstacle.y + 8,
+                    width: obstacle.size - 16,
+                    height: obstacle.size - 16
                 };
                 
                 // Проверка столкновения с астероидом
@@ -487,10 +558,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else if (obstacle instanceof EnergyStar) {
                 obstacleRect = {
-                    x: obstacle.x + 5,
-                    y: obstacle.y + 5,
-                    width: obstacle.width - 10,
-                    height: obstacle.height - 10
+                    x: obstacle.x + 4,
+                    y: obstacle.y + 4,
+                    width: obstacle.width - 8,
+                    height: obstacle.height - 8
                 };
                 
                 // Сбор энергии
@@ -503,7 +574,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     energy += 5;
                     if (energy > 100) energy = 100;
                     obstacles.splice(i, 1);
-                    createParticles(obstacle.x + obstacle.width/2, obstacle.y + obstacle.height/2, 20, '#66ffff');
+                    createParticles(obstacle.x + obstacle.width/2, obstacle.y + obstacle.height/2, 15, '#66ffff');
                 }
             }
         }
@@ -512,12 +583,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Обновление счета
     function updateScore() {
-        score = Math.floor(gameFrame / 3);
+        score = Math.floor(gameFrame / 2); // Счет растет быстрее
         scoreDisplay.textContent = `Счет: ${score}`;
         
         // Плавное увеличение скорости
-        gameSpeed = 5 + score / 500;
-        if (gameSpeed > 15) gameSpeed = 15;
+        gameSpeed = 7 + score / 400; // Начальная скорость выше
+        if (gameSpeed > 20) gameSpeed = 20;
         
         // Отображение скорости и энергии
         speedDisplay.textContent = `Скорость: ${gameSpeed.toFixed(1)}x`;
@@ -529,7 +600,7 @@ document.addEventListener('DOMContentLoaded', () => {
         gameFrame = 0;
         score = 0;
         energy = 0;
-        gameSpeed = 5;
+        gameSpeed = 7;
         obstacles = [];
         particles = [];
         player.y = CANVAS_HEIGHT - player.normalHeight;
@@ -554,15 +625,11 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillStyle = '#000033';
         ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
         
-        // Туманность
-        const nebulaGradient = ctx.createRadialGradient(
-            CANVAS_WIDTH/2, CANVAS_HEIGHT/3, 100,
-            CANVAS_WIDTH/2, CANVAS_HEIGHT/3, 800
-        );
-        nebulaGradient.addColorStop(0, 'rgba(102, 0, 204, 0.3)');
-        nebulaGradient.addColorStop(1, 'rgba(0, 0, 64, 0)');
-        ctx.fillStyle = nebulaGradient;
-        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        // Туманности
+        nebulas.forEach(nebula => {
+            nebula.update();
+            nebula.draw();
+        });
         
         // Обновляем и рисуем звезды
         stars.forEach(star => {
@@ -581,7 +648,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Обновляем и рисуем препятствия и энергию
         for (let i = obstacles.length - 1; i >= 0; i--) {
-            obstacles[i].speed = gameSpeed * (obstacles[i] instanceof EnergyStar ? 0.8 : 0.9);
+            obstacles[i].speed = gameSpeed * (obstacles[i] instanceof EnergyStar ? 0.9 : 0.95);
             obstacles[i].update();
             obstacles[i].draw();
             
@@ -614,7 +681,7 @@ document.addEventListener('DOMContentLoaded', () => {
             gameRunning = false;
             
             // Эффект взрыва
-            createParticles(player.x + player.width/2, player.y + player.height/2, 100, '#ff6600');
+            createParticles(player.x + player.width/2, player.y + player.height/2, 80, '#ff6600');
             
             // Обновляем рекорд
             if (score > highScore) {
@@ -627,7 +694,7 @@ document.addEventListener('DOMContentLoaded', () => {
             highScoreDisplay.textContent = highScore;
             setTimeout(() => {
                 gameOverScreen.classList.remove('hidden');
-            }, 1000);
+            }, 800);
         }
         
         gameFrame++;
