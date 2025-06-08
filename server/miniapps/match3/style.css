@@ -288,7 +288,8 @@ body {
 
 .screen-content {
     /* Основные размеры */
-    height: 100%;
+        max-height: 85vh;      /* ограничиваем высоту по вьюпорту */
+    overflow-y: auto;   
     max-width: 100%;
     
     /* Визуальные стили */
