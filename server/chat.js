@@ -174,7 +174,21 @@ if (msg.type === 'message') {
         });
         return;
       }
-
+      
+case 'history-cleared':
+    // Рассылаем событие всем участникам комнаты
+    wss.clients.forEach(client => {
+      const clientInfo = clients.get(client);
+      if (clientInfo && 
+          clientInfo.roomId === msg.roomId && 
+          client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify({
+          type: 'history-cleared',
+          roomId: msg.roomId
+        }));
+      }
+    });
+    break;
     });
 
     ws.on('close', () => {
