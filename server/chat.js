@@ -171,20 +171,22 @@ function setupWebSocket(server) {
         return;
       }
 
-      if (msg.type === 'history-cleared') {
-        wss.clients.forEach(client => {
-          const clientInfo = clients.get(client);
-          if (clientInfo &&
-            clientInfo.roomId === msg.roomId &&
-            client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({
-              type: 'history-cleared',
-              roomId: msg.roomId
-            }));
-          }
-        });
-        return;
-      }
+  if (msg.type === 'history-cleared') {
+  console.log(`Broadcasting history-cleared to room ${msg.roomId}`);
+  let count = 0;
+  wss.clients.forEach(client => {
+    const clientInfo = clients.get(client);
+    if (clientInfo && clientInfo.roomId === msg.roomId && client.readyState === WebSocket.OPEN) {
+      count++;
+      client.send(JSON.stringify({
+        type: 'history-cleared',
+        roomId: msg.roomId
+      }));
+    }
+  });
+  console.log(`Sent to ${count} clients`);
+  return;
+}
     }); // Закрытие ws.on('message')
 
     ws.on('close', () => {
