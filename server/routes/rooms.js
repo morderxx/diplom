@@ -257,6 +257,7 @@ router.get('/:roomId', authMiddleware, async (req, res) => {
 });
 
 // DELETE /api/rooms/:roomId - удалить комнату (только для приватных чатов)
+// DELETE /api/rooms/:roomId - удалить комнату (только для приватных чатов)
 router.delete('/:roomId', authMiddleware, async (req, res) => {
   const { roomId } = req.params;
   try {
@@ -276,34 +277,15 @@ router.delete('/:roomId', authMiddleware, async (req, res) => {
       return res.status(400).send('Can only delete private chats');
     }
     
-    // Удаляем комнату
+    // Удаляем комнату и все связанные данные
+    await pool.query('DELETE FROM calls WHERE room_id = $1', [roomId]);
+    await pool.query('DELETE FROM messages WHERE room_id = $1', [roomId]);
+    await pool.query('DELETE FROM room_members WHERE room_id = $1', [roomId]);
     await pool.query('DELETE FROM rooms WHERE id = $1', [roomId]);
     res.json({ ok: true });
   } catch (err) {
     console.error('Error deleting room:', err);
     res.status(500).send('Error deleting room');
-  }
-});
-
-// DELETE /api/rooms/:roomId/messages - очистить историю
-router.delete('/:roomId/messages', authMiddleware, async (req, res) => {
-  const { roomId } = req.params;
-  try {
-    // Проверяем членство
-    const isMember = await pool.query(
-      'SELECT 1 FROM room_members WHERE room_id = $1 AND nickname = $2',
-      [roomId, req.userNickname]
-    );
-    if (!isMember.rowCount) {
-      return res.status(403).send('Not a member');
-    }
-    
-    // Удаляем сообщения
-    await pool.query('DELETE FROM messages WHERE room_id = $1', [roomId]);
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('Error clearing messages:', err);
-    res.status(500).send('Error clearing messages');
   }
 });
 
