@@ -1562,11 +1562,15 @@ document.getElementById('ctx-delete').addEventListener('click', async () => {
     if (currentRoom === roomId) {
       document.getElementById('chat-section').classList.remove('active');
       currentRoom = null;
+      // Очищаем чат и скрываем элементы интерфейса
+      document.getElementById('chat-box').innerHTML = '';
+      document.getElementById('chat-header').classList.add('hidden');
     }
   } catch (err) {
     console.error('Ошибка удаления чата:', err);
     alert('Не удалось удалить чат');
   }
+  contextMenu.style.display = 'none';
 });
 
 document.getElementById('ctx-clear').addEventListener('click', async () => {
@@ -1578,12 +1582,16 @@ document.getElementById('ctx-clear').addEventListener('click', async () => {
     });
     if (!res.ok) throw new Error(await res.text());
     if (currentRoom === roomId) {
+      // Полностью очищаем чат, включая системные сообщения
       document.getElementById('chat-box').innerHTML = '';
+      // Перезагружаем комнату, чтобы обновить интерфейс
+      joinRoom(roomId);
     }
   } catch (err) {
     console.error('Ошибка очистки истории:', err);
     alert('Не удалось очистить историю');
   }
+  contextMenu.style.display = 'none';
 });
 
 document.getElementById('ctx-leave').addEventListener('click', async () => {
@@ -1598,11 +1606,15 @@ document.getElementById('ctx-leave').addEventListener('click', async () => {
     if (currentRoom === roomId) {
       document.getElementById('chat-section').classList.remove('active');
       currentRoom = null;
+      // Очищаем чат и скрываем элементы интерфейса
+      document.getElementById('chat-box').innerHTML = '';
+      document.getElementById('chat-header').classList.add('hidden');
     }
   } catch (err) {
     console.error('Ошибка выхода из комнаты:', err);
     alert('Не удалось покинуть комнату');
   }
+  contextMenu.style.display = 'none';
 });
   // Initialization
   loadRooms();
