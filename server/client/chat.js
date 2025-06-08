@@ -1584,12 +1584,17 @@ document.getElementById('ctx-clear').addEventListener('click', async () => {
     if (!res.ok) throw new Error(await res.text());
     
     if (currentRoom === roomId) {
-      // Полностью очищаем чат
+      // 1. Очищаем видимый чат
       document.getElementById('chat-box').innerHTML = '';
       
-      // ОБНОВЛЯЕМ ДАННЫЕ О КОМНАТЕ
-      await loadRooms(); // Перезагружаем список комнат
-      joinRoom(roomId); // Перезагружаем текущую комнату
+      // 2. Обновляем данные комнаты (ключевое изменение!)
+      const updatedRoom = await fetchRoomData(roomId); // Новая функция
+      
+      // 3. Обновляем UI комнаты
+      updateRoomUI(updatedRoom); // Новая функция
+      
+      // 4. Обновляем список комнат в сайдбаре
+      await loadRooms();
     }
   } catch (err) {
     console.error('Ошибка очистки истории:', err);
@@ -1597,6 +1602,27 @@ document.getElementById('ctx-clear').addEventListener('click', async () => {
   }
   contextMenu.style.display = 'none';
 });
+
+// Новая функция: получение актуальных данных комнаты
+async function fetchRoomData(roomId) {
+  const res = await fetch(`${API_URL}/rooms/${roomId}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return await res.json();
+}
+
+// Новая функция: обновление UI комнаты
+function updateRoomUI(room) {
+  // Обновляем заголовок чата (кол-во сообщений и т.д.)
+  document.querySelector('.chat-header h3').textContent = room.name;
+  
+  // Обновляем последнее сообщение в сайдбаре
+  const roomElement = document.querySelector(`.room[data-room-id="${room._id}"]`);
+  if (roomElement) {
+    roomElement.querySelector('.last-message').textContent = room.lastMessage?.text || '';
+    roomElement.querySelector('.timestamp').textContent = formatTime(room.updatedAt);
+  }
+}
 
 document.getElementById('ctx-leave').addEventListener('click', async () => {
   const roomId = contextMenu.dataset.roomId;
