@@ -287,12 +287,12 @@ body {
 }
 
 .screen-content {
-    /* Основные размеры */
-    height: 100%;
+    /* Основные размеры - увеличиваем min-height */
+    min-height: 85vh;  /* Изменено с height:100% */
     max-width: 100%;
     
     /* Визуальные стили */
-    padding: 30px;
+    padding: 40px 30px; /* Увеличено вертикальное padding */
     background: rgba(20, 15, 45, 0.8);
     border-radius: 20px;
     box-shadow: 0 0 40px rgba(120, 50, 255, 0.5);
@@ -301,28 +301,42 @@ body {
     /* Центрирование */
     display: flex;
     flex-direction: column;
-    justify-content: center; /* Вертикальное центрирование */
-    align-items: center;     /* Горизонтальное центрирование */
+    justify-content: center; 
+    align-items: center;
     text-align: center;
     
-    /* Убираем прокрутку */
-    overflow: hidden;        /* Заменяем overflow-y: auto */
+    /* Управление переполнением */
+    overflow: hidden;
     box-sizing: border-box;
     
-    /* Новое свойство для контента */
-    position: relative;      /* Для корректной работы внутренних элементов */
+    /* Добавляем автоматические отступы */
+    margin: 20px auto; /* Центрирование по горизонтали + отступы */
 }
 
-/* Для внутренних элементов */
-.screen-title,
-.screen-text,
+/* Уменьшаем отступы у заголовков */
+.screen-title {
+    margin: 10px 0; /* Уменьшенный отступ */
+}
+
+/* Оптимизация контейнеров кнопок */
+.levels-container,
+.button-group {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+    margin: 15px 0; /* Умеренные отступы */
+    max-height: 70vh; /* Ограничение высоты */
+    overflow-y: auto; /* Прокрутка только для кнопок */
+    width: 100%;
+    padding: 10px; /* Дополнительное пространство */
+}
+
+/* Убираем прокрутку у основного контента */
 .tutorial,
 .celebration {
-    text-align: center;
-    width: 100%;
-    margin: 5px 0;          /* Уменьшаем вертикальные отступы */
+    overflow: visible;
 }
-
 /* Контейнеры кнопок */
 .levels-container,
 .button-group {
