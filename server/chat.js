@@ -1,6 +1,6 @@
 const WebSocket = require('ws');
-const jwt       = require('jsonwebtoken');
-const pool      = require('./db');
+const jwt = require('jsonwebtoken');
+const pool = require('./db');
 require('dotenv').config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
@@ -24,8 +24,8 @@ function setupWebSocket(server) {
       if (msg.type === 'join') {
         try {
           const payload = jwt.verify(msg.token, JWT_SECRET);
-          const login   = payload.login;
-          const r       = await pool.query(
+          const login = payload.login;
+          const r = await pool.query(
             `SELECT u.nickname
                FROM users u
                JOIN secret_profile s ON s.id = u.id
@@ -41,54 +41,51 @@ function setupWebSocket(server) {
         return;
       }
 
-// TEXT MESSAGE
-if (msg.type === 'message') {
-  try {
-    const payload = jwt.verify(msg.token, JWT_SECRET);
-    const login   = payload.login;
-    const r       = await pool.query(
-      `SELECT u.nickname
-         FROM users u
-         JOIN secret_profile s ON s.id = u.id
-        WHERE s.login = $1`,
-      [login]
-    );
-    const sender = r.rows[0] && r.rows[0].nickname;
-    if (!sender) return;
+      // TEXT MESSAGE
+      if (msg.type === 'message') {
+        try {
+          const payload = jwt.verify(msg.token, JWT_SECRET);
+          const login = payload.login;
+          const r = await pool.query(
+            `SELECT u.nickname
+               FROM users u
+               JOIN secret_profile s ON s.id = u.id
+              WHERE s.login = $1`,
+            [login]
+          );
+          const sender = r.rows[0] && r.rows[0].nickname;
+          if (!sender) return;
 
-    const time = new Date().toISOString();
-    await pool.query(
-      `INSERT INTO messages (room_id, sender_nickname, text, time)
-         VALUES ($1, $2, $3, $4)`,
-      [msg.roomId, sender, msg.text, time]
-    );
+          const time = new Date().toISOString();
+          await pool.query(
+            `INSERT INTO messages (room_id, sender_nickname, text, time)
+               VALUES ($1, $2, $3, $4)`,
+            [msg.roomId, sender, msg.text, time]
+          );
 
-    // <-- Весь forEach внутри try, всё ок
-    wss.clients.forEach(c => {
-      const info = clients.get(c);
-      if (info && info.roomId === msg.roomId && c.readyState === WebSocket.OPEN) {
-        c.send(JSON.stringify({
-          type:   'message',
-          roomId: msg.roomId,
-          sender,
-          text:   msg.text,
-          time
-        }));
+          wss.clients.forEach(c => {
+            const info = clients.get(c);
+            if (info && info.roomId === msg.roomId && c.readyState === WebSocket.OPEN) {
+              c.send(JSON.stringify({
+                type: 'message',
+                roomId: msg.roomId,
+                sender,
+                text: msg.text,
+                time
+              }));
+            }
+          });
+
+        } catch (e) {
+          console.error('WS message error', e);
+        }
+        return;
       }
-    });
-
-  } catch (e) {
-    console.error('WS message error', e);
-  }
-  return;
-}
-
 
       // FILE MESSAGE
       if (msg.type === 'file') {
         let senderInfo = clients.get(ws);
         if (!senderInfo && msg.roomId && msg.sender) {
-          // если JOIN ещё не успел, подхватываем из сообщения
           senderInfo = { nickname: msg.sender, roomId: msg.roomId };
           clients.set(ws, senderInfo);
         }
@@ -98,12 +95,12 @@ if (msg.type === 'message') {
           const info = clients.get(c);
           if (info && info.roomId === senderInfo.roomId && c.readyState === WebSocket.OPEN) {
             c.send(JSON.stringify({
-              type:     'file',
-              sender:   senderInfo.nickname,
-              fileId:   msg.fileId,
+              type: 'file',
+              sender: senderInfo.nickname,
+              fileId: msg.fileId,
               filename: msg.filename,
               mimeType: msg.mimeType,
-              time:     msg.time
+              time: msg.time
             }));
           }
         });
@@ -123,9 +120,9 @@ if (msg.type === 'message') {
             c.readyState === WebSocket.OPEN
           ) {
             c.send(JSON.stringify({
-              type:    msg.type,
-              roomId:  senderInfo.roomId,
-              from:    senderInfo.nickname,
+              type: msg.type,
+              roomId: senderInfo.roomId,
+              from: senderInfo.nickname,
               payload: msg.payload
             }));
           }
@@ -145,8 +142,8 @@ if (msg.type === 'message') {
             c.readyState === WebSocket.OPEN
           ) {
             c.send(JSON.stringify({
-              type:   'webrtc-cancel',
-              from:   senderInfo.nickname,
+              type: 'webrtc-cancel',
+              from: senderInfo.nickname,
               roomId: senderInfo.roomId
             }));
           }
@@ -154,7 +151,6 @@ if (msg.type === 'message') {
         return;
       }
 
-      // Новый блок для webrtc-hangup
       if (msg.type === 'webrtc-hangup') {
         const senderInfo = clients.get(ws);
         if (!senderInfo) return;
@@ -166,22 +162,21 @@ if (msg.type === 'message') {
             c.readyState === WebSocket.OPEN
           ) {
             c.send(JSON.stringify({
-              type:   'webrtc-hangup',
-              from:   senderInfo.nickname,
+              type: 'webrtc-hangup',
+              from: senderInfo.nickname,
               roomId: senderInfo.roomId
             }));
           }
         });
         return;
       }
-      
+
       if (msg.type === 'history-cleared') {
-        // Рассылаем событие всем участникам комнаты
         wss.clients.forEach(client => {
           const clientInfo = clients.get(client);
-          if (clientInfo && 
-              clientInfo.roomId === msg.roomId && 
-              client.readyState === WebSocket.OPEN) {
+          if (clientInfo &&
+            clientInfo.roomId === msg.roomId &&
+            client.readyState === WebSocket.OPEN) {
             client.send(JSON.stringify({
               type: 'history-cleared',
               roomId: msg.roomId
@@ -190,6 +185,7 @@ if (msg.type === 'message') {
         });
         return;
       }
+    }); // Закрытие ws.on('message')
 
     ws.on('close', () => {
       clients.delete(ws);
