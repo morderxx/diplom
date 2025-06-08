@@ -216,5 +216,34 @@ router.post(
   }
 );
 
+// GET /api/rooms/:roomId - get room details
+router.get('/:roomId', authMiddleware, async (req, res) => {
+  const { roomId } = req.params;
+  try {
+    const { rows } = await pool.query(
+      `SELECT 
+         r.id,
+         r.name,
+         r.is_group,
+         r.is_channel,
+         r.creator_nickname,
+         array_agg(m.nickname) AS members
+       FROM rooms r
+       JOIN room_members m ON m.room_id = r.id
+      WHERE r.id = $1
+      GROUP BY r.id`,
+      [roomId]
+    );
+    
+    if (rows.length === 0) {
+      return res.status(404).send('Room not found');
+    }
+    
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('Error fetching room:', err);
+    res.status(500).send('Error fetching room');
+  }
+});
 
 module.exports = router;
