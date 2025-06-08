@@ -3,24 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dino Runner - Расширенный обзор</title>
+    <title>Cosmic Dino Runner</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>Dino Runner</h1>
-        <p>Управляйте динозавриком, перепрыгивайте кактусы и уклоняйтесь от птеродактилей!</p>
+        <h1>Cosmic Dino</h1>
+        <p>Беги по галактике, уворачивайся от астероидов и собирай звездную энергию!</p>
         
         <div class="controls">
             <div class="key">↑</div>
             <span>Прыжок</span>
             <div class="key">↓</div>
             <span>Присесть</span>
+            <div class="key">→</div>
+            <span>Ускорение</span>
         </div>
         
         <div class="center-button">
             <button id="play-game" class="play-btn">
-                <span>Играть</span>
+                <span>Запуск</span>
                 <div class="dino-icon">
                     <div class="dino-head"></div>
                     <div class="dino-body"></div>
@@ -31,34 +33,35 @@
         
         <div class="features">
             <div class="feature">
-                <div class="feature-icon">🦖</div>
-                <h3>Расширенный обзор</h3>
-                <p>Большая область видимости для лучшего планирования</p>
+                <div class="feature-icon">🌌</div>
+                <h3>Космический обзор</h3>
+                <p>Увеличенная область видимости для стратегического планирования</p>
             </div>
             <div class="feature">
-                <div class="feature-icon">🌄</div>
-                <h3>Плавная сложность</h3>
-                <p>Скорость увеличивается очень постепенно</p>
+                <div class="feature-icon">🚀</div>
+                <h3>Динамичная скорость</h3>
+                <p>Высокая стартовая скорость с плавным увеличением</p>
             </div>
             <div class="feature">
-                <div class="feature-icon">🎨</div>
-                <h3>Улучшенная графика</h3>
-                <p>Детализированные объекты и фон</p>
+                <div class="feature-icon">✨</div>
+                <h3>Потрясающая графика</h3>
+                <p>Неоновые эффекты и детализированные космические объекты</p>
             </div>
         </div>
     </div>
     
-    <div id="game-modal" class="modal">
-        <div class="modal-content game-modal-content">
+    <div id="game-modal">
+        <div class="game-modal-content">
             <span class="close-game">&times;</span>
-            <canvas id="game-canvas" width="1400" height="500"></canvas>
+            <canvas id="game-canvas" width="1800" height="600"></canvas>
             <div id="score-display">Счет: 0</div>
-            <div id="speed-display">Скорость: 1x</div>
+            <div id="speed-display">Скорость: 5x</div>
+            <div id="energy-display">Энергия: 0</div>
             <div id="game-over" class="hidden">
-                <h2>Игра окончена!</h2>
+                <h2>Миссия завершена!</h2>
                 <p>Ваш счет: <span id="final-score">0</span></p>
                 <p>Рекорд: <span id="high-score">0</span></p>
-                <button id="restart-btn">Играть снова</button>
+                <button id="restart-btn">Новая миссия</button>
             </div>
         </div>
     </div>
