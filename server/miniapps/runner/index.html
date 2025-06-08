@@ -3,69 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cosmic Dino Runner</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Космический Прыгун</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(to bottom, #0c1445, #1a237e);
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+        
+        #game-container {
+            position: relative;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        #gameCanvas {
+            background-color: #0a0e2a;
+            display: block;
+        }
+        
+        #gameTitle {
+            position: absolute;
+            top: 13px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 32px;
+            color: #9c27b0;
+            text-shadow: 0 0 10px #e91e63;
+            letter-spacing: 2px;
+            font-weight: bold;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: white;
+            font-size: 18px;
+            text-shadow: 1px 1px 2px black;
+        }
+        
+        .key {
+            display: inline-block;
+            background: rgba(0, 0, 0, 0.4);
+            border: 2px solid #fff;
+            border-radius: 5px;
+            padding: 5px 10px;
+            margin: 0 5px;
+            min-width: 40px;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Cosmic Dino</h1>
-        <p>Беги по галактике, уворачивайся от астероидов и собирай звездную энергию!</p>
-        
-        <div class="controls">
-            <div class="key">↑</div>
-            <span>Прыжок</span>
-            <div class="key">↓</div>
-            <span>Присесть</span>
-            <div class="key">→</div>
-            <span>Ускорение</span>
-        </div>
-        
-        <div class="center-button">
-            <button id="play-game" class="play-btn">
-                <span>Запуск</span>
-                <div class="dino-icon">
-                    <div class="dino-head"></div>
-                    <div class="dino-body"></div>
-                    <div class="dino-leg"></div>
-                </div>
-            </button>
-        </div>
-        
-        <div class="features">
-            <div class="feature">
-                <div class="feature-icon">🌌</div>
-                <h3>Расширенный обзор</h3>
-                <p>Увеличенная область видимости для стратегического планирования</p>
-            </div>
-            <div class="feature">
-                <div class="feature-icon">🚀</div>
-                <h3>Динамичная скорость</h3>
-                <p>Высокая стартовая скорость с плавным увеличением</p>
-            </div>
-            <div class="feature">
-                <div class="feature-icon">✨</div>
-                <h3>Потрясающая графика</h3>
-                <p>Неоновые эффекты и детализированные космические объекты</p>
-            </div>
-        </div>
-    </div>
-    
-    <div id="game-modal">
-        <div class="game-modal-content">
-            <span class="close-game">&times;</span>
-            <canvas id="game-canvas" width="1800" height="600"></canvas>
-            <div id="score-display">Счет: 0</div>
-            <div id="speed-display">Скорость: 5x</div>
-            <div id="energy-display">Энергия: 0</div>
-            <div id="game-over" class="hidden">
-                <h2>Миссия завершена!</h2>
-                <p>Ваш счет: <span id="final-score">0</span></p>
-                <p>Рекорд: <span id="high-score">0</span></p>
-                <button id="restart-btn">Новая миссия</button>
-            </div>
-        </div>
+    <div id="game-container">
+        <div id="gameTitle">КОСМИЧЕСКИЙ ПРЫГУН</div>
+        <canvas id="gameCanvas" width="1000" height="600"></canvas>
     </div>
 
-    <script src="game.js"></script>
+    <script>
+      
+    </script>
 </body>
 </html>
