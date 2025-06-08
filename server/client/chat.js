@@ -947,15 +947,6 @@ async function joinRoom(roomId) {
     console.error('Канал не найден в roomMeta');
     return;
   }
-  socket.onerror = (error) => {
-  console.error('WebSocket error:', error);
-  appendSystem('Ошибка соединения с сервером');
-};
-
-socket.onclose = () => {
-  console.log('WebSocket closed');
-  appendSystem('Соединение с сервером закрыто');
-};
   // readonly для каналов
   const m = roomMeta[roomId] || {};
   const readOnly = m.is_channel && m.creator !== userNickname;
