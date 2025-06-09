@@ -778,7 +778,17 @@ fileInput.onchange = () => {
       // 2) Ответ сервера
       const { fileId, filename, mimeType, time } = await res.json();
 
-      // 3) WS‑рассылка
+      // 3) Немедленное отображение у отправителя
+      renderedFileIds.add(fileId);
+      appendFile(
+        userNickname,
+        fileId,
+        filename,
+        mimeType,
+        time
+      );
+
+      // 4) WS‑рассылка
       if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({
           type:     'file',
@@ -791,14 +801,12 @@ fileInput.onchange = () => {
         }));
       }
 
-      
-
     } catch (err) {
       console.error('Ошибка в fileInput.onchange:', err);
     } finally {
       // сброс input и восстановление кнопки send
       fileInput.value = '';
-      sendBtn.disabled = false;   // если вдруг был disabled
+      sendBtn.disabled = false;
     }
   })();
 };
@@ -819,20 +827,52 @@ fileInput.onchange = () => {
       mediaRecorder = new MediaRecorder(stream);
       audioChunks = [];
       mediaRecorder.ondataavailable = e => { if (e.data.size) audioChunks.push(e.data); };
-      mediaRecorder.onstop = async () => {
-        const blob = new Blob(audioChunks, { type: 'audio/webm' });
-        const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type });
-        const form = new FormData();
-        form.append('file', file);
-        form.append('roomId', currentRoom);
-        const res = await fetch(`${API_URL}/files`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: form
-        });
-        if (!res.ok) console.error('Ошибка загрузки голосового сообщения:', await res.text());
-        voiceBtn.disabled = false;
-      };
+mediaRecorder.onstop = async () => {
+  const blob = new Blob(audioChunks, { type: 'audio/webm' });
+  const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type });
+  const form = new FormData();
+  form.append('file', file);
+  form.append('roomId', currentRoom);
+  try {
+    const res = await fetch(`${API_URL}/files`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: form
+    });
+    
+    if (res.ok) {
+      const { fileId, filename, mimeType, time } = await res.json();
+      
+      // Немедленное отображение у отправителя
+      renderedFileIds.add(fileId);
+      appendFile(
+        userNickname,
+        fileId,
+        filename,
+        mimeType,
+        time
+      );
+      
+      // WS-рассылка
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+          type:     'file',
+          roomId:   currentRoom,
+          sender:   userNickname,
+          fileId,
+          filename,
+          mimeType,
+          time
+        }));
+      }
+    } else {
+      console.error('Ошибка загрузки голосового сообщения:', await res.text());
+    }
+  } catch (err) {
+    console.error('Ошибка при отправке голосового сообщения:', err);
+  }
+  voiceBtn.disabled = false;
+};
       mediaRecorder.start();
       voiceBtn.textContent = '■';
     } catch (err) {
