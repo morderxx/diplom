@@ -1000,9 +1000,19 @@ async function joinRoom(roomId) {
   socket.onopen = () =>
     socket.send(JSON.stringify({ type: 'join', token, roomId }));
  socket.onmessage = ev => {
-  const msg = JSON.parse(ev.data);
+  let msg;
+  try {
+    msg = JSON.parse(ev.data);
+  } catch {
+    return; // если не JSON — игнорируем
+  }
 
-  // 0) Отфильтровываем события, не относящиеся к текущей комнате
+  // ————— Обрабатываем глобальное обновление списка комнат —————
+  if (msg.type === 'roomsUpdated') {
+    loadRooms();    // вызываем функцию, которая перезагружает список
+    return;         // выходим из handler, не обрабатываем дальше
+  }
+  // ————————————————————————————————————————————————
   if (msg.roomId !== currentRoom) return;
 
   switch (msg.type) {
