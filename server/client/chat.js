@@ -181,6 +181,11 @@ case 'call': {
 
 // Вызываем сразу после определения initWebSocket
 initWebSocket();
+socket.onerror = (error) => {
+  console.error('WebSocket error:', error);
+  setTimeout(initWebSocket, 3000);
+};
+  
   // Контекстное меню
 const contextMenu = document.createElement('div');
 contextMenu.className = 'context-menu';
