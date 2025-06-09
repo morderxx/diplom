@@ -761,6 +761,15 @@ fileInput.onchange = () => {
       const file = fileInput.files[0];
       if (!file) return;
 
+      // Немедленно показываем файл у отправителя
+      const tempId = `temp-${Date.now()}`;
+      const { bubble, loading } = displayUploadedFile(
+        tempId,
+        file.originalname,
+        file.type,
+        new Date().toISOString()
+      );
+
       // 1) Загружаем файл
       const form = new FormData();
       form.append('file', file);
@@ -770,15 +779,21 @@ fileInput.onchange = () => {
         headers: { 'Authorization': `Bearer ${token}` },
         body: form
       });
+      
       if (!res.ok) {
+        loading.textContent = 'Ошибка загрузки';
         console.error('Ошибка загрузки файла:', await res.text());
         return;
       }
 
       // 2) Ответ сервера
       const { fileId, filename, mimeType, time } = await res.json();
+      
+      // 3) Обновляем элемент с реальным fileId
+      bubble.innerHTML = '';
+      renderFileElement(bubble, fileId, filename, mimeType);
 
-      // 3) WS‑рассылка
+      // 4) WS-рассылка
       if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({
           type:     'file',
@@ -791,17 +806,54 @@ fileInput.onchange = () => {
         }));
       }
 
-      
-
     } catch (err) {
       console.error('Ошибка в fileInput.onchange:', err);
     } finally {
-      // сброс input и восстановление кнопки send
       fileInput.value = '';
-      sendBtn.disabled = false;   // если вдруг был disabled
     }
   })();
 };
+
+// Вынесем рендеринг файла в отдельную функцию
+function renderFileElement(container, fileId, filename, mimeType) {
+  if (mimeType.startsWith('image/')) {
+    const apiSrc = `${API_URL}/files/${fileId}`;
+    const img = document.createElement('img');
+    img.alt = '';
+    img.dataset.src = apiSrc;
+    img.dataset.fileId = fileId;
+    img.dataset.filename = filename;
+    container.appendChild(img);
+    
+    fetch(apiSrc, { headers: { 'Authorization': `Bearer ${token}` } })
+      .then(res => res.blob())
+      .then(blob => {
+        img.src = URL.createObjectURL(blob);
+      });
+      
+  } else if (mimeType.startsWith('audio/')) {
+    const audio = document.createElement('audio');
+    audio.controls = true;
+    audio.src = `${API_URL}/files/${fileId}`;
+    container.appendChild(audio);
+    
+  } else if (mimeType.startsWith('video/')) {
+    const video = document.createElement('video');
+    video.controls = true;
+    video.src = `${API_URL}/files/${fileId}`;
+    container.appendChild(video);
+    
+  } else {
+    const link = document.createElement('a');
+    link.href = '#';
+    link.textContent = `📎 ${filename}`;
+    link.onclick = e => {
+      e.preventDefault();
+      downloadFile(fileId, filename);
+    };
+    container.appendChild(link);
+  }
+}
 
 
 
@@ -1236,13 +1288,44 @@ function appendMessage(sender, text, time, callId = null) {
     }
   }
 
+// Добавить перед функцией appendFile
+function displayUploadedFile(fileId, filename, mimeType, time) {
+  // Сразу добавить fileId в renderedFileIds
+  renderedFileIds.add(fileId);
+  
+  const chatBox = document.getElementById('chat-box');
+  const wrapper = document.createElement('div');
+  wrapper.className = 'message-wrapper';
 
+  const msgEl = document.createElement('div');
+  msgEl.className = 'my-message';
+
+  const info = document.createElement('div');
+  info.className = 'message-info';
+  info.textContent = `${userNickname} • ${new Date().toLocaleTimeString([], {
+    hour: '2-digit', minute: '2-digit'
+  })}`;
+
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble media-bubble';
+
+  // Создаем временный элемент "Загрузка..."
+  const loading = document.createElement('div');
+  loading.textContent = 'Загрузка...';
+  bubble.appendChild(loading);
+
+  msgEl.append(info, bubble);
+  wrapper.appendChild(msgEl);
+  chatBox.appendChild(wrapper);
+  chatBox.scrollTop = chatBox.scrollHeight;
+
+  return { bubble, loading };
+}
+  
 async function appendFile(sender, fileId, filename, mimeType, time) {
-  // 1) Дубли
   if (renderedFileIds.has(fileId)) return;
   renderedFileIds.add(fileId);
 
-  // 2) Общая разметка
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
   wrapper.className = 'message-wrapper';
@@ -1258,67 +1341,14 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
 
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble media-bubble';
+  
+  // Используем общую функцию рендеринга
+  renderFileElement(bubble, fileId, filename, mimeType);
 
-  // Сразу вставляем в DOM (без ожидания fetch)
   msgEl.append(info, bubble);
   wrapper.appendChild(msgEl);
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
-
-  // 3) Тип изображения
-  if (mimeType.startsWith('image/')) {
-    const apiSrc = `${API_URL}/files/${fileId}`;
-    const img = document.createElement('img');
-    // убираем alt, чтобы не писался текст «Загрузка…»
-    img.alt = '';
-    // для лайтбокса
-    img.dataset.src      = apiSrc;
-    img.dataset.fileId   = fileId;
-    img.dataset.filename = filename;
-    bubble.appendChild(img);
-
-    // асинхронно подтягиваем blob, по готовности ставим src
-    fetch(apiSrc, { headers: { 'Authorization': `Bearer ${token}` } })
-      .then(res => {
-        if (!res.ok) throw new Error(res.statusText);
-        return res.blob();
-      })
-      .then(blob => {
-        img.src = URL.createObjectURL(blob);
-        // через минуту можно очистить:
-        // setTimeout(() => URL.revokeObjectURL(img.src), 60_000);
-      })
-      .catch(err => {
-        console.warn('Не получилось blob-загрузить, делаем fallback:', err);
-        img.src = apiSrc;
-      });
-
-    return;  // на этом выходим и НЕ идём в последующие блоки
-  }
-
-  // 4) Остальные типы (аудио, видео, файл)
-  if (mimeType.startsWith('audio/')) {
-    const audio = document.createElement('audio');
-    audio.controls = true;
-    audio.src = `${API_URL}/files/${fileId}`;
-    bubble.appendChild(audio);
-
-  } else if (mimeType.startsWith('video/')) {
-    const video = document.createElement('video');
-    video.controls = true;
-    video.src = `${API_URL}/files/${fileId}`;
-    bubble.appendChild(video);
-
-  } else {
-    const link = document.createElement('a');
-    link.href = '#';
-    link.textContent = `📎 ${filename}`;
-    link.onclick = e => {
-      e.preventDefault();
-      downloadFile(fileId, filename);
-    };
-    bubble.appendChild(link);
-  }
 }
 
 
