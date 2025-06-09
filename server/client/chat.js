@@ -1,16 +1,3 @@
-// server/client/chat.js
-let updateSocket = null;
-function setupUpdateSocket() {
-  if (updateSocket) return;
-  updateSocket = new WebSocket((location.protocol==='https:'?'wss://':'ws://') + location.host);
-  updateSocket.onmessage = async ev => {
-    const msg = JSON.parse(ev.data);
-    if (msg.type === 'room-update') {
-      await loadRooms();
-    }
-  };
-  updateSocket.onclose = () => setTimeout(setupUpdateSocket, 1000);
-}
 
 document.addEventListener('DOMContentLoaded', () => {
   const API_URL      = '/api';
@@ -121,6 +108,19 @@ document.addEventListener('click', () => {
   setInterval(checkAndSchedule, 60_000);
 })();
 
+// server/client/chat.js
+let updateSocket = null;
+function setupUpdateSocket() {
+  if (updateSocket) return;
+  updateSocket = new WebSocket((location.protocol==='https:'?'wss://':'ws://') + location.host);
+  updateSocket.onmessage = async ev => {
+    const msg = JSON.parse(ev.data);
+    if (msg.type === 'room-update') {
+      await loadRooms();
+    }
+  };
+  updateSocket.onclose = () => setTimeout(setupUpdateSocket, 1000);
+}
 
 
 // Запускаем сразу при старте страницы
