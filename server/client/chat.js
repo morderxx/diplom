@@ -777,22 +777,6 @@ fileInput.onchange = () => {
 
       // 2) Ответ сервера
       const { fileId, filename, mimeType, time } = await res.json();
-
-      // 3) WS‑рассылка
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({
-          type:     'file',
-          roomId:   currentRoom,
-          sender:   userNickname,
-          fileId,
-          filename,
-          mimeType,
-          time
-        }));
-      }
-
-      
-
     } catch (err) {
       console.error('Ошибка в fileInput.onchange:', err);
     } finally {
