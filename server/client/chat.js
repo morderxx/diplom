@@ -108,6 +108,39 @@ document.addEventListener('click', () => {
   setInterval(checkAndSchedule, 60_000);
 })();
 
+let updateSocket = null;
+
+function setupUpdateSocket() {
+  if (updateSocket) return;
+
+  updateSocket = new WebSocket(
+    (location.protocol === 'https:' ? 'wss://' : 'ws://') +
+      location.host
+  );
+
+  updateSocket.onopen = () => {
+    console.log('UpdateSocket открыт — слушаем room-update');
+  };
+
+  updateSocket.onmessage = async ev => {
+    const msg = JSON.parse(ev.data);
+    if (msg.type === 'room-update') {
+      // Перезагружаем список комнат у всех пользователей
+      await loadRooms();
+    }
+  };
+
+  updateSocket.onclose = () => {
+    console.warn('UpdateSocket закрыт — попробуем переподключиться через секунду');
+    setTimeout(setupUpdateSocket, 1000);
+  };
+}
+
+// Запускаем сразу при старте страницы
+document.addEventListener('DOMContentLoaded', () => {
+  setupUpdateSocket();
+  loadRooms();
+});
 
   // Хелпер для формирования текста «системного» сообщения по звонку
 function formatCallText({ initiator, recipient, status, duration, time }) {
