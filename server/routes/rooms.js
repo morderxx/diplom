@@ -92,6 +92,8 @@ router.post('/', authMiddleware, async (req, res) => {
     if (exist.rows.length) {
       const roomId = exist.rows[0].id;
       const other = members.find(n => n !== req.userNickname);
+      sendRoomUpdate(req.userNickname, roomId);
+      sendRoomUpdate(other, roomId);
       return res.json({ roomId, name: other });
     }
     // только для приватного чата — имя собеседника
@@ -225,7 +227,16 @@ router.post(
       )
     );
 
+    
     await Promise.all(ins);
+    // Запрашиваем ВСЕХ участников комнаты из БД
+    const allMembersRes = await pool.query(
+      'SELECT nickname FROM room_members WHERE room_id = $1',
+      [roomId]
+    );
+        allMembersRes.rows.forEach(row => {
+      sendRoomUpdate(row.nickname, roomId);
+    });
     // Отправляем обновление новым участникам
       members.forEach(member => {
         sendRoomUpdate(member, roomId);
@@ -286,7 +297,11 @@ router.delete('/:roomId', authMiddleware, async (req, res) => {
     
     const roomData = room.rows[0];
     const isCreator = roomData.creator_nickname === req.userNickname;
-    
+
+    const membersRes = await pool.query(
+  'SELECT nickname FROM room_members WHERE room_id = $1',
+  [roomId]
+);
     // Для приватного чата: разрешаем удаление любому участнику
     if (!roomData.is_group && !roomData.is_channel) {
       // Удаляем комнату и все связанные данные
@@ -295,6 +310,10 @@ router.delete('/:roomId', authMiddleware, async (req, res) => {
       await pool.query('DELETE FROM room_members WHERE room_id = $1', [roomId]);
       await pool.query('DELETE FROM rooms WHERE id = $1', [roomId]);
       return res.json({ ok: true });
+      // Рассылаем обновления всем бывшим участникам
+membersRes.rows.forEach(row => {
+  sendRoomUpdate(row.nickname, roomId);
+});
     }
     
     // Для групп/каналов: только создатель может удалить
@@ -305,6 +324,10 @@ router.delete('/:roomId', authMiddleware, async (req, res) => {
       await pool.query('DELETE FROM room_members WHERE room_id = $1', [roomId]);
       await pool.query('DELETE FROM rooms WHERE id = $1', [roomId]);
       return res.json({ ok: true });
+      // Рассылаем обновления всем бывшим участникам
+membersRes.rows.forEach(row => {
+  sendRoomUpdate(row.nickname, roomId);
+});
     }
     
     return res.status(403).send('Only creator can delete this room');
