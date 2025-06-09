@@ -1,8 +1,0 @@
-{
-  "id": "weather",
-  "name": "Погода",
-  "entry": "/miniapps/weather/index.html",
-  "icon": "/miniapps/weather/icon.png",
-  "permissions": [],
-  "sandbox": true
-}
