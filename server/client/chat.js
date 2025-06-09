@@ -777,6 +777,13 @@ fileInput.onchange = () => {
 
       // 2) Ответ сервера
       const { fileId, filename, mimeType, time } = await res.json();
+            appendFile(
+        userNickname, // отправитель
+        fileId,
+        filename,
+        mimeType,
+        time
+      );
     } catch (err) {
       console.error('Ошибка в fileInput.onchange:', err);
     } finally {
@@ -814,6 +821,18 @@ fileInput.onchange = () => {
           headers: { 'Authorization': `Bearer ${token}` },
           body: form
         });
+         if (res.ok) {
+          const { fileId, filename, mimeType, time } = await res.json();
+          
+          // Добавляем голосовое сообщение в интерфейс
+          appendFile(
+            userNickname,
+            fileId,
+            filename,
+            mimeType,
+            time
+          );
+        }
         if (!res.ok) console.error('Ошибка загрузки голосового сообщения:', await res.text());
         voiceBtn.disabled = false;
       };
