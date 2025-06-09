@@ -171,7 +171,8 @@ case 'call': {
   }
 };
 
-
+initWebSocket();
+    
   socket.onclose = () => {
     // при обрыве — пытаемся переподключиться через секунду
     setTimeout(initWebSocket, 1000);
