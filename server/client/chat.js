@@ -29,14 +29,17 @@ document.addEventListener('DOMContentLoaded', () => {
     (location.protocol === 'https:' ? 'wss://' : 'ws://') +
       location.host
   );
-console.log("Прослушка есть!");
-  socket.onopen = () => {
-    console.log("Прослушка есть!");
-    // если мы уже выбрали комнату до переподключения — сразу джоинимся
-    if (currentRoom) {
-      socket.send(JSON.stringify({ type: 'join', token, roomId: currentRoom }));
-    }
-  };
+    
+    socket.onopen = () => {
+      console.log("WebSocket подключен!");
+      // Всегда запрашиваем обновление списка комнат при подключении
+      socket.send(JSON.stringify({ type: 'listRooms', token }));
+      
+      // Если уже выбрали комнату - присоединяемся
+      if (currentRoom) {
+        socket.send(JSON.stringify({ type: 'join', token, roomId: currentRoom }));
+      }
+    };
 
   socket.onmessage = ev => {
     let msg;
