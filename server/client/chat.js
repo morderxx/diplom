@@ -829,7 +829,6 @@ fileInput.onchange = () => {
               time
             );
           }
-        };
         if (!res.ok) console.error('Ошибка загрузки голосового сообщения:', await res.text());
         voiceBtn.disabled = false;
       };
