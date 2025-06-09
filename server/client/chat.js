@@ -112,13 +112,24 @@ document.addEventListener('click', () => {
 let updateSocket = null;
 function setupUpdateSocket() {
   if (updateSocket) return;
-  updateSocket = new WebSocket((location.protocol==='https:'?'wss://':'ws://') + location.host);
+  
+  updateSocket = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
+  
+  updateSocket.onopen = () => {
+    updateSocket.send(JSON.stringify({ 
+      type: 'join', 
+      token: localStorage.getItem('token'),
+      roomId: null // Отсутствие roomId указывает на глобальное соединение
+    }));
+  };
+
   updateSocket.onmessage = async ev => {
     const msg = JSON.parse(ev.data);
     if (msg.type === 'room-update') {
       await loadRooms();
     }
   };
+
   updateSocket.onclose = () => setTimeout(setupUpdateSocket, 1000);
 }
 
