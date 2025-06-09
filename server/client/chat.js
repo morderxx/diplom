@@ -1,5 +1,3 @@
-
-
 // server/client/chat.js
 document.addEventListener('DOMContentLoaded', () => {
   const API_URL      = '/api';
@@ -1121,8 +1119,8 @@ async function joinRoom(roomId) {
   const header = document.getElementById('chat-header');
   const left   = header.querySelector('.chat-header__left');
   let title;
-  if (m.is_channel)      title = `Канал: ${m.name || `#${roomId}`}`;
-  else if (m.is_group)   title = `Группа: ${m.name || `#${roomId}`}`;
+  if (m.is_channel)      title = `Канал: ${m.name || ('#' + roomId)}`;
+  else if (m.is_group)   title = `Группа: ${m.name || ('#' + roomId)}`;
   else                   title = `Собеседник: ${currentPeer}`;
   left.textContent = title;
   header.classList.remove('hidden');
@@ -1249,7 +1247,8 @@ case 'call': {
     default:
       console.warn('Unknown message type:', msg.type);
   }
-};}
+};
+}
   
 function appendMessage(sender, text, time, callId = null) {
   const chatBox = document.getElementById('chat-box');
