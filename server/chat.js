@@ -187,4 +187,9 @@ function getWss() {
   return { wss, clients };
 }
 
-module.exports = { setupWebSocket, getWss };
+ module.exports = {
+   setupWebSocket,
+   // После того как setupWebSocket(server) отработает, эти переменные будут доступны:
+   get wss()      { return wss;      },
+   get clients()  { return clients;  }
+ };
