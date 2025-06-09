@@ -53,7 +53,14 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
     );
 
     // 3) Отправляем клиенту
-    res.json(meta);
+    // Замените старый блок res.json(meta) на:
+    const fileMeta = {
+      fileId: meta.id, // переименовываем id в fileId
+      filename: meta.filename,
+      mimeType: meta.mimeType,
+      time: meta.time
+    };
+    res.json(fileMeta);
 
     // 4) Рассылаем всем WS-клиентам в той же комнате
     const { wss, clients } = getWss();
