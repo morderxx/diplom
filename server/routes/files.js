@@ -69,10 +69,15 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
       time:     meta.time
     };
 
-    wss.clients.forEach(c => {
-      const info = clients.get(c);
-      if (info && info.roomId === roomId && c.readyState === c.OPEN) {
-        c.send(JSON.stringify(msg));
+      wss.clients.forEach(c => {
+      try {
+        const info = clients.get(c);
+        // Исправленная проверка состояния соединения
+        if (info && info.roomId === roomId && c.readyState === WebSocket.OPEN) {
+          c.send(JSON.stringify(msg));
+        }
+      } catch (e) {
+        console.error('Ошибка отправки файла через WS:', e);
       }
     });
 
