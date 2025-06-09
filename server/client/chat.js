@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
        socket.send(JSON.stringify({
         type:   'join',
         token:  token,      // ваш JWT
-        roomId: null        // или 0, как вам удобнее
+        roomId: currentRoom        // или 0, как вам удобнее
       }));
       // Если уже выбрали комнату - присоединяемся
       if (currentRoom) {
@@ -767,28 +767,29 @@ fileInput.onchange = () => {
       const file = fileInput.files[0];
       if (!file) return;
 
-      // 1) Загружаем файл
       const form = new FormData();
       form.append('file', file);
       form.append('roomId', currentRoom);
+      
       const res = await fetch(`${API_URL}/files`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: form
       });
+      
       if (!res.ok) {
         console.error('Ошибка загрузки файла:', await res.text());
         return;
       }
 
-      // 2) Ответ сервера
-      const { fileId, filename, mimeType, time } = await res.json();
+      // Добавляем файл сразу в интерфейс
+      const { id, filename, mimeType, time } = await res.json();
+      appendFile(userNickname, id, filename, mimeType, time);
+      
     } catch (err) {
-      console.error('Ошибка в fileInput.onchange:', err);
+      console.error('Ошибка отправки файла:', err);
     } finally {
-      // сброс input и восстановление кнопки send
       fileInput.value = '';
-      sendBtn.disabled = false;   // если вдруг был disabled
     }
   })();
 };
