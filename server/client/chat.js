@@ -761,7 +761,6 @@ fileInput.onchange = () => {
       const file = fileInput.files[0];
       if (!file) return;
 
-      // 1) Загружаем файл
       const form = new FormData();
       form.append('file', file);
       form.append('roomId', currentRoom);
@@ -770,15 +769,19 @@ fileInput.onchange = () => {
         headers: { 'Authorization': `Bearer ${token}` },
         body: form
       });
+      
       if (!res.ok) {
         console.error('Ошибка загрузки файла:', await res.text());
         return;
       }
 
-      // 2) Ответ сервера
+      // Исправление: правильная деструктуризация ответа
       const { fileId, filename, mimeType, time } = await res.json();
 
-      // 3) WS‑рассылка
+      // Немедленно добавляем файл в чат отправителя
+      appendFile(userNickname, fileId, filename, mimeType, time);
+
+      // WS-рассылка
       if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({
           type:     'file',
@@ -791,14 +794,10 @@ fileInput.onchange = () => {
         }));
       }
 
-      
-
     } catch (err) {
       console.error('Ошибка в fileInput.onchange:', err);
     } finally {
-      // сброс input и восстановление кнопки send
       fileInput.value = '';
-      sendBtn.disabled = false;   // если вдруг был disabled
     }
   })();
 };
@@ -806,40 +805,71 @@ fileInput.onchange = () => {
 
 
   // Голосовое сообщение
-  voiceBtn.onclick = async () => {
-    if (!currentRoom) return alert('Сначала выберите чат');
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
-      mediaRecorder.stop();
-      voiceBtn.textContent = '🎤';
-      voiceBtn.disabled = true;
-      return;
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream);
-      audioChunks = [];
-      mediaRecorder.ondataavailable = e => { if (e.data.size) audioChunks.push(e.data); };
-      mediaRecorder.onstop = async () => {
-        const blob = new Blob(audioChunks, { type: 'audio/webm' });
-        const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type });
-        const form = new FormData();
-        form.append('file', file);
-        form.append('roomId', currentRoom);
-        const res = await fetch(`${API_URL}/files`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: form
-        });
-        if (!res.ok) console.error('Ошибка загрузки голосового сообщения:', await res.text());
-        voiceBtn.disabled = false;
-      };
-      mediaRecorder.start();
-      voiceBtn.textContent = '■';
-    } catch (err) {
-      console.error('Ошибка доступа к микрофону:', err);
-      alert('Не получилось получить доступ к микрофону');
-    }
-  };
+voiceBtn.onclick = async () => {
+  if (!currentRoom) return alert('Сначала выберите чат');
+  
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop();
+    voiceBtn.textContent = '🎤';
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+    
+    mediaRecorder.ondataavailable = e => {
+      if (e.data.size) audioChunks.push(e.data);
+    };
+    
+    mediaRecorder.onstop = async () => {
+      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type });
+      
+      const form = new FormData();
+      form.append('file', file);
+      form.append('roomId', currentRoom);
+      
+      const res = await fetch(`${API_URL}/files`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: form
+      });
+      
+      if (!res.ok) {
+        console.error('Ошибка загрузки голосового сообщения:', await res.text());
+        return;
+      }
+
+      // Исправление: получаем данные файла
+      const { fileId, filename, mimeType, time } = await res.json();
+
+      // Немедленно добавляем в чат
+      appendFile(userNickname, fileId, filename, mimeType, time);
+
+      // WS-рассылка
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+          type:     'file',
+          roomId:   currentRoom,
+          sender:   userNickname,
+          fileId,
+          filename,
+          mimeType,
+          time
+        }));
+      }
+    };
+    
+    mediaRecorder.start();
+    voiceBtn.textContent = '■';
+    
+  } catch (err) {
+    console.error('Ошибка доступа к микрофону:', err);
+    alert('Не получилось получить доступ к микрофону');
+  }
+};
 
   // Настройка WebRTC
 function createPeerConnection() {
