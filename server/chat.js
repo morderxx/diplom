@@ -7,6 +7,29 @@ const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
 let wss, clients;
 
+function sendRoomUpdate(nickname, roomId) {
+  for (const [client, info] of clients.entries()) {
+    if (info.nickname === nickname && client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify({
+        type: 'room-update',
+        roomId
+      }));
+    }
+  }
+}
+
+function broadcastRoomUpdate(roomId) {
+  wss.clients.forEach(client => {
+    const info = clients.get(client);
+    if (info && client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify({
+        type: 'room-update',
+        roomId
+      }));
+    }
+  });
+}
+
 function setupWebSocket(server) {
   wss = new WebSocket.Server({ server });
   clients = new Map(); // ws → { nickname, roomId }
@@ -175,6 +198,22 @@ if (msg.type === 'message') {
         return;
       }
 
+      if (msg.type === 'room-update') {
+        // Рассылаем обновление всем участникам комнаты
+        const senderInfo = clients.get(ws);
+        if (!senderInfo) return;
+        
+        wss.clients.forEach(c => {
+          const info = clients.get(c);
+          if (info && c.readyState === WebSocket.OPEN) {
+            c.send(JSON.stringify({
+              type: 'room-update',
+              roomId: msg.roomId
+            }));
+          }
+        });
+        return;
+      }
     });
 
     ws.on('close', () => {
@@ -187,4 +226,9 @@ function getWss() {
   return { wss, clients };
 }
 
-module.exports = { setupWebSocket, getWss };
+module.exports = {
+  setupWebSocket,
+  getWss,
+  sendRoomUpdate,
+  broadcastRoomUpdate
+};
