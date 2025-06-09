@@ -1,0 +1,561 @@
+/* Общие стили */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background: linear-gradient(135deg, #0c0b1d, #1a0b38, #2a0845);
+    color: white;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+/* Анимированные частицы фона */
+.particles-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: -1;
+}
+
+.particle {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background: rgba(100, 200, 255, 0.5);
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(100, 200, 255, 0.8);
+    animation: float 15s infinite linear;
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(100vh) translateX(0);
+    }
+    100% {
+        transform: translateY(-100px) translateX(50px);
+    }
+}
+
+/* Контейнер игры */
+.game-container {
+    width: 100%;
+    max-width: 800px;
+    height: 90vh;
+    max-height: 700px;
+    background: rgba(10, 8, 30, 0.85);
+    border-radius: 20px;
+    box-shadow: 0 0 40px rgba(120, 50, 255, 0.6);
+    overflow: hidden;
+    position: relative;
+    border: 2px solid #6a4cff;
+    display: flex;
+    flex-direction: column;
+    z-index: 10;
+}
+
+/* Заголовок */
+.game-header {
+    padding: 15px 20px;
+    background: linear-gradient(90deg, #1a0a2e, #2d0a4d);
+    text-align: center;
+    border-bottom: 2px solid #6a4cff;
+    position: relative;
+    z-index: 2;
+    border-radius: 20px 20px 0 0;
+}
+
+.game-title {
+    font-size: 36px;
+    font-weight: 800;
+    background: linear-gradient(45deg, #9d7aff, #6a4cff, #00eaff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 15px rgba(106, 76, 255, 0.4);
+    margin-bottom: 5px;
+    letter-spacing: 2px;
+    font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif;
+}
+
+/* Статус игры */
+.game-status {
+    display: flex;
+    justify-content: space-around;
+    padding: 12px;
+    background: rgba(25, 15, 50, 0.8);
+    border-bottom: 1px solid rgba(106, 76, 255, 0.3);
+    font-size: 16px;
+    z-index: 2;
+    position: relative;
+}
+
+.status-item {
+    text-align: center;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-value {
+    font-weight: bold;
+    color: #00eeff;
+    font-size: 24px;
+    text-shadow: 0 0 8px rgba(0, 238, 255, 0.7);
+}
+
+/* Игровое поле */
+.game-board {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    position: relative;
+    z-index: 1;
+}
+
+.board {
+    display: grid;
+    gap: 5px;
+    background: rgba(10, 5, 30, 0.6);
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 0 25px rgba(100, 80, 255, 0.4);
+    border: 1px solid rgba(106, 76, 255, 0.3);
+}
+
+.cell {
+    width: 55px;
+    height: 55px;
+    border-radius: 10px;
+    background: rgba(40, 30, 90, 0.4);
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+.cell:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.05) 50%);
+    border-radius: 10px;
+}
+
+/* Фигуры кристаллов */
+.gem {
+    width: 46px;
+    height: 46px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s ease;
+    position: relative;
+    filter: drop-shadow(0 3px 5px rgba(0,0,0,0.4));
+    border-radius: 8px;
+}
+
+/* Треугольник - синий */
+.gem.triangle {
+    width: 0;
+    height: 0;
+    border-left: 20px solid transparent;
+    border-right: 20px solid transparent;
+    border-bottom: 35px solid #00a8ff;
+    background: transparent !important;
+    border-radius: 0;
+}
+
+/* Квадрат - зеленый */
+.gem.square {
+    width: 32px;
+    height: 32px;
+    background: #4CAF50;
+    transform: rotate(45deg);
+    border-radius: 6px;
+}
+
+/* Круг - желтый */
+.gem.circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #FFD700;
+}
+
+/* Ромб - фиолетовый */
+.gem.diamond {
+    width: 30px;
+    height: 30px;
+    background: #9C27B0;
+    transform: rotate(45deg);
+    border-radius: 4px;
+}
+
+/* Звезда - оранжевый */
+.gem.star {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    background: #FF9800;
+    clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+    border-radius: 0;
+}
+
+/* Сердце - красный */
+.gem.heart {
+    position: relative;
+    width: 36px;
+    height: 32px;
+    background: #FF416C;
+    clip-path: path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z");
+    border-radius: 0;
+}
+
+/* Эффекты при наведении */
+.gem:hover {
+    transform: scale(1.15) rotate(5deg);
+    filter: brightness(1.2) drop-shadow(0 0 8px rgba(255,255,255,0.5));
+}
+
+/* Анимации */
+@keyframes pulse {
+    0% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.1); filter: brightness(1.5); }
+    100% { transform: scale(1); filter: brightness(1); }
+}
+
+@keyframes disappear {
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(0); opacity: 0; }
+}
+
+@keyframes fall {
+    0% { transform: translateY(-500px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes glow {
+    0% { box-shadow: 0 0 5px #fff; }
+    50% { box-shadow: 0 0 20px #00eeff; }
+    100% { box-shadow: 0 0 5px #fff; }
+}
+
+.gem.selected {
+    animation: pulse 0.7s infinite, glow 1.5s infinite;
+}
+
+.gem.matched {
+    animation: disappear 0.5s forwards;
+}
+
+.gem.new {
+    animation: fall 0.5s ease-out;
+}
+
+/* Экраны меню и завершения */
+.screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(15, 10, 40, 0.95), rgba(35, 10, 60, 0.95));
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    text-align: center;
+    backdrop-filter: blur(5px);
+}
+
+.screen.hidden {
+    display: none;
+}
+
+.screen-content {
+    height: auto;
+    min-height: auto;
+    max-width: 90%;
+    width: 800px;
+    padding: 20px;
+    background: rgba(20, 15, 45, 0.8);
+    border-radius: 20px;
+    box-shadow: 0 0 40px rgba(120, 50, 255, 0.5);
+    border: 2px solid #6a4cff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.screen-title {
+    font-size: 36px;
+    background: linear-gradient(45deg, #9d7aff, #6a4cff, #00eaff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 15px;
+    text-shadow: 0 0 15px rgba(106, 76, 255, 0.4);
+    font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif;
+}
+
+.screen-text {
+    font-size: 18px;
+    margin-bottom: 20px;
+    max-width: 90%;
+    line-height: 1.5;
+    color: #e0d6ff;
+}
+
+.celebration {
+    font-size: 48px;
+    margin-bottom: 15px;
+    color: #FFD700;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+    animation: pulse 1.5s infinite;
+}
+
+.level-btn, .action-btn {
+    background: linear-gradient(135deg, #6a4cff, #8a63ff);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 14px 30px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin: 8px;
+    min-width: 220px;
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 20px rgba(106, 76, 255, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    letter-spacing: 1px;
+}
+
+.action-btn.secondary {
+    background: linear-gradient(135deg, #2a0845, #4a1e7a);
+}
+
+.level-btn:hover, .action-btn:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(106, 76, 255, 0.8);
+    filter: brightness(1.1);
+}
+
+.level-btn:active, .action-btn:active {
+    transform: translateY(2px);
+}
+
+.level-btn.completed {
+    background: linear-gradient(135deg, #4CAF50, #8BC34A);
+    position: relative;
+    overflow: hidden;
+}
+
+.level-btn.completed:after {
+    content: "✓";
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 20px;
+    color: white;
+}
+
+.levels-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 600px;
+    gap: 12px;
+    margin-top: 20px;
+    max-height: 50vh;
+    overflow-y: auto;
+    width: 100%;
+    padding: 5px;
+    box-sizing: border-box;
+}
+
+/* Инструкция */
+.tutorial {
+    background: rgba(30, 20, 60, 0.6);
+    border-radius: 15px;
+    padding: 15px;
+    margin: 15px 0;
+    max-width: 600px;
+    text-align: left;
+    border: 1px solid rgba(106, 76, 255, 0.3);
+}
+
+.tutorial-title {
+    color: #9d7aff;
+    font-size: 24px;
+    margin-bottom: 15px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.tutorial-list {
+    padding-left: 25px;
+    font-size: 18px;
+}
+
+.tutorial-list li {
+    margin-bottom: 12px;
+    line-height: 1.6;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.tutorial-list i {
+    color: #6a4cff;
+    font-size: 20px;
+    min-width: 25px;
+}
+
+/* Футер */
+.game-footer {
+    padding: 15px;
+    text-align: center;
+    background: linear-gradient(90deg, #1a0a2e, #2d0a4d);
+    border-top: 2px solid #6a4cff;
+    font-size: 14px;
+    color: #aaa;
+    position: relative;
+    z-index: 2;
+    border-radius: 0 0 20px 20px;
+}
+
+.footer-content {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.footer-icons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    font-size: 18px;
+    color: #9d7aff;
+    margin: 5px 0;
+}
+
+/* Адаптивность */
+@media (max-width: 600px) {
+    .cell {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .gem {
+        width: 34px;
+        height: 34px;
+    }
+    
+    .gem.triangle {
+        border-left: 15px solid transparent;
+        border-right: 15px solid transparent;
+        border-bottom: 25px solid #00a8ff;
+    }
+    
+    .gem.square {
+        width: 24px;
+        height: 24px;
+    }
+    
+    .gem.circle {
+        width: 26px;
+        height: 26px;
+    }
+    
+    .gem.diamond {
+        width: 22px;
+        height: 22px;
+    }
+    
+    .gem.star {
+        width: 26px;
+        height: 26px;
+    }
+    
+    .gem.heart {
+        width: 26px;
+        height: 22px;
+    }
+    
+    .status-item {
+        font-size: 14px;
+    }
+    
+    .status-value {
+        font-size: 20px;
+    }
+    
+    .level-btn, .action-btn {
+        padding: 12px 20px;
+        min-width: 100%;
+        font-size: 15px;
+    }
+    
+    .screen-title {
+        font-size: 28px;
+    }
+    
+    .screen-text {
+        font-size: 16px;
+    }
+    
+    .celebration {
+        font-size: 40px;
+    }
+    
+    .tutorial {
+        padding: 12px;
+    }
+    
+    .tutorial-title {
+        font-size: 18px;
+    }
+    
+    .tutorial-list {
+        font-size: 14px;
+    }
+    
+    .screen-content {
+        padding: 15px;
+        max-width: 95%;
+    }
+    
+    .levels-container {
+        max-height: 40vh;
+    }
+}
