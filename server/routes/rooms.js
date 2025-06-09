@@ -225,6 +225,7 @@ router.post(
       )
     );
 
+    await Promise.all(ins);
     // Отправляем обновление новым участникам
       members.forEach(member => {
         sendRoomUpdate(member, roomId);
@@ -232,7 +233,6 @@ router.post(
 
       // Рассылаем обновление всем участникам комнаты
     broadcastRoomUpdate(roomId);
-    await Promise.all(ins);
     res.json({ ok: true });
   }
 );
