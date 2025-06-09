@@ -92,8 +92,7 @@ router.post('/', authMiddleware, async (req, res) => {
     if (exist.rows.length) {
       const roomId = exist.rows[0].id;
       const other = members.find(n => n !== req.userNickname);
-      sendRoomUpdate(req.userNickname, roomId);
-      sendRoomUpdate(other, roomId);
+      broadcastRoomUpdate(roomId);
       return res.json({ roomId, name: other });
     }
     // только для приватного чата — имя собеседника
@@ -122,7 +121,7 @@ router.post('/', authMiddleware, async (req, res) => {
     );
 
     members.forEach(member => {
-      sendRoomUpdate(member, roomId);
+      broadcastRoomUpdate(roomId);
     });
     // возвращаем клиенту
     res.json({
@@ -235,11 +234,11 @@ router.post(
       [roomId]
     );
         allMembersRes.rows.forEach(row => {
-      sendRoomUpdate(row.nickname, roomId);
+      broadcastRoomUpdate(roomId);
     });
     // Отправляем обновление новым участникам
       members.forEach(member => {
-        sendRoomUpdate(member, roomId);
+        broadcastRoomUpdate(roomId);
       });
 
       // Рассылаем обновление всем участникам комнаты
@@ -312,7 +311,7 @@ router.delete('/:roomId', authMiddleware, async (req, res) => {
       return res.json({ ok: true });
       // Рассылаем обновления всем бывшим участникам
 membersRes.rows.forEach(row => {
-  sendRoomUpdate(row.nickname, roomId);
+  broadcastRoomUpdate(roomId);
 });
     }
     
@@ -326,7 +325,7 @@ membersRes.rows.forEach(row => {
       return res.json({ ok: true });
       // Рассылаем обновления всем бывшим участникам
 membersRes.rows.forEach(row => {
-  sendRoomUpdate(row.nickname, roomId);
+  broadcastRoomUpdate(roomId);
 });
     }
     
