@@ -1,4 +1,17 @@
 // server/client/chat.js
+let updateSocket = null;
+function setupUpdateSocket() {
+  if (updateSocket) return;
+  updateSocket = new WebSocket((location.protocol==='https:'?'wss://':'ws://') + location.host);
+  updateSocket.onmessage = async ev => {
+    const msg = JSON.parse(ev.data);
+    if (msg.type === 'room-update') {
+      await loadRooms();
+    }
+  };
+  updateSocket.onclose = () => setTimeout(setupUpdateSocket, 1000);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const API_URL      = '/api';
   const token        = localStorage.getItem('token');
@@ -108,33 +121,7 @@ document.addEventListener('click', () => {
   setInterval(checkAndSchedule, 60_000);
 })();
 
-let updateSocket = null;
 
-function setupUpdateSocket() {
-  if (updateSocket) return;
-
-  updateSocket = new WebSocket(
-    (location.protocol === 'https:' ? 'wss://' : 'ws://') +
-      location.host
-  );
-
-  updateSocket.onopen = () => {
-    console.log('UpdateSocket открыт — слушаем room-update');
-  };
-
-  updateSocket.onmessage = async ev => {
-    const msg = JSON.parse(ev.data);
-    if (msg.type === 'room-update') {
-      // Перезагружаем список комнат у всех пользователей
-      await loadRooms();
-    }
-  };
-
-  updateSocket.onclose = () => {
-    console.warn('UpdateSocket закрыт — попробуем переподключиться через секунду');
-    setTimeout(setupUpdateSocket, 1000);
-  };
-}
 
 // Запускаем сразу при старте страницы
 document.addEventListener('DOMContentLoaded', () => {
