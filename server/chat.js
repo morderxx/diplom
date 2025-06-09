@@ -86,25 +86,12 @@ if (msg.type === 'message') {
 
       // FILE MESSAGE
       if (msg.type === 'file') {
-        let senderInfo = clients.get(ws);
-        if (!senderInfo && msg.roomId && msg.sender) {
-          // если JOIN ещё не успел, подхватываем из сообщения
-          senderInfo = { nickname: msg.sender, roomId: msg.roomId };
-          clients.set(ws, senderInfo);
-        }
-        if (!senderInfo) return;
-
+        // Убираем сложную логику с senderInfo
         wss.clients.forEach(c => {
           const info = clients.get(c);
-          if (info && info.roomId === senderInfo.roomId && c.readyState === WebSocket.OPEN) {
-            c.send(JSON.stringify({
-              type:     'file',
-              sender:   senderInfo.nickname,
-              fileId:   msg.fileId,
-              filename: msg.filename,
-              mimeType: msg.mimeType,
-              time:     msg.time
-            }));
+          if (info && info.roomId === msg.roomId && c.readyState === WebSocket.OPEN) {
+            // Отправляем оригинальное сообщение без изменений
+            c.send(JSON.stringify(msg));
           }
         });
         return;
