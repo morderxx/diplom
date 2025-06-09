@@ -174,7 +174,7 @@ case 'call': {
 
   socket.onclose = () => {
     // при обрыве — пытаемся переподключиться через секунду
-    setTimeout(initWebSocket, 1000);
+    setTimeout(initWebSocket, 5000);
   };
 }
 
