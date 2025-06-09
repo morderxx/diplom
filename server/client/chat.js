@@ -25,7 +25,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let answeredCall = false;
 
   function initWebSocket() {
-  if (socket && socket.readyState < WebSocket.CLOSING) return;
   socket = new WebSocket(
     (location.protocol === 'https:' ? 'wss://' : 'ws://') +
       location.host
@@ -36,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
        socket.send(JSON.stringify({
         type:   'join',
         token:  token,      // ваш JWT
-        roomId: currentRoom        // или 0, как вам удобнее
+        roomId: null        // или 0, как вам удобнее
       }));
       // Если уже выбрали комнату - присоединяемся
       if (currentRoom) {
@@ -181,11 +180,6 @@ case 'call': {
 
 // Вызываем сразу после определения initWebSocket
 initWebSocket();
-socket.onerror = (error) => {
-  console.error('WebSocket error:', error);
-  setTimeout(initWebSocket, 3000);
-};
-  
   // Контекстное меню
 const contextMenu = document.createElement('div');
 contextMenu.className = 'context-menu';
@@ -767,29 +761,28 @@ fileInput.onchange = () => {
       const file = fileInput.files[0];
       if (!file) return;
 
+      // 1) Загружаем файл
       const form = new FormData();
       form.append('file', file);
       form.append('roomId', currentRoom);
-      
       const res = await fetch(`${API_URL}/files`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: form
       });
-      
       if (!res.ok) {
         console.error('Ошибка загрузки файла:', await res.text());
         return;
       }
 
-      // Добавляем файл сразу в интерфейс
-      const { id, filename, mimeType, time } = await res.json();
-      appendFile(userNickname, id, filename, mimeType, time);
-      
+      // 2) Ответ сервера
+      const { fileId, filename, mimeType, time } = await res.json();
     } catch (err) {
-      console.error('Ошибка отправки файла:', err);
+      console.error('Ошибка в fileInput.onchange:', err);
     } finally {
+      // сброс input и восстановление кнопки send
       fileInput.value = '';
+      sendBtn.disabled = false;   // если вдруг был disabled
     }
   })();
 };
