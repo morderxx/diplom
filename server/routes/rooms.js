@@ -1,6 +1,7 @@
 const express = require('express');
 const jwt     = require('jsonwebtoken');
 const pool    = require('../db');
+const { sendRoomUpdate, broadcastRoomUpdate } = require('../chat');
 const router  = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
@@ -118,6 +119,9 @@ router.post('/', authMiddleware, async (req, res) => {
       )
     );
 
+    members.forEach(member => {
+      sendRoomUpdate(member, roomId);
+    });
     // возвращаем клиенту
     res.json({
       roomId,
@@ -208,6 +212,7 @@ router.post(
       }
     }
 
+    
     // 3) Добавляем участников
     const ins = members.map(nick =>
       pool.query(
@@ -219,7 +224,14 @@ router.post(
         [roomId, nick]
       )
     );
-    
+
+    // Отправляем обновление новым участникам
+      members.forEach(member => {
+        sendRoomUpdate(member, roomId);
+      });
+
+      // Рассылаем обновление всем участникам комнаты
+    broadcastRoomUpdate(roomId);
     await Promise.all(ins);
     res.json({ ok: true });
   }
