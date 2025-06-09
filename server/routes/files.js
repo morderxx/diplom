@@ -2,6 +2,8 @@ const express = require('express');
 const multer  = require('multer');
 const pool    = require('../db');
 const jwt     = require('jsonwebtoken');
+const WebSocket = require('ws');
+
 const { getWss } = require('../chat');
 const router  = express.Router();
 
