@@ -1,3 +1,5 @@
+
+
 // server/client/chat.js
 document.addEventListener('DOMContentLoaded', () => {
   const API_URL      = '/api';
@@ -24,6 +26,156 @@ document.addEventListener('DOMContentLoaded', () => {
   let answerTimeout  = null;
   let answeredCall = false;
 
+  function initWebSocket() {
+  socket = new WebSocket(
+    (location.protocol === 'https:' ? 'wss://' : 'ws://') +
+      location.host
+  );
+
+  socket.onopen = () => {
+    // если мы уже выбрали комнату до переподключения — сразу джоинимся
+    if (currentRoom) {
+      socket.send(JSON.stringify({ type: 'join', token, roomId: currentRoom }));
+    }
+  };
+
+  socket.onmessage = ev => {
+    let msg;
+    try {
+      msg = JSON.parse(ev.data);
+    } catch {
+      return; // не JSON — игнорируем
+    }
+
+    // 1) Всегда ловим и обрабатываем roomsUpdated:
+    if (msg.type === 'roomsUpdated') {
+      loadRooms();    // обновляем список чатов/групп/каналов
+      return;
+    }
+
+    // 2) Только потом — сообщения для текущей комнаты
+    if (msg.roomId !== currentRoom) return;
+
+     switch (msg.type) {
+    case 'webrtc-hangup':
+      if (msg.from === userNickname) break; // не обрабатываем эхо
+
+      // 1) Всегда останавливаем WebRTC-потоки и таймер
+      if (pc) { pc.close(); pc = null; }
+      if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+      }
+      clearInterval(callTimerIntvl);
+      clearTimeout(answerTimeout);
+
+      // 2) Рисуем подходящее системное сообщение:
+      //    — если разговор уже был начат → finished
+      //    — если не был принят → missed
+      if (answeredCall) {
+        endCall('finished', msg.from, /* sendToServer=*/ false);
+      } else {
+        endCall('missed', msg.from, /* sendToServer=*/ false);
+      }
+
+      answeredCall = false;
+      break;
+
+
+
+      
+    case 'webrtc-cancel':
+      // рисуем только если это сделал НЕ мы сами
+       if (msg.from !== userNickname) {
+    // только рендерим, без второго POST
+    endCall('cancelled', msg.from, /*sendToServer*/ false);
+  }
+      break;
+
+    case 'message':
+      // Если у вас есть call_id и вы хотите его передавать в appendMessage:
+      appendMessage(
+        msg.sender,
+        msg.text,
+        msg.time,
+        msg.call_id ?? null
+      );
+      break;
+
+    case 'file':
+      appendFile(
+        msg.sender,
+        msg.fileId,
+        msg.filename,
+        msg.mimeType,
+        msg.time
+      );
+      break;
+
+    case 'webrtc-offer':
+      currentPeer = msg.from;
+      handleOffer(msg.payload);
+      showCallWindow(currentPeer, true);
+      break;
+
+    case 'webrtc-answer':
+      handleAnswer(msg.payload);
+      break;
+
+    case 'webrtc-ice':
+      handleIce(msg.payload);
+      break;
+
+case 'call': {
+  // Не дублируем свои собственные звонки
+  if (msg.initiator === userNickname) break;
+
+  // Формируем и отрисовываем через хелпер
+  const fullTextCall = formatCallText({
+    initiator: msg.initiator,
+    recipient: msg.recipient,
+    status:    msg.status,
+    duration:  msg.duration || 0,
+    time:      msg.ended_at || msg.happened_at
+  });
+  appendCenterCall(fullTextCall);
+
+  // 2) короткий текст для «пузырька» — только отмена/сброс
+  let shortText = null;
+  if (msg.status === 'cancelled' && (msg.duration || 0) === 0) {
+    shortText = `${msg.initiator} отменил(а) звонок`;
+  }
+  else if (msg.status === 'cancelled') {
+    shortText = `${msg.initiator} сбросил(а) звонок`;
+  }
+
+  if (shortText) {
+    appendMessage(
+      msg.initiator,
+      shortText,
+      msg.ended_at || msg.time || new Date().toISOString(),
+      msg.call_id ?? null
+    );
+  }
+  break;
+}
+
+
+
+    default:
+      console.warn('Unknown message type:', msg.type);
+  }
+};
+
+
+  socket.onclose = () => {
+    // при обрыве — пытаемся переподключиться через секунду
+    setTimeout(initWebSocket, 1000);
+  };
+}
+
+// Вызываем сразу после определения initWebSocket
+initWebSocket();
   // Контекстное меню
 const contextMenu = document.createElement('div');
 contextMenu.className = 'context-menu';
@@ -948,74 +1100,50 @@ async function loadRooms() {
   
   
 async function joinRoom(roomId) {
-  if (socket) socket.close();
   renderedFileIds.clear();
   currentRoom = roomId;
+
   if (!roomMeta[roomId]) {
     console.error('Канал не найден в roomMeta');
     return;
   }
-  // readonly для каналов
-  const m = roomMeta[roomId] || {};
-  const readOnly = m.is_channel && m.creator !== userNickname;
-  inputContainer.style.display = readOnly ? 'none' : 'flex';
-  readonlyNote  .style.display = readOnly ? 'block' : 'none';
-  const callBtn = document.getElementById('call-btn');
-  if (m.is_channel) {
-    callBtn.style.display = 'none';
-  } else {
-    callBtn.style.display = ''; 
-  }
 
-    // Кнопка "Добавить участников" — только для групп
-  const addBtn = document.getElementById('add-member-btn');
-  addMemberBtn.style.display = m.is_group ? 'inline-flex' : 'none';
-  if (m.is_group) {
-    addBtn.style.display = '';
-  } else {
-    addBtn.style.display = 'none';
-  }
-  // формируем заголовок
+  // настройка UI: readonly, заголовок, кнопки и т.д.
+  const m = roomMeta[roomId];
+  const readOnly = m.is_channel && m.creator !== userNickname;
+  inputContainer.style.display   = readOnly ? 'none' : 'flex';
+  readonlyNote.style.display     = readOnly ? 'block' : 'none';
+  document.getElementById('call-btn').style.display =
+    m.is_channel ? 'none' : '';
+  document.getElementById('add-member-btn').style.display =
+    m.is_group ? '' : 'none';
+
   const header = document.getElementById('chat-header');
   const left   = header.querySelector('.chat-header__left');
   let title;
-  if (m.is_channel) {
-    title = `Канал: ${m.name || `#${roomId}`}`;
-  } else if (m.is_group) {
-    title = `Группа: ${m.name || `#${roomId}`}`;
-  } else {
-    title = `Собеседник: ${currentPeer}`;
-  }
+  if (m.is_channel)      title = `Канал: ${m.name || `#${roomId}`}`;
+  else if (m.is_group)   title = `Группа: ${m.name || `#${roomId}`}`;
+  else                   title = `Собеседник: ${currentPeer}`;
   left.textContent = title;
   header.classList.remove('hidden');
   document.getElementById('chat-section').classList.add('active');
   document.getElementById('chat-box').innerHTML = '';
 
-
-  // Настраиваем WebSocket
-  socket = new WebSocket(
-    (location.protocol === 'https:' ? 'wss://' : 'ws://') +
-      location.host
-  );
-  socket.onopen = () =>
+  // сообщаем серверу, что присоединяемся к новой комнате
+  if (socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({ type: 'join', token, roomId }));
- socket.onmessage = ev => {
-  let msg;
-  try {
-    msg = JSON.parse(ev.data);
-  } catch {
-    return; // если не JSON — игнорируем
   }
 
-  // ————— Обрабатываем глобальное обновление списка комнат —————
-  if (msg.type === 'roomsUpdated') {
-    loadRooms();    // вызываем функцию, которая перезагружает список
-    return;         // выходим из handler, не обрабатываем дальше
+  // загружаем историю сообщений
+  const res = await fetch(`${API_URL}/rooms/${roomId}/messages`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) {
+    console.error(await res.text());
+    return;
   }
-  // ————————————————————————————————————————————————
-  if (msg.roomId !== currentRoom) return;
-
-  switch (msg.type) {
+  const history = await res.json();
+   switch (msg.type) {
     case 'webrtc-hangup':
       if (msg.from === userNickname) break; // не обрабатываем эхо
 
@@ -1118,67 +1246,10 @@ case 'call': {
   }
   break;
 }
-
-
-
     default:
       console.warn('Unknown message type:', msg.type);
   }
-};
-
-
-  // ─── Загрузка всей истории из одного эндпоинта ───────────────────────────
-  const res = await fetch(`${API_URL}/rooms/${roomId}/messages`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  if (!res.ok) {
-    console.error(await res.text());
-    return;
-  }
-  const history = await res.json();
-history.forEach(m => {
-
-
-  if (m.type === 'call') {
-    const fullTextHist = formatCallText({
-      initiator: m.initiator,
-      recipient: m.recipient,
-      status:    m.status,
-      duration:  m.duration || 0,
-      time:      m.ended_at || m.started_at
-    });
-    appendCenterCall(fullTextHist);
-    return;
-  }
-
-  // 3) Файловое сообщение (из таблицы messages + files)
-  if (m.type === 'message' && m.file_id !== null) {
-    appendFile(
-      m.sender_nickname,
-      m.file_id,
-      m.filename,
-      m.mime_type,
-      m.time
-    );
-    return;
-  }
-
-  // 4) Обычное текстовое сообщение
-  if (m.type === 'message' && m.text !== null) {
-    appendMessage(
-      m.sender_nickname,
-      m.text,
-      m.time
-    );
-    return;
-  }
-
-  console.warn('Неизвестный элемент истории:', m);
-});
-
-
-
-}  // <-- закрыли функцию joinRoom
+};}
   
 function appendMessage(sender, text, time, callId = null) {
   const chatBox = document.getElementById('chat-box');
