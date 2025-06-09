@@ -59,8 +59,8 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
     const { wss, clients } = getWss();
     const msg = {
       type:     'file',
-      roomId,
-      sender,
+      roomId:   roomId,  // Явное указание комнаты
+      sender:   sender,
       fileId:   meta.id,
       filename: meta.filename,
       mimeType: meta.mimeType,
