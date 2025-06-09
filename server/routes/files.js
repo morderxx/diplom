@@ -69,7 +69,7 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
 
     wss.clients.forEach(c => {
       const info = clients.get(c);
-      if (info && info.roomId === roomId && c.readyState === WebSocket.OPEN) {
+      if (info && info.roomId === roomId && c.readyState === c.OPEN) {
         c.send(JSON.stringify(msg));
       }
     });
