@@ -1,6 +1,11 @@
 const express = require('express');
 const jwt     = require('jsonwebtoken');
 const pool    = require('../db');
+const chatWS = require('../chat');
+const WebSocket = require('ws');
+
+// теперь chatWS.wss и chatWS.clients есть
+
 const router  = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
@@ -118,6 +123,19 @@ router.post('/', authMiddleware, async (req, res) => {
       )
     );
 
+    // …посылаем WS-событие «обновите список комнат» тем, кого это касается
+if (chatWS.wss) {
+  // members — массив имён, который вы только что создавали выше
+  members.forEach(nick => {
+    chatWS.wss.clients.forEach(wsClient => {
+      const info = chatWS.clients.get(wsClient);
+      if (info && info.nickname === nick && wsClient.readyState === WebSocket.OPEN) {
+        wsClient.send(JSON.stringify({ type: 'roomsUpdated' }));
+      }
+    });
+  });
+}
+
     // возвращаем клиенту
     res.json({
       roomId,
@@ -221,6 +239,21 @@ router.post(
     );
     
     await Promise.all(ins);
+// Уведомляем нового участника
+    if (chatWS.wss) {
+     members.forEach(newNick => {
+       chatWS.wss.clients.forEach(wsClient => {
+         const info = chatWS.clients.get(wsClient);
+         if (
+           info &&
+           info.nickname === newNick &&
+          wsClient.readyState === WebSocket.OPEN
+         ) {
+           wsClient.send(JSON.stringify({ type: 'roomsUpdated' }));
+         }
+       });
+     });
+   }
     res.json({ ok: true });
   }
 );
