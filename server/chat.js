@@ -85,49 +85,30 @@ if (msg.type === 'message') {
 
 
       // FILE MESSAGE
-  // Замените блок обработки 'file' на:
-if (msg.type === 'file') {
-  try {
-    const payload = jwt.verify(msg.token, JWT_SECRET);
-    const login = payload.login;
-    const r = await pool.query(
-      `SELECT u.nickname
-       FROM users u
-       JOIN secret_profile s ON s.id = u.id
-       WHERE s.login = $1`,
-      [login]
-    );
-    const sender = r.rows[0] && r.rows[0].nickname;
-    if (!sender) return;
+      if (msg.type === 'file') {
+        let senderInfo = clients.get(ws);
+        if (!senderInfo && msg.roomId && msg.sender) {
+          // если JOIN ещё не успел, подхватываем из сообщения
+          senderInfo = { nickname: msg.sender, roomId: msg.roomId };
+          clients.set(ws, senderInfo);
+        }
+        if (!senderInfo) return;
 
-    // Сохраняем информацию о файле в базе
-    const time = new Date().toISOString();
-    await pool.query(
-      `INSERT INTO messages (room_id, sender_nickname, file_id, time)
-       VALUES ($1, $2, $3, $4)`,
-      [msg.roomId, sender, msg.fileId, time]
-    );
-
-    // Рассылаем сообщение о файле
-    wss.clients.forEach(c => {
-      const info = clients.get(c);
-      if (info && info.roomId === msg.roomId && c.readyState === WebSocket.OPEN) {
-        c.send(JSON.stringify({
-          type: 'file',
-          roomId: msg.roomId,
-          sender,
-          fileId: msg.fileId,
-          filename: msg.filename,
-          mimeType: msg.mimeType,
-          time
-        }));
+        wss.clients.forEach(c => {
+          const info = clients.get(c);
+          if (info && info.roomId === senderInfo.roomId && c.readyState === WebSocket.OPEN) {
+            c.send(JSON.stringify({
+              type:     'file',
+              sender:   senderInfo.nickname,
+              fileId:   msg.fileId,
+              filename: msg.filename,
+              mimeType: msg.mimeType,
+              time:     msg.time
+            }));
+          }
+        });
+        return;
       }
-    });
-  } catch (e) {
-    console.error('WS file error', e);
-  }
-  return;
-}
 
       // WEBRTC SIGNALING
       if (['webrtc-offer', 'webrtc-answer', 'webrtc-ice'].includes(msg.type)) {
