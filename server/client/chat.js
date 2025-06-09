@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let answeredCall = false;
 
   function initWebSocket() {
+  if (socket && socket.readyState < WebSocket.CLOSING) return;
   socket = new WebSocket(
     (location.protocol === 'https:' ? 'wss://' : 'ws://') +
       location.host
