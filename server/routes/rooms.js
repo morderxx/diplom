@@ -307,7 +307,13 @@ router.delete('/:roomId', authMiddleware, async (req, res) => {
     
     const roomData = room.rows[0];
     const isCreator = roomData.creator_nickname === req.userNickname;
-    
+    // --- Новый код: получаем заранее список всех участников комнаты ---
+   const membersRes = await pool.query(
+     'SELECT nickname FROM room_members WHERE room_id = $1',
+     [roomId]
+   );
+   const members = membersRes.rows.map(r => r.nickname);
+   // ---------
     // Для приватного чата: разрешаем удаление любому участнику
     if (!roomData.is_group && !roomData.is_channel) {
       // Удаляем комнату и все связанные данные
@@ -315,6 +321,21 @@ router.delete('/:roomId', authMiddleware, async (req, res) => {
       await pool.query('DELETE FROM messages WHERE room_id = $1', [roomId]);
       await pool.query('DELETE FROM room_members WHERE room_id = $1', [roomId]);
       await pool.query('DELETE FROM rooms WHERE id = $1', [roomId]);
+          // После удаления — отправляем WS-уведомление всем бывшим участникам
+     if (chatWS.wss) {
+       members.forEach(nick => {
+         chatWS.wss.clients.forEach(wsClient => {
+           const info = chatWS.clients.get(wsClient);
+           if (
+             info &&
+             info.nickname === nick &&
+             wsClient.readyState === WebSocket.OPEN
+           ) {
+             wsClient.send(JSON.stringify({ type: 'roomsUpdated' }));
+           }
+         });
+       });
+     }
       return res.json({ ok: true });
     }
     
@@ -325,6 +346,21 @@ router.delete('/:roomId', authMiddleware, async (req, res) => {
       await pool.query('DELETE FROM messages WHERE room_id = $1', [roomId]);
       await pool.query('DELETE FROM room_members WHERE room_id = $1', [roomId]);
       await pool.query('DELETE FROM rooms WHERE id = $1', [roomId]);
+          // и тут тоже слать обновление
+     if (chatWS.wss) {
+       members.forEach(nick => {
+         chatWS.wss.clients.forEach(wsClient => {
+           const info = chatWS.clients.get(wsClient);
+           if (
+             info &&
+             info.nickname === nick &&
+             wsClient.readyState === WebSocket.OPEN
+           ) {
+             wsClient.send(JSON.stringify({ type: 'roomsUpdated' }));
+           }
+         });
+       });
+     }
       return res.json({ ok: true });
     }
     
