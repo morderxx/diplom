@@ -1031,7 +1031,15 @@ async function joinRoom(roomId) {
       break;
 
 
-
+    case 'room-update':
+    // Обновляем список комнат
+    loadRooms();
+    
+    // Если обновление касается текущей комнаты
+    if (currentRoom === msg.roomId) {
+      joinRoom(currentRoom);
+    }
+    break;
       
     case 'webrtc-cancel':
       // рисуем только если это сделал НЕ мы сами
