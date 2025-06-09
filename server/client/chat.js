@@ -178,8 +178,6 @@ case 'call': {
   };
 }
 
-// Вызываем сразу после определения initWebSocket
-initWebSocket();
   // Контекстное меню
 const contextMenu = document.createElement('div');
 contextMenu.className = 'context-menu';
