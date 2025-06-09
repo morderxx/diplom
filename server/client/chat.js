@@ -1106,7 +1106,7 @@ async function joinRoom(roomId) {
     return;
   }
 
-  // настройка UI: readonly, заголовок, кнопки и т.д.
+  // --- UI: readonly, кнопки, заголовок ---
   const m = roomMeta[roomId];
   const readOnly = m.is_channel && m.creator !== userNickname;
   inputContainer.style.display   = readOnly ? 'none' : 'flex';
@@ -1119,20 +1119,20 @@ async function joinRoom(roomId) {
   const header = document.getElementById('chat-header');
   const left   = header.querySelector('.chat-header__left');
   let title;
-  if (m.is_channel)      title = `Канал: ${m.name || ('#' + roomId)}`;
-  else if (m.is_group)   title = `Группа: ${m.name || ('#' + roomId)}`;
-  else                   title = `Собеседник: ${currentPeer}`;
+  if (m.is_channel)      title = 'Канал: ' + (m.name || ('#' + roomId));
+  else if (m.is_group)   title = 'Группа: ' + (m.name || ('#' + roomId));
+  else                   title = 'Собеседник: ' + currentPeer;
   left.textContent = title;
   header.classList.remove('hidden');
   document.getElementById('chat-section').classList.add('active');
   document.getElementById('chat-box').innerHTML = '';
 
-  // сообщаем серверу, что присоединяемся к новой комнате
+  // отправляем join-сообщение серверу
   if (socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({ type: 'join', token, roomId }));
   }
 
-  // загружаем историю сообщений
+  // ─── Загрузка истории сообщений ───────────────────────────────────────────
   const res = await fetch(`${API_URL}/rooms/${roomId}/messages`, {
     headers: { Authorization: `Bearer ${token}` }
   });
@@ -1141,113 +1141,34 @@ async function joinRoom(roomId) {
     return;
   }
   const history = await res.json();
-   switch (msg.type) {
-    case 'webrtc-hangup':
-      if (msg.from === userNickname) break; // не обрабатываем эхо
-
-      // 1) Всегда останавливаем WebRTC-потоки и таймер
-      if (pc) { pc.close(); pc = null; }
-      if (localStream) {
-        localStream.getTracks().forEach(t => t.stop());
-        localStream = null;
-      }
-      clearInterval(callTimerIntvl);
-      clearTimeout(answerTimeout);
-
-      // 2) Рисуем подходящее системное сообщение:
-      //    — если разговор уже был начат → finished
-      //    — если не был принят → missed
-      if (answeredCall) {
-        endCall('finished', msg.from, /* sendToServer=*/ false);
-      } else {
-        endCall('missed', msg.from, /* sendToServer=*/ false);
-      }
-
-      answeredCall = false;
-      break;
-
-
-
-      
-    case 'webrtc-cancel':
-      // рисуем только если это сделал НЕ мы сами
-       if (msg.from !== userNickname) {
-    // только рендерим, без второго POST
-    endCall('cancelled', msg.from, /*sendToServer*/ false);
-  }
-      break;
-
-    case 'message':
-      // Если у вас есть call_id и вы хотите его передавать в appendMessage:
-      appendMessage(
-        msg.sender,
-        msg.text,
-        msg.time,
-        msg.call_id ?? null
-      );
-      break;
-
-    case 'file':
+  history.forEach(m => {
+    if (m.type === 'call') {
+      const fullTextHist = formatCallText({
+        initiator: m.initiator,
+        recipient: m.recipient,
+        status:    m.status,
+        duration:  m.duration || 0,
+        time:      m.ended_at || m.started_at
+      });
+      appendCenterCall(fullTextHist);
+    } else if (m.type === 'message' && m.file_id !== null) {
       appendFile(
-        msg.sender,
-        msg.fileId,
-        msg.filename,
-        msg.mimeType,
-        msg.time
+        m.sender_nickname,
+        m.file_id,
+        m.filename,
+        m.mime_type,
+        m.time
       );
-      break;
-
-    case 'webrtc-offer':
-      currentPeer = msg.from;
-      handleOffer(msg.payload);
-      showCallWindow(currentPeer, true);
-      break;
-
-    case 'webrtc-answer':
-      handleAnswer(msg.payload);
-      break;
-
-    case 'webrtc-ice':
-      handleIce(msg.payload);
-      break;
-
-case 'call': {
-  // Не дублируем свои собственные звонки
-  if (msg.initiator === userNickname) break;
-
-  // Формируем и отрисовываем через хелпер
-  const fullTextCall = formatCallText({
-    initiator: msg.initiator,
-    recipient: msg.recipient,
-    status:    msg.status,
-    duration:  msg.duration || 0,
-    time:      msg.ended_at || msg.happened_at
+    } else if (m.type === 'message' && m.text !== null) {
+      appendMessage(
+        m.sender_nickname,
+        m.text,
+        m.time
+      );
+    } else {
+      console.warn('Неизвестный элемент истории:', m);
+    }
   });
-  appendCenterCall(fullTextCall);
-
-  // 2) короткий текст для «пузырька» — только отмена/сброс
-  let shortText = null;
-  if (msg.status === 'cancelled' && (msg.duration || 0) === 0) {
-    shortText = `${msg.initiator} отменил(а) звонок`;
-  }
-  else if (msg.status === 'cancelled') {
-    shortText = `${msg.initiator} сбросил(а) звонок`;
-  }
-
-  if (shortText) {
-    appendMessage(
-      msg.initiator,
-      shortText,
-      msg.ended_at || msg.time || new Date().toISOString(),
-      msg.call_id ?? null
-    );
-  }
-  break;
-}
-    default:
-      console.warn('Unknown message type:', msg.type);
-  }
-};
 }
   
 function appendMessage(sender, text, time, callId = null) {
