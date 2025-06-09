@@ -579,14 +579,6 @@ async function endCall(status = 'finished', initiator = userNickname, sendToServ
   hideCallWindow();
 }
 
-
-
-
-
-
-
-
-
   // Авто-рост textarea
   textarea.addEventListener('input', () => {
     textarea.style.height = 'auto';
@@ -1002,6 +994,14 @@ async function joinRoom(roomId) {
  socket.onmessage = ev => {
   const msg = JSON.parse(ev.data);
 
+     // 1) Сначала обрабатываем room-update для любой комнаты
+  if (msg.type === 'room-update') {
+    loadRooms();                       // обновляем список чатов
+    if (currentRoom === msg.roomId) {  // если это текущая комната — перезагружаем её
+      joinRoom(currentRoom);
+    }
+    return;                            // не идём дальше
+  }
   // 0) Отфильтровываем события, не относящиеся к текущей комнате
   if (msg.roomId !== currentRoom) return;
 
