@@ -64,7 +64,12 @@ function setupWebSocket(server) {
           );
           const nick = r.rows[0] && r.rows[0].nickname;
           if (!nick) throw new Error('No nick');
-          clients.set(ws, { nickname: nick, roomId: msg.roomId });
+
+          
+        clients.set(ws, { 
+          nickname: nick, 
+          roomId: msg.roomId // Может быть null
+        });
         } catch (e) {
           console.error('WS join error', e);
         }
