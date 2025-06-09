@@ -32,9 +32,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     socket.onopen = () => {
       console.log("WebSocket подключен!");
-      // Всегда запрашиваем обновление списка комнат при подключении
-      socket.send(JSON.stringify({ type: 'listRooms', token }));
-      
+       socket.send(JSON.stringify({
+        type:   'join',
+        token:  token,      // ваш JWT
+        roomId: null        // или 0, как вам удобнее
       // Если уже выбрали комнату - присоединяемся
       if (currentRoom) {
         socket.send(JSON.stringify({ type: 'join', token, roomId: currentRoom }));
