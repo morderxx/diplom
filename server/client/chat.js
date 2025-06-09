@@ -29,8 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
     (location.protocol === 'https:' ? 'wss://' : 'ws://') +
       location.host
   );
-
+console.log("Прослушка есть!");
   socket.onopen = () => {
+    console.log("Прослушка есть!");
     // если мы уже выбрали комнату до переподключения — сразу джоинимся
     if (currentRoom) {
       socket.send(JSON.stringify({ type: 'join', token, roomId: currentRoom }));
