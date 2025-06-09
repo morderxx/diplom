@@ -735,14 +735,6 @@ async function endCall(status = 'finished', initiator = userNickname, sendToServ
   hideCallWindow();
 }
 
-
-
-
-
-
-
-
-
   // Авто-рост textarea
   textarea.addEventListener('input', () => {
     textarea.style.height = 'auto';
@@ -776,7 +768,17 @@ fileInput.onchange = () => {
       }
 
       // 2) Ответ сервера
+           // После успешной загрузки файла - добавляем его в интерфейс
       const { fileId, filename, mimeType, time } = await res.json();
+      
+      // Добавляем файл в интерфейс сразу
+      appendFile(
+        userNickname, // отправитель
+        fileId,
+        filename,
+        mimeType,
+        time
+      );
     } catch (err) {
       console.error('Ошибка в fileInput.onchange:', err);
     } finally {
@@ -809,11 +811,25 @@ fileInput.onchange = () => {
         const form = new FormData();
         form.append('file', file);
         form.append('roomId', currentRoom);
-        const res = await fetch(`${API_URL}/files`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: form
-        });
+          const res = await fetch(`${API_URL}/files`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: form
+          });
+          
+          if (res.ok) {
+            const { fileId, filename, mimeType, time } = await res.json();
+            
+            // Добавляем голосовое сообщение в интерфейс
+            appendFile(
+              userNickname,
+              fileId,
+              filename,
+              mimeType,
+              time
+            );
+          }
+        };
         if (!res.ok) console.error('Ошибка загрузки голосового сообщения:', await res.text());
         voiceBtn.disabled = false;
       };
