@@ -8,13 +8,20 @@ const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 let wss, clients;
 
 function sendRoomUpdate(nickname, roomId) {
-  for (const [client, info] of clients.entries()) {
+  let sent = false;
+  
+  clients.forEach((info, client) => {
     if (info.nickname === nickname && client.readyState === WebSocket.OPEN) {
       client.send(JSON.stringify({
         type: 'room-update',
         roomId
       }));
+      sent = true;
     }
+  });
+  
+  if (!sent) {
+    console.log(`[WS] User ${nickname} offline, update queued for next login`);
   }
 }
 
