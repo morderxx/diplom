@@ -3,6 +3,7 @@ const multer  = require('multer');
 const pool    = require('../db');
 const jwt     = require('jsonwebtoken');
 const { getWss } = require('../chat');
+const WebSocket = require('ws');
 const router  = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
@@ -56,24 +57,20 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
     res.json(meta);
 
     // 4) Рассылаем всем WS-клиентам в той же комнате
-    const { wss, clients } = getWss();
-    const msg = {
-      type:     'file',
-      roomId,
-      sender,
-      fileId:   meta.id,
-      filename: meta.filename,
-      mimeType: meta.mimeType,
-      time:     meta.time
-    };
+ const { wss, clients } = getWss();
+    const msg = { /* данные файла */ };
 
     wss.clients.forEach(c => {
-      const info = clients.get(c);
-      if (info && info.roomId === roomId && c.readyState === c.OPEN) {
-        c.send(JSON.stringify(msg));
+      try {
+        const info = clients.get(c);
+        // Исправленная проверка состояния соединения
+        if (info && info.roomId === roomId && c.readyState === WebSocket.OPEN) {
+          c.send(JSON.stringify(msg));
+        }
+      } catch (e) {
+        console.error('Ошибка отправки файла через WS:', e);
       }
     });
-
   } catch (err) {
     console.error('File upload error:', err);
     res.status(500).send('Error saving file');
