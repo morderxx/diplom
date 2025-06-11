@@ -1644,6 +1644,126 @@ document.getElementById('ctx-leave').addEventListener('click', async () => {
   }
   contextMenu.style.display = 'none';
 });
+
+  // Добавим в константы элементы
+const settingsModal = document.getElementById('settings-modal');
+const settingsForm = document.getElementById('settings-form');
+const settingsNickname = document.getElementById('settings-nickname');
+const settingsBio = document.getElementById('settings-bio');
+const settingsAge = document.getElementById('settings-age');
+const settingsTheme = document.getElementById('settings-theme');
+const settingsCancel = document.getElementById('settings-cancel');
+const btnSettings = document.getElementById('btn-settings');
+
+// Функция загрузки данных пользователя
+async function loadUserProfile() {
+  try {
+    const res = await fetch(`${API_URL}/user/profile`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    if (res.ok) {
+      const profile = await res.json();
+      return profile;
+    }
+    return {};
+  } catch (e) {
+    console.error('Ошибка загрузки профиля:', e);
+    return {};
+  }
+}
+
+// Функция сохранения профиля
+async function saveUserProfile(profile) {
+  try {
+    const res = await fetch(`${API_URL}/user/profile`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(profile)
+    });
+    
+    if (!res.ok) throw new Error(await res.text());
+    return await res.json();
+  } catch (e) {
+    console.error('Ошибка сохранения профиля:', e);
+    throw e;
+  }
+}
+
+// Обработчик открытия настроек
+btnSettings.onclick = async () => {
+  try {
+    const profile = await loadUserProfile();
+    
+    settingsNickname.value = profile.nickname || userNickname;
+    settingsBio.value = profile.bio || '';
+    settingsAge.value = profile.age || '';
+    settingsTheme.value = profile.theme || 'light';
+    
+    settingsModal.classList.remove('hidden');
+  } catch (e) {
+    console.error('Ошибка открытия настроек:', e);
+    alert('Не удалось загрузить настройки профиля');
+  }
+};
+
+// Обработчик сохранения настроек
+settingsForm.onsubmit = async (e) => {
+  e.preventDefault();
+  
+  const nickname = settingsNickname.value.trim();
+  const bio = settingsBio.value.trim();
+  const age = settingsAge.value ? parseInt(settingsAge.value) : null;
+  const theme = settingsTheme.value;
+  
+  try {
+    // Сохраняем на сервере
+    await saveUserProfile({ nickname, bio, age, theme });
+    
+    // Обновляем локальные данные
+    if (nickname && nickname !== userNickname) {
+      localStorage.setItem('nickname', nickname);
+      document.getElementById('current-user').textContent = nickname;
+      userNickname = nickname;
+    }
+    
+    // Применяем тему
+    applyTheme(theme);
+    
+    settingsModal.classList.add('hidden');
+    alert('Настройки сохранены!');
+  } catch (e) {
+    console.error('Ошибка сохранения:', e);
+    alert('Не удалось сохранить настройки: ' + e.message);
+  }
+};
+
+// Закрытие модалки
+settingsCancel.onclick = () => {
+  settingsModal.classList.add('hidden');
+};
+
+// Применение темы оформления
+function applyTheme(theme) {
+  document.body.classList.remove('theme-light', 'theme-dark');
+  
+  if (theme === 'system') {
+    theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 
+      'dark' : 'light';
+  }
+  
+  document.body.classList.add(`theme-${theme}`);
+  localStorage.setItem('theme', theme);
+}
+
+// Инициализация темы при загрузке
+document.addEventListener('DOMContentLoaded', () => {
+  const savedTheme = localStorage.getItem('theme') || 'light';
+  applyTheme(savedTheme);
+});
   // Initialization
   loadRooms();
 });
