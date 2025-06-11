@@ -121,7 +121,7 @@ button:hover {
 }
 
 .hidden {
-    display: none;
+    display: none !important; /* Добавлено !important */
 }
 
 #captcha-message {
@@ -142,6 +142,11 @@ button:hover {
     justify-content: center;
     align-items: center;
     z-index: 1000;
+    display: none; /* Гарантированное скрытие по умолчанию */
+}
+
+#captcha-modal:not(.hidden) {
+    display: flex;
 }
 
 .modal-content {
