@@ -95,8 +95,11 @@ router.get('/user/profile', authMiddleware, async (req, res) => {
 });
 
 // Эндпоинт для обновления профиля
+// Эндпоинт для обновления профиля
 router.patch('/user/profile', authMiddleware, async (req, res) => {
-  const { nickname, bio, age } = req.body;
+  // Принимаем birthdate вместо age
+  const { nickname, bio, birthdate } = req.body;
+  
   try {
     // Проверяем уникальность nickname
     const check = await pool.query(
@@ -104,16 +107,19 @@ router.patch('/user/profile', authMiddleware, async (req, res) => {
        WHERE nickname = $1 AND id <> (SELECT id FROM secret_profile WHERE login = $2)`,
       [nickname, req.userLogin]
     );
+    
     if (check.rows.length > 0) {
       return res.status(400).send('Nickname already taken');
     }
 
+    // Используем birthdate вместо age
     await pool.query(
       `UPDATE users 
        SET nickname = $1, bio = $2, age = $3
        WHERE id = (SELECT id FROM secret_profile WHERE login = $4)`,
-      [nickname, bio, birthdate, req.userLogin]
+      [nickname, bio, birthdate, req.userLogin] // Исправлено здесь
     );
+    
     res.sendStatus(200);
   } catch (err) {
     console.error('Error updating profile:', err);
