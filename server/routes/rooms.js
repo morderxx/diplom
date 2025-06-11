@@ -72,7 +72,10 @@ router.post('/', authMiddleware, async (req, res) => {
   if (!Array.isArray(members) || members.length < 1) {
     return res.status(400).send('Members list required');
   }
-
+    // Запрещаем добавление администратора в группы/каналы
+  if (members.includes('@admin') && (is_group || is_channel)) {
+    return res.status(400).send('Cannot add admin to group/channel');
+  }
   // добавляем себя, если забыли
   if (!members.includes(req.userNickname)) {
     members.push(req.userNickname);
@@ -81,6 +84,25 @@ router.post('/', authMiddleware, async (req, res) => {
   // приватный чат: ровно 2 участника и НЕ канал
   if (!is_group && !is_channel && members.length === 2) {
     const [a, b] = members.sort();
+     // Особый случай для чата с администратором
+    if (members.includes('@admin')) {
+      const exist = await pool.query(
+        `SELECT r.id
+           FROM rooms r
+           JOIN room_members m1 ON m1.room_id = r.id
+           JOIN room_members m2 ON m2.room_id = r.id
+          WHERE r.is_group = FALSE
+            AND r.is_channel = FALSE
+            AND m1.nickname = $1
+            AND m2.nickname = $2`,
+        [req.userNickname, '@admin']
+      );
+         if (exist.rows.length) {
+        const roomId = exist.rows[0].id;
+        return res.json({ roomId, name: '@admin' });
+      }
+            name = '@admin'; // Устанавливаем специальное имя
+    } else {
     const exist = await pool.query(
       `SELECT r.id
          FROM rooms r
@@ -99,8 +121,8 @@ router.post('/', authMiddleware, async (req, res) => {
     }
     // только для приватного чата — имя собеседника
     name = members.find(n => n !== req.userNickname);
+    }
   }
-
   try {
     // создаём комнату/группу/канал
     const roomRes = await pool.query(
@@ -122,6 +144,14 @@ router.post('/', authMiddleware, async (req, res) => {
       )
     );
 
+        if (members.includes('@admin')) {
+      await pool.query(
+        `INSERT INTO messages (room_id, sender_nickname, text, time)
+         VALUES ($1, $2, $3, NOW())`,
+        [roomId, '@admin', 'Доброго времени суток, чем могу помочь?']
+      );
+    }
+    
   const { wss, clients } = require('../chat').getWss();
     
     if (wss) {
@@ -190,7 +220,9 @@ router.post(
   async (req, res) => {
     const { roomId } = req.params;
     const { members } = req.body;
-
+     if (members.includes('@admin')) {
+      return res.status(400).send('Cannot add admin to the room');
+    }
     // 1) Проверяем, что комната существует
     const room = await pool.query(
       `SELECT is_group, is_channel, creator_nickname
