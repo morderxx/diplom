@@ -105,7 +105,7 @@ function authMiddleware(req, res, next) {
 
 // Сохранение или обновление профиля
 router.post('/profile', authMiddleware, async (req, res) => {
-  const { nickname, full_name, birthdate, bio, email } = req.body; // Изменено с age на birthdate
+  const { nickname, full_name, birthdate, bio, email } = req.body;
   
   if (!nickname || !full_name || !birthdate || !bio || !email) {
     return res.status(400).send('Все поля обязательны');
@@ -121,12 +121,12 @@ router.post('/profile', authMiddleware, async (req, res) => {
     // Генерация токена верификации
     const verificationToken = crypto.randomBytes(32).toString('hex');
     
-    // Сохраняем дату рождения в поле age
+    // Сохраняем дату рождения в поле age (которое на самом деле хранит дату рождения)
     await pool.query(
       `UPDATE users
         SET nickname = $1,
             full_name = $2,
-            age = $3,  // Используем дату рождения для поля age
+            age = $3,  // Здесь сохраняем дату рождения
             bio = $4,
             email = $5,
             email_verified = false,
@@ -194,7 +194,7 @@ router.get('/profile', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT nickname, full_name, 
-              TO_CHAR(age, 'YYYY-MM-DD') AS birthdate, // Конвертируем в строку
+              TO_CHAR(age, 'YYYY-MM-DD') AS birthdate, // Форматируем дату рождения
               bio, email, email_verified
          FROM users
         WHERE id = $1`,
