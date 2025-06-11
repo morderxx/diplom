@@ -188,7 +188,15 @@ function getWss() {
   return { wss, clients };
 }
 
+// Замените в конце файла:
 module.exports = {
   setupWebSocket,
-  getWss  // Экспортируем как функцию
+  get wss() { 
+    if (!wss) throw new Error("WebSocket server not initialized");
+    return wss; 
+  },
+  get clients() { 
+    if (!clients) throw new Error("Clients map not initialized");
+    return clients; 
+  }
 };
