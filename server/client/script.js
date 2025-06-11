@@ -57,16 +57,26 @@ async function verifyCaptcha() {
             }
             
             closeCaptchaModal();
+            document.getElementById('captcha-message').innerText = '';
         } else {
-            document.getElementById('captcha-message').innerText = 'Ошибка проверки reCAPTCHA: ' + 
-                (data['error-codes'] ? data['error-codes'].join(', ') : 'Неизвестная ошибка');
+            let errorMessage = 'Ошибка проверки reCAPTCHA. Попробуйте еще раз.';
+            
+            if (data['error-codes']) {
+                if (data['error-codes'].includes('timeout-or-duplicate')) {
+                    errorMessage = 'Время проверки истекло. Пожалуйста, пройдите проверку снова.';
+                } else if (data['error-codes'].includes('missing-input-secret')) {
+                    errorMessage = 'Ошибка сервера: отсутствует секретный ключ';
+                }
+            }
+            
+            document.getElementById('captcha-message').innerText = errorMessage;
             
             // Перезагружаем капчу
             grecaptcha.reset();
         }
     } catch (error) {
         console.error('Captcha verification error:', error);
-        document.getElementById('captcha-message').innerText = 'Ошибка соединения с сервером';
+        document.getElementById('captcha-message').innerText = 'Ошибка соединения с сервером. Проверьте интернет-соединение.';
     }
 }
 
@@ -76,7 +86,6 @@ function showRegister() {
     document.getElementById('registerButton').classList.remove('hidden');
     document.getElementById('loginButton').classList.add('hidden');
     document.getElementById('registerToggleButton').classList.add('hidden');
-    showCaptchaModal();
 }
 
 // Обработчики для кнопок входа и регистрации
@@ -103,6 +112,11 @@ async function login() {
   const loginValue = document.getElementById('login').value;
   const password   = document.getElementById('password').value;
 
+  if (!loginValue || !password) {
+    document.getElementById('message').innerText = 'Пожалуйста, заполните все поля';
+    return;
+  }
+
   const res = await fetch(`${API_URL}/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -110,7 +124,7 @@ async function login() {
   });
   
   if (!res.ok) {
-    document.getElementById('message').innerText = 'Ошибка входа';
+    document.getElementById('message').innerText = 'Ошибка входа: неверный логин или пароль';
     return;
   }
   
@@ -141,6 +155,11 @@ async function register() {
   const password   = document.getElementById('password').value;
   const keyword    = document.getElementById('keyword').value;
 
+  if (!loginInput || !password || !keyword) {
+    document.getElementById('message').innerText = 'Пожалуйста, заполните все поля';
+    return;
+  }
+
   const res = await fetch(`${API_URL}/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -148,7 +167,7 @@ async function register() {
   });
   
   if (!res.ok) {
-    document.getElementById('message').innerText = 'Ошибка регистрации';
+    document.getElementById('message').innerText = 'Ошибка регистрации: такой логин уже существует';
     return;
   }
 
