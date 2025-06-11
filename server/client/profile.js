@@ -1,35 +1,111 @@
 // server/client/profile.js
 const API_URL = '/api';
 
+// Текущий токен верификации
+let verificationToken = '';
+
 async function saveProfile() {
-    const nickname  = document.getElementById('nickname').value;
+    const nickname = document.getElementById('nickname').value;
     const full_name = document.getElementById('full_name').value;
-    // берём значение из календаря
-    const age = document.getElementById('birthdate').value;
-    const bio       = document.getElementById('bio').value;
-    const token     = localStorage.getItem('token');
+    const birthdate = document.getElementById('birthdate').value;
+    const email = document.getElementById('email').value;
+    const bio = document.getElementById('bio').value;
+    const token = localStorage.getItem('token');
 
-    const res = await fetch(`${API_URL}/profile`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-            nickname,
-            full_name,
-            age,  // вместо age
-            bio
-        })
-    });
-
-    if (res.ok) {
-        localStorage.setItem('nickname', nickname);
-        document.getElementById('message').innerText = 'Профиль сохранён!';
-        setTimeout(() => {
-            window.location.href = 'chat.html';
-        }, 1000);
-    } else {
-        document.getElementById('message').innerText = 'Ошибка сохранения профиля';
+    // Рассчитываем возраст из даты рождения
+    const birthDate = new Date(birthdate);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
     }
+
+    try {
+        const res = await fetch(`${API_URL}/profile`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                nickname,
+                full_name,
+                age,
+                bio,
+                email
+            })
+        });
+
+        const data = await res.json();
+        
+        if (res.ok) {
+            // Сохраняем данные профиля
+            localStorage.setItem('nickname', nickname);
+            localStorage.setItem('email', email);
+            
+            // Показываем модальное окно
+            document.getElementById('emailModal').style.display = 'block';
+            document.getElementById('modalMessage').innerText = `На почту ${email} отправлен код подтверждения.`;
+            
+            // Генерируем и сохраняем код (в реальном приложении сервер бы отправил его)
+            verificationToken = Math.floor(100000 + Math.random() * 900000).toString();
+            console.log('Код подтверждения (для теста):', verificationToken);
+        } else {
+            document.getElementById('message').innerText = data.message || 'Ошибка сохранения профиля';
+        }
+    } catch (err) {
+        console.error('Ошибка:', err);
+        document.getElementById('message').innerText = 'Ошибка сети';
+    }
+}
+
+function closeModal() {
+    document.getElementById('emailModal').style.display = 'none';
+}
+
+function moveToNext(current, nextId) {
+    if (current.value.length === 1) {
+        document.getElementById(nextId)?.focus();
+    }
+}
+
+function verifyEmail() {
+    const code1 = document.getElementById('code1').value;
+    const code2 = document.getElementById('code2').value;
+    const code3 = document.getElementById('code3').value;
+    const code4 = document.getElementById('code4').value;
+    const code5 = document.getElementById('code5').value;
+    const code6 = document.getElementById('code6').value;
+    
+    const enteredCode = code1 + code2 + code3 + code4 + code5 + code6;
+    
+    if (enteredCode === verificationToken) {
+        document.getElementById('verifyMessage').innerText = 'Email успешно подтверждён!';
+        document.getElementById('verifyMessage').style.color = 'green';
+        
+        setTimeout(() => {
+            closeModal();
+            window.location.href = 'chat.html';
+        }, 1500);
+    } else {
+        document.getElementById('verifyMessage').innerText = 'Неверный код подтверждения';
+        document.getElementById('verifyMessage').style.color = 'red';
+    }
+}
+
+function resendCode() {
+    // Генерируем новый код
+    verificationToken = Math.floor(100000 + Math.random() * 900000).toString();
+    console.log('Новый код подтверждения (для теста):', verificationToken);
+    
+    document.getElementById('verifyMessage').innerText = 'Новый код отправлен!';
+    document.getElementById('verifyMessage').style.color = 'green';
+    
+    // Очищаем поля ввода
+    document.querySelectorAll('.verification-code input').forEach(input => {
+        input.value = '';
+    });
+    document.getElementById('code1').focus();
 }
