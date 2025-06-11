@@ -1645,36 +1645,50 @@ document.getElementById('ctx-leave').addEventListener('click', async () => {
   contextMenu.style.display = 'none';
 });
 
-  // Добавим в константы элементы
+// Добавить константы для элементов настроек
 const settingsModal = document.getElementById('settings-modal');
 const settingsForm = document.getElementById('settings-form');
 const settingsNickname = document.getElementById('settings-nickname');
 const settingsBio = document.getElementById('settings-bio');
-const settingsAge = document.getElementById('settings-age');
+const settingsBirthdate = document.getElementById('settings-birthdate');
 const settingsTheme = document.getElementById('settings-theme');
 const settingsCancel = document.getElementById('settings-cancel');
+const settingsClose = document.getElementById('settings-close');
 const btnSettings = document.getElementById('btn-settings');
 
-// Функция загрузки данных пользователя
-async function loadUserProfile() {
+// Инициализация настроек
+btnSettings.addEventListener('click', openSettingsModal);
+
+async function openSettingsModal() {
   try {
     const res = await fetch(`${API_URL}/user/profile`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     
-    if (res.ok) {
-      const profile = await res.json();
-      return profile;
-    }
-    return {};
-  } catch (e) {
-    console.error('Ошибка загрузки профиля:', e);
-    return {};
+    if (!res.ok) throw new Error('Failed to load profile');
+    
+    const profile = await res.json();
+    settingsNickname.value = profile.nickname || userNickname;
+    settingsBio.value = profile.bio || '';
+    settingsBirthdate.value = profile.birthdate || '';
+    settingsTheme.value = localStorage.getItem('theme') || 'light';
+    
+    settingsModal.style.display = 'flex';
+  } catch (err) {
+    console.error('Profile load error:', err);
+    alert('Не удалось загрузить настройки профиля');
   }
 }
 
-// Функция сохранения профиля
-async function saveUserProfile(profile) {
+// Обработка сохранения настроек
+settingsForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const nickname = settingsNickname.value.trim();
+  const bio = settingsBio.value.trim();
+  const birthdate = settingsBirthdate.value;
+  const theme = settingsTheme.value;
+  
   try {
     const res = await fetch(`${API_URL}/user/profile`, {
       method: 'PATCH',
@@ -1682,46 +1696,10 @@ async function saveUserProfile(profile) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify(profile)
+      body: JSON.stringify({ nickname, bio, birthdate })
     });
     
     if (!res.ok) throw new Error(await res.text());
-    return await res.json();
-  } catch (e) {
-    console.error('Ошибка сохранения профиля:', e);
-    throw e;
-  }
-}
-
-// Обработчик открытия настроек
-btnSettings.onclick = async () => {
-  try {
-    const profile = await loadUserProfile();
-    
-    settingsNickname.value = profile.nickname || userNickname;
-    settingsBio.value = profile.bio || '';
-    settingsAge.value = profile.age || '';
-    settingsTheme.value = profile.theme || 'light';
-    
-    settingsModal.classList.remove('hidden');
-  } catch (e) {
-    console.error('Ошибка открытия настроек:', e);
-    alert('Не удалось загрузить настройки профиля');
-  }
-};
-
-// Обработчик сохранения настроек
-settingsForm.onsubmit = async (e) => {
-  e.preventDefault();
-  
-  const nickname = settingsNickname.value.trim();
-  const bio = settingsBio.value.trim();
-  const age = settingsAge.value ? parseInt(settingsAge.value) : null;
-  const theme = settingsTheme.value;
-  
-  try {
-    // Сохраняем на сервере
-    await saveUserProfile({ nickname, bio, age, theme });
     
     // Обновляем локальные данные
     if (nickname && nickname !== userNickname) {
@@ -1733,20 +1711,24 @@ settingsForm.onsubmit = async (e) => {
     // Применяем тему
     applyTheme(theme);
     
-    settingsModal.classList.add('hidden');
+    settingsModal.style.display = 'none';
     alert('Настройки сохранены!');
-  } catch (e) {
-    console.error('Ошибка сохранения:', e);
-    alert('Не удалось сохранить настройки: ' + e.message);
+  } catch (err) {
+    console.error('Profile save error:', err);
+    alert('Не удалось сохранить настройки: ' + err.message);
   }
-};
+});
 
 // Закрытие модалки
-settingsCancel.onclick = () => {
-  settingsModal.classList.add('hidden');
-};
+settingsClose.addEventListener('click', () => {
+  settingsModal.style.display = 'none';
+});
 
-// Применение темы оформления
+settingsCancel.addEventListener('click', () => {
+  settingsModal.style.display = 'none';
+});
+
+// Применение темы
 function applyTheme(theme) {
   document.body.classList.remove('theme-light', 'theme-dark');
   
