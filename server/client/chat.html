@@ -176,12 +176,20 @@
         <label for="settings-birthdate">Дата рождения</label>
         <input type="date" id="settings-birthdate">
       </div>
-      <div class="form-group">
-  <label for="theme-toggle">Тёмная тема:</label>
-  <label class="switch">
-    <input type="checkbox" id="theme-toggle">
-    <span class="slider"></span>
+<!-- Замените текущий переключатель на этот -->
+<div class="theme-switch-wrapper">
+  <span class="theme-label">Светлая</span>
+  
+  <label class="theme-switch">
+    <input type="checkbox" id="theme-toggle" hidden>
+    <span class="slider">
+      <span class="sun-icon">☀️</span>
+      <span class="moon-icon">🌙</span>
+      <span class="slider-ball"></span>
+    </span>
   </label>
+  
+  <span class="theme-label">Тёмная</span>
 </div>
      <!-- Внутри settings-modal, после остальных полей -->
       <div class="form-actions">
