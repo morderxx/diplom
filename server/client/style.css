@@ -810,3 +810,119 @@ body.dark-theme .modal-window {
 body.dark-theme .modal-window * {
   filter: none !important;
 }
+
+/* Стили для переключателя темы */
+.theme-switch-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 15px 0;
+  padding: 10px;
+  background: rgba(0,0,0,0.05);
+  border-radius: 50px;
+}
+
+.theme-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  transition: color 0.3s;
+}
+
+.theme-switch {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 30px;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(145deg, #6a11cb 0%, #2575fc 100%);
+  border-radius: 30px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  overflow: hidden;
+}
+
+.slider:before {
+  content: "";
+  position: absolute;
+  height: 24px;
+  width: 24px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  z-index: 2;
+}
+
+.sun-icon, .moon-icon {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  transition: opacity 0.3s;
+}
+
+.sun-icon {
+  left: 8px;
+  opacity: 1;
+}
+
+.moon-icon {
+  right: 8px;
+  opacity: 0.5;
+}
+
+#theme-toggle:checked + .slider:before {
+  transform: translateX(30px);
+}
+
+#theme-toggle:checked + .slider {
+  background: linear-gradient(145deg, #121212 0%, #2d2d2d 100%);
+}
+
+#theme-toggle:checked + .slider .sun-icon {
+  opacity: 0.5;
+}
+
+#theme-toggle:checked + .slider .moon-icon {
+  opacity: 1;
+}
+
+/* Эффект при наведении */
+.theme-switch:hover .slider {
+  transform: scale(1.05);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+/* Активное состояние */
+#theme-toggle:checked + .slider:after {
+  content: "";
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  right: -10px;
+  bottom: -10px;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
