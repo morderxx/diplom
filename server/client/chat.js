@@ -1690,7 +1690,7 @@ settingsForm.addEventListener('submit', async (e) => {
   const theme = settingsTheme.value;
   
   try {
-    const res = await fetch(`${API_URL}/user/profile`, {
+    const res = await fetch(`${API_URL}/users/user/profile`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
