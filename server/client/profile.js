@@ -12,16 +12,6 @@ async function saveProfile() {
     const bio = document.getElementById('bio').value;
     const token = localStorage.getItem('token');
 
-    // Рассчитываем возраст из даты рождения
-    const birthDate = new Date(birthdate);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
-    }
-
     try {
         const res = await fetch(`${API_URL}/profile`, {
             method: 'POST',
@@ -32,7 +22,7 @@ async function saveProfile() {
             body: JSON.stringify({
                 nickname,
                 full_name,
-                age,
+                birthdate, // Отправляем дату рождения вместо возраста
                 bio,
                 email
             })
