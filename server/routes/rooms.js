@@ -1,11 +1,6 @@
 const express = require('express');
 const jwt     = require('jsonwebtoken');
 const pool    = require('../db');
-const chatWS = require('../chat');
-if (chatWS.wss) {
-  chatWS.wss.clients.forEach(() => {});
-
-}
 const WebSocket = require('ws');
 
 // теперь chatWS.wss и chatWS.clients есть
