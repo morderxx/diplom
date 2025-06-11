@@ -80,7 +80,8 @@ router.get('/search', authMiddleware, async (req, res) => {
 router.get('/user/profile', authMiddleware, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT u.nickname, u.bio, u.age AS birthdate
+      `SELECT u.nickname, u.bio, 
+       TO_CHAR(CURRENT_DATE - INTERVAL '1 year' * u.age, 'YYYY-MM-DD') AS birthdate
        FROM users u
        JOIN secret_profile sp ON sp.id = u.id
        WHERE sp.login = $1`,
@@ -99,7 +100,9 @@ router.get('/user/profile', authMiddleware, async (req, res) => {
 router.patch('/user/profile', authMiddleware, async (req, res) => {
   // Принимаем birthdate вместо age
   const { nickname, bio, birthdate } = req.body;
-  
+    const age = Math.floor(
+    (new Date() - new Date(birthdate)) / (365.25 * 24 * 60 * 60 * 1000)
+  );
   try {
     // Проверяем уникальность nickname
     const check = await pool.query(
