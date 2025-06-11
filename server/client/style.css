@@ -792,3 +792,11 @@ body.lightbox-open {
   background-color: #f0f0f0;
 }
 
+#dark-reader-btn.active {
+  background-color: #4CAF50;
+  color: white;
+}
+
+#dark-reader-btn.active:hover {
+  background-color: #45a049;
+}
