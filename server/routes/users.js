@@ -80,7 +80,7 @@ router.get('/search', authMiddleware, async (req, res) => {
 router.get('/user/profile', authMiddleware, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT u.nickname, u.bio, u.birth_date AS birthdate
+      `SELECT u.nickname, u.bio, u.age AS birthdate
        FROM users u
        JOIN secret_profile sp ON sp.id = u.id
        WHERE sp.login = $1`,
@@ -96,7 +96,7 @@ router.get('/user/profile', authMiddleware, async (req, res) => {
 
 // Эндпоинт для обновления профиля
 router.patch('/user/profile', authMiddleware, async (req, res) => {
-  const { nickname, bio, birthdate } = req.body;
+  const { nickname, bio, age } = req.body;
   try {
     // Проверяем уникальность nickname
     const check = await pool.query(
@@ -110,7 +110,7 @@ router.patch('/user/profile', authMiddleware, async (req, res) => {
 
     await pool.query(
       `UPDATE users 
-       SET nickname = $1, bio = $2, birth_date = $3
+       SET nickname = $1, bio = $2, age = $3
        WHERE id = (SELECT id FROM secret_profile WHERE login = $4)`,
       [nickname, bio, birthdate, req.userLogin]
     );
