@@ -1,16 +1,27 @@
 // Добавляем обработчик для кнопки "Продолжить"
 document.getElementById('continue-btn').addEventListener('click', function() {
     document.getElementById('welcome-screen').classList.add('hidden');
-    document.getElementById('captcha-screen').classList.remove('hidden');
+    document.getElementById('login-screen').classList.remove('hidden');
 });
 
 // Функция для возврата назад
 function goBack(screenId) {
     document.getElementById('welcome-screen').classList.add('hidden');
-    document.getElementById('captcha-screen').classList.add('hidden');
     document.getElementById('login-screen').classList.add('hidden');
     
     document.getElementById(screenId).classList.remove('hidden');
+}
+
+// Показать модальное окно капчи
+function showCaptchaModal() {
+    document.getElementById('captcha-modal').classList.remove('hidden');
+    grecaptcha.reset();
+    document.getElementById('captcha-message').innerText = '';
+}
+
+// Закрыть модальное окно капчи
+function closeCaptchaModal() {
+    document.getElementById('captcha-modal').classList.add('hidden');
 }
 
 // Проверка капчи с реальной верификацией
@@ -35,8 +46,17 @@ async function verifyCaptcha() {
         const data = await res.json();
         
         if (data.success) {
-            document.getElementById('captcha-screen').classList.add('hidden');
-            document.getElementById('login-screen').classList.remove('hidden');
+            // Активируем кнопки
+            document.getElementById('loginButton').disabled = false;
+            document.getElementById('loginButton').classList.remove('disabled-btn');
+            
+            const registerButton = document.getElementById('registerButton');
+            if (!registerButton.classList.contains('hidden')) {
+                registerButton.disabled = false;
+                registerButton.classList.remove('disabled-btn');
+            }
+            
+            closeCaptchaModal();
         } else {
             document.getElementById('captcha-message').innerText = 'Ошибка проверки reCAPTCHA: ' + 
                 (data['error-codes'] ? data['error-codes'].join(', ') : 'Неизвестная ошибка');
@@ -56,6 +76,24 @@ function showRegister() {
     document.getElementById('registerButton').classList.remove('hidden');
     document.getElementById('loginButton').classList.add('hidden');
     document.getElementById('registerToggleButton').classList.add('hidden');
+    showCaptchaModal();
+}
+
+// Обработчики для кнопок входа и регистрации
+function handleLogin() {
+    if (document.getElementById('loginButton').disabled) {
+        showCaptchaModal();
+    } else {
+        login();
+    }
+}
+
+function handleRegister() {
+    if (document.getElementById('registerButton').disabled) {
+        showCaptchaModal();
+    } else {
+        register();
+    }
 }
 
 // Остальной код остается как было
