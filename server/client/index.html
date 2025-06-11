@@ -145,11 +145,11 @@
             <input type="text" id="keyword" placeholder="Ключевое слово (для регистрации)" class="hidden">
 
             <div class="button-container">
-                <button id="loginButton" onclick="handleLogin()" class="disabled-btn" disabled>Войти</button>
+                <button id="loginButton" onclick="handleLogin()">Войти</button>
                 <button id="registerToggleButton" onclick="showRegister()">Регистрация</button>
             </div>
 
-            <button id="registerButton" onclick="handleRegister()" class="hidden disabled-btn" disabled>Подтвердить регистрацию</button>
+            <button id="registerButton" onclick="handleRegister()" class="hidden">Подтвердить регистрацию</button>
             <button onclick="goBack('welcome-screen')" style="background: #f0f0f0; color: #333; margin-top: 10px;">Назад</button>
             <div id="message"></div>
         </div>
