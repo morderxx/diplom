@@ -183,13 +183,12 @@ if (msg.type === 'message') {
   });
 }
 
+// Замените весь блок module.exports на:
 function getWss() {
   return { wss, clients };
 }
 
- module.exports = {
-   setupWebSocket,
-   // После того как setupWebSocket(server) отработает, эти переменные будут доступны:
-   get wss()      { return wss;      },
-   get clients()  { return clients;  }
- };
+module.exports = {
+  setupWebSocket,
+  getWss  // Экспортируем как функцию
+};
