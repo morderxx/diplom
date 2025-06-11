@@ -62,9 +62,9 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
 
     // 3) Отправляем клиенту
     res.json(meta);
-
-    // 4) Рассылаем всем WS-клиентам в той же комнате
-    const { wss, clients } = getWss();
+    try {
+    // Исправленное получение WebSocket
+    const { wss, clients } = require('../chat').getWss();
     const msg = {
       type:     'file',
       roomId,
@@ -86,7 +86,9 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
         console.error('Ошибка отправки файла через WS:', e);
       }
     });
-
+      } catch (e) {
+    console.error('WS error:', e);
+  }
   } catch (err) {
     console.error('File upload error:', err);
     res.status(500).send('Error saving file');
@@ -96,6 +98,9 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
 // отдача файлов по /api/files/:id
 router.get('/:id', async (req, res) => {
   const fileId = parseInt(req.params.id, 10);
+    if (isNaN(fileId)) {
+    return res.status(400).send('Invalid file ID');
+  }
   try {
     const { rows } = await pool.query(
       `SELECT filename, mime_type AS "mimeType", content
@@ -121,56 +126,6 @@ router.get('/:id', async (req, res) => {
     );
     res.send(content);
 
-  } catch (err) {
-    console.error('File download error:', err);
-    res.status(500).send('Error retrieving file');
-  }
-});
-
-// ... предыдущий код без изменений ...
-
-// отдача файлов по /api/files/:id
-router.get('/:id', authMiddleware, async (req, res) => { // Добавлен authMiddleware
-  const fileId = parseInt(req.params.id, 10);
-  try {
-    // Проверяем имеет ли пользователь доступ к файлу
-    const accessCheck = await pool.query(
-      `SELECT f.id 
-       FROM files f
-       JOIN room_members rm ON f.room_id = rm.room_id
-       WHERE f.id = $1 AND rm.user_id = $2`,
-      [fileId, req.userId]
-    );
-    
-    if (accessCheck.rows.length === 0) {
-      return res.status(403).send('Access denied');
-    }
-
-    const { rows } = await pool.query(
-      `SELECT filename, mime_type AS "mimeType", content
-         FROM files
-        WHERE id = $1`,
-      [fileId]
-    );
-    
-    if (!rows.length) {
-      return res.status(404).send('File not found');
-    }
-    
-    const { filename, mimeType, content } = rows[0];
-      res.setHeader('Content-Type', mimeType);
-    const encoded = encodeURIComponent(filename);
-    const disposition = mimeType.startsWith('image/') ||
-                        mimeType.startsWith('audio/') ||
-                        mimeType.startsWith('video/')
-                      ? 'inline'
-                      : 'attachment';
-    res.setHeader(
-      'Content-Disposition',
-      `${disposition}; filename*=UTF-8''${encoded}`
-    );
-    res.send(content);
-    
   } catch (err) {
     console.error('File download error:', err);
     res.status(500).send('Error retrieving file');
