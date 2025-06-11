@@ -5,7 +5,7 @@ document.getElementById('continue-btn').addEventListener('click', function() {
 });
 
 // Функция для возврата назад
-function goBack(screenId) {
+function goBack() {
     document.getElementById('welcome-screen').classList.remove('hidden');
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('captcha-modal').classList.add('hidden');
@@ -230,4 +230,9 @@ async function register() {
 document.addEventListener('DOMContentLoaded', function() {
     // Явно скрываем модальное окно капчи
     document.getElementById('captcha-modal').classList.add('hidden');
+    
+    // Инициализируем reCAPTCHA только когда она понадобится
+    window.grecaptchaReady = function() {
+        console.log('reCAPTCHA готов к использованию');
+    };
 });
