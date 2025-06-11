@@ -3,7 +3,8 @@ const jwt     = require('jsonwebtoken');
 const pool    = require('../db');
 const chatWS = require('../chat');
 if (chatWS.wss) {
-  chatWS.wss.clients.forEach(...);
+  chatWS.wss.clients.forEach(() => {});
+
 }
 const WebSocket = require('ws');
 
