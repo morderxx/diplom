@@ -800,3 +800,13 @@ body.lightbox-open {
 #dark-reader-btn.active:hover {
   background-color: #45a049;
 }
+
+body.dark-theme .modal-window {
+  filter: none !important; /* Отключаем фильтр для модалок */
+  background-color: #333 !important;
+  color: white !important;
+}
+
+body.dark-theme .modal-window * {
+  filter: none !important;
+}
