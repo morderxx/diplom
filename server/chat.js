@@ -189,8 +189,15 @@ function getWss() {
 }
 
 // Замените в конце файла:
+// В конце файла chat.js
 module.exports = {
   setupWebSocket,
+  getWss: function() {
+    return {
+      wss: wss,
+      clients: clients
+    };
+  },
   get wss() { 
     if (!wss) throw new Error("WebSocket server not initialized");
     return wss; 
