@@ -6,10 +6,9 @@ document.getElementById('continue-btn').addEventListener('click', function() {
 
 // Функция для возврата назад
 function goBack(screenId) {
-    document.getElementById('welcome-screen').classList.add('hidden');
+    document.getElementById('welcome-screen').classList.remove('hidden');
     document.getElementById('login-screen').classList.add('hidden');
-    
-    document.getElementById(screenId).classList.remove('hidden');
+    document.getElementById('captcha-modal').classList.add('hidden');
 }
 
 // Глобальные переменные для управления капчей
@@ -39,7 +38,9 @@ function showCaptchaModal() {
 // Закрыть модальное окно капчи
 function closeCaptchaModal() {
     document.getElementById('captcha-modal').classList.add('hidden');
-    grecaptcha.reset(captchaWidgetId);
+    if (captchaWidgetId) {
+        grecaptcha.reset(captchaWidgetId);
+    }
 }
 
 // Колбэк при успешном прохождении капчи
