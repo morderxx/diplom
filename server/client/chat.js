@@ -1724,50 +1724,86 @@ settingsCancel.addEventListener('click', () => {
 });
 
   // Добавьте в конец вашего скрипта
+// Замените предыдущий код для Dark Reader на этот
 const darkReaderBtn = document.getElementById('dark-reader-btn');
 
 darkReaderBtn.addEventListener('click', () => {
-  // Проверяем, установлен ли Dark Reader
-  const isDarkReaderInstalled = typeof window.DarkReader !== 'undefined';
-  
-  if (isDarkReaderInstalled) {
-    // Если установлен - активируем
+  // Попробуем определить установлен ли Dark Reader
+  const isDarkReaderInstalled = () => {
+    // 1. Проверка по характерному элементу в DOM
+    if (document.getElementById('dark-reader-style')) return true;
+    
+    // 2. Проверка по характерному стилю
+    const testElement = document.createElement('div');
+    testElement.style.display = 'none';
+    document.body.appendChild(testElement);
+    
     try {
-      DarkReader.enable({
-        brightness: 100,
-        contrast: 90,
-        sepia: 10
-      });
-      alert('Тёмная тема активирована через Dark Reader!');
+      // Dark Reader добавляет фильтры к корневому элементу
+      const filter = getComputedStyle(document.documentElement).filter;
+      if (filter && filter.includes('darkreader')) return true;
+    } catch (e) {}
+    
+    document.body.removeChild(testElement);
+    return false;
+  };
+
+  // Проверяем установлен ли Dark Reader
+  if (isDarkReaderInstalled()) {
+    // Пытаемся активировать через известные методы
+    try {
+      // Попытка 1: Через глобальный объект (работает в некоторых случаях)
+      if (typeof DarkReader !== 'undefined') {
+        DarkReader.enable();
+        alert('Тёмная тема активирована!');
+        return;
+      }
+      
+      // Попытка 2: Через создание события (работает в последних версиях)
+      const event = new Event('darkreader:enable');
+      window.dispatchEvent(event);
+      alert('Тёмная тема активирована через системное событие!');
     } catch (e) {
-      console.error('DarkReader error:', e);
-      alert('Ошибка активации Dark Reader');
+      console.error('DarkReader activation error:', e);
+      alert('Dark Reader установлен, но не удалось активировать. Включите его вручную через иконку расширения.');
     }
   } else {
     // Если не установлен - предлагаем установить
     const install = confirm(
-      'Dark Reader не установлен. Хотите перейти в магазин расширений?'
+      'Dark Reader не обнаружен. Хотите перейти в магазин расширений?'
     );
     
     if (install) {
-      // Ссылки на установку для разных браузеров
       const storeUrls = {
         chrome: 'https://chrome.google.com/webstore/detail/dark-reader/eimadpbcbfnmbkopoojfekhnkhdbieeh',
         firefox: 'https://addons.mozilla.org/firefox/addon/darkreader/',
         edge: 'https://microsoftedge.microsoft.com/addons/detail/dark-reader/ifoakfbpdcdoeenechcleahebpibofpc'
       };
       
-      // Открываем подходящую страницу
-      if (navigator.userAgent.includes('Chrome')) {
-        window.open(storeUrls.chrome, '_blank');
-      } else if (navigator.userAgent.includes('Firefox')) {
-        window.open(storeUrls.firefox, '_blank');
-      } else {
-        window.open(storeUrls.edge, '_blank');
-      }
+      window.open(storeUrls.chrome, '_blank');
     }
   }
 });
+   const darkReaderText = document.getElementById('dark-reader-text');
+  const darkReaderHint = document.getElementById('dark-reader-hint');
+  
+  const checkDarkReader = () => {
+    // Проверяем активен ли Dark Reader
+    const isActive = document.getElementById('dark-reader-style') || 
+                    getComputedStyle(document.documentElement).filter.includes('darkreader');
+    
+    if (isActive) {
+      darkReaderText.textContent = 'Dark Reader активен';
+      darkReaderHint.textContent = 'Тёмная тема включена через расширение';
+      darkReaderBtn.classList.add('active');
+    }
+  };
+  
+  // Первоначальная проверка
+  checkDarkReader();
+  
+  // Периодическая проверка (на случай ручного включения)
+  setInterval(checkDarkReader, 3000);
   // Initialization
   loadRooms();
 });
