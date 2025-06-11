@@ -10,6 +10,12 @@ const router  = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 const upload = multer({ storage: multer.memoryStorage() });
 
+router.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+  next();
+});
+
 function authMiddleware(req, res, next) {
   const header = req.headers.authorization;
   if (!header) return res.status(401).send('No token');
@@ -115,6 +121,56 @@ router.get('/:id', async (req, res) => {
     );
     res.send(content);
 
+  } catch (err) {
+    console.error('File download error:', err);
+    res.status(500).send('Error retrieving file');
+  }
+});
+
+// ... предыдущий код без изменений ...
+
+// отдача файлов по /api/files/:id
+router.get('/:id', authMiddleware, async (req, res) => { // Добавлен authMiddleware
+  const fileId = parseInt(req.params.id, 10);
+  try {
+    // Проверяем имеет ли пользователь доступ к файлу
+    const accessCheck = await pool.query(
+      `SELECT f.id 
+       FROM files f
+       JOIN room_members rm ON f.room_id = rm.room_id
+       WHERE f.id = $1 AND rm.user_id = $2`,
+      [fileId, req.userId]
+    );
+    
+    if (accessCheck.rows.length === 0) {
+      return res.status(403).send('Access denied');
+    }
+
+    const { rows } = await pool.query(
+      `SELECT filename, mime_type AS "mimeType", content
+         FROM files
+        WHERE id = $1`,
+      [fileId]
+    );
+    
+    if (!rows.length) {
+      return res.status(404).send('File not found');
+    }
+    
+    const { filename, mimeType, content } = rows[0];
+      res.setHeader('Content-Type', mimeType);
+    const encoded = encodeURIComponent(filename);
+    const disposition = mimeType.startsWith('image/') ||
+                        mimeType.startsWith('audio/') ||
+                        mimeType.startsWith('video/')
+                      ? 'inline'
+                      : 'attachment';
+    res.setHeader(
+      'Content-Disposition',
+      `${disposition}; filename*=UTF-8''${encoded}`
+    );
+    res.send(content);
+    
   } catch (err) {
     console.error('File download error:', err);
     res.status(500).send('Error retrieving file');
