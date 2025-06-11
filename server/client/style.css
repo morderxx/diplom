@@ -814,8 +814,22 @@ body.lightbox-open {
   background-color: #f0f0f0;
 }
 
+body {
+  scrollbar-color: var(--text-secondary) var(--bg-primary);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-secondary);
+  border-radius: 4px;
+}
 /* Тема оформления */
 body.theme-light {
+  filter: invert(85%) hue-rotate(180deg);
   --bg-primary: #f0f2f5;
   --bg-secondary: #ffffff;
   --text-primary: #000000;
