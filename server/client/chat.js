@@ -1651,7 +1651,6 @@ const settingsForm = document.getElementById('settings-form');
 const settingsNickname = document.getElementById('settings-nickname');
 const settingsBio = document.getElementById('settings-bio');
 const settingsBirthdate = document.getElementById('settings-birthdate');
-const settingsTheme = document.getElementById('settings-theme');
 const settingsCancel = document.getElementById('settings-cancel');
 const settingsClose = document.getElementById('settings-close');
 const btnSettings = document.getElementById('btn-settings');
@@ -1671,7 +1670,6 @@ async function openSettingsModal() {
     settingsNickname.value = profile.nickname || userNickname;
     settingsBio.value = profile.bio || '';
     settingsBirthdate.value = profile.birthdate || '';
-    settingsTheme.value = localStorage.getItem('theme') || 'light';
     
     settingsModal.style.display = 'flex';
   } catch (err) {
@@ -1687,7 +1685,6 @@ settingsForm.addEventListener('submit', async (e) => {
   const nickname = settingsNickname.value.trim();
   const bio = settingsBio.value.trim();
   const birthdate = settingsBirthdate.value;
-  const theme = settingsTheme.value;
   
   try {
     const res = await fetch(`${API_URL}/users/user/profile`, {
@@ -1708,8 +1705,6 @@ settingsForm.addEventListener('submit', async (e) => {
       userNickname = nickname;
     }
     
-    // Применяем тему
-    applyTheme(theme);
     
     settingsModal.style.display = 'none';
     alert('Настройки сохранены!');
@@ -1728,30 +1723,50 @@ settingsCancel.addEventListener('click', () => {
   settingsModal.style.display = 'none';
 });
 
-// Применение темы
-function applyTheme(theme) {
-  document.body.classList.remove('theme-light', 'theme-dark');
-  
-  if (theme === 'system') {
-    theme = window.matchMedia('(prefers-color-scheme: dark)').matches 
-      ? 'dark' 
-      : 'light';
-  }
-  
-  document.body.classList.add(`theme-${theme}`);
-  localStorage.setItem('theme', theme);
-  
-  // Принудительное обновление всех элементов
-  document.querySelectorAll('*').forEach(el => {
-    el.style && (el.style.visibility = 'hidden');
-    el.style && (el.style.visibility = 'visible');
-  });
-}
+  // Добавьте в конец вашего скрипта
+const darkReaderBtn = document.getElementById('dark-reader-btn');
 
-// Инициализация темы при загрузке
-document.addEventListener('DOMContentLoaded', () => {
-  const savedTheme = localStorage.getItem('theme') || 'light';
-  applyTheme(savedTheme);
+darkReaderBtn.addEventListener('click', () => {
+  // Проверяем, установлен ли Dark Reader
+  const isDarkReaderInstalled = typeof window.DarkReader !== 'undefined';
+  
+  if (isDarkReaderInstalled) {
+    // Если установлен - активируем
+    try {
+      DarkReader.enable({
+        brightness: 100,
+        contrast: 90,
+        sepia: 10
+      });
+      alert('Тёмная тема активирована через Dark Reader!');
+    } catch (e) {
+      console.error('DarkReader error:', e);
+      alert('Ошибка активации Dark Reader');
+    }
+  } else {
+    // Если не установлен - предлагаем установить
+    const install = confirm(
+      'Dark Reader не установлен. Хотите перейти в магазин расширений?'
+    );
+    
+    if (install) {
+      // Ссылки на установку для разных браузеров
+      const storeUrls = {
+        chrome: 'https://chrome.google.com/webstore/detail/dark-reader/eimadpbcbfnmbkopoojfekhnkhdbieeh',
+        firefox: 'https://addons.mozilla.org/firefox/addon/darkreader/',
+        edge: 'https://microsoftedge.microsoft.com/addons/detail/dark-reader/ifoakfbpdcdoeenechcleahebpibofpc'
+      };
+      
+      // Открываем подходящую страницу
+      if (navigator.userAgent.includes('Chrome')) {
+        window.open(storeUrls.chrome, '_blank');
+      } else if (navigator.userAgent.includes('Firefox')) {
+        window.open(storeUrls.firefox, '_blank');
+      } else {
+        window.open(storeUrls.edge, '_blank');
+      }
+    }
+  }
 });
   // Initialization
   loadRooms();
