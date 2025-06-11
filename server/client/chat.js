@@ -1704,7 +1704,7 @@ settingsForm.addEventListener('submit', async (e) => {
       document.getElementById('current-user').textContent = nickname;
       userNickname = nickname;
     }
-    
+    localStorage.setItem('darkTheme', themeToggle.checked);
     
     settingsModal.style.display = 'none';
     alert('Настройки сохранены!');
