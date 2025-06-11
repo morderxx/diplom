@@ -105,27 +105,42 @@ function authMiddleware(req, res, next) {
 
 // Сохранение или обновление профиля
 router.post('/profile', authMiddleware, async (req, res) => {
-  const { nickname, full_name, age, bio, email } = req.body;
-  if (!nickname || !full_name || !age || !bio || !email) {
+  const { nickname, full_name, birthdate, bio, email } = req.body; // Изменено с age на birthdate
+  
+  if (!nickname || !full_name || !birthdate || !bio || !email) {
     return res.status(400).send('Все поля обязательны');
+  }
+
+  // Проверка формата даты
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(birthdate)) {
+    return res.status(400).send('Некорректный формат даты. Используйте YYYY-MM-DD');
   }
 
   try {
     // Генерация токена верификации
     const verificationToken = crypto.randomBytes(32).toString('hex');
     
-    // Сохраняем данные с неподтверждённым email
+    // Сохраняем дату рождения в поле age
     await pool.query(
       `UPDATE users
         SET nickname = $1,
             full_name = $2,
-            age = $3,
+            age = $3,  // Используем дату рождения для поля age
             bio = $4,
             email = $5,
             email_verified = false,
             verification_token = $6
         WHERE id = $7`,
-      [nickname, full_name, age, bio, email, verificationToken, req.userId]
+      [
+        nickname, 
+        full_name, 
+        birthdate,  // Передаем дату рождения
+        bio, 
+        email, 
+        verificationToken, 
+        req.userId
+      ]
     );
 
     // Отправка письма с подтверждением
@@ -178,7 +193,9 @@ router.get('/verify-email', async (req, res) => {
 router.get('/profile', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT nickname, full_name, age, bio, email, email_verified
+      `SELECT nickname, full_name, 
+              TO_CHAR(age, 'YYYY-MM-DD') AS birthdate, // Конвертируем в строку
+              bio, email, email_verified
          FROM users
         WHERE id = $1`,
       [req.userId]
