@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Chayka - Мессенджер</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script>
     <style>
         #welcome-screen {
             text-align: center;
@@ -106,17 +106,6 @@
             color: #333;
         }
         
-        /* Стили для неактивных кнопок */
-        .disabled-btn {
-            opacity: 0.5;
-            cursor: not-allowed !important;
-        }
-        
-        .disabled-btn:hover {
-            transform: none !important;
-            box-shadow: none !important;
-        }
-        
         /* Анимация для модального окна */
         @keyframes modalFadeIn {
             from { opacity: 0; transform: translateY(-20px); }
@@ -125,6 +114,17 @@
         
         .modal-content {
             animation: modalFadeIn 0.3s ease-out;
+        }
+        
+        /* Стили для неактивных кнопок */
+        .disabled-btn {
+            opacity: 0.7;
+            cursor: not-allowed !important;
+        }
+        
+        .disabled-btn:hover {
+            transform: none !important;
+            box-shadow: none !important;
         }
     </style>
 </head>
@@ -160,11 +160,9 @@
         <div class="modal-content">
             <span class="close-btn" onclick="closeCaptchaModal()">&times;</span>
             <h2>Подтвердите, что вы не робот</h2>
-            <div id="captcha-container">
-                <div class="g-recaptcha" data-sitekey="6LczulkrAAAAAC2VSZfgIVzx3bZXWt3WfC3vvta0"></div>
-            </div>
+            <div id="captcha-container"></div>
             <div id="captcha-message"></div>
-            <button onclick="verifyCaptcha()">Подтвердить</button>
+            <button id="verify-captcha-btn" class="disabled-btn" disabled>Подтвердить</button>
         </div>
     </div>
 
