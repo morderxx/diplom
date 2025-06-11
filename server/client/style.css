@@ -710,3 +710,75 @@ body.lightbox-open {
 .context-menu li:hover {
   background-color: #f0f0f0;
 }
+
+/* Стили для модалки настроек */
+#settings-modal .modal-window {
+  width: 400px;
+  max-width: 90%;
+}
+
+#settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#settings-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#settings-form input,
+#settings-form textarea,
+#settings-form select {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+#settings-form textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* Тема оформления */
+body.theme-light {
+  --bg-primary: #f0f2f5;
+  --bg-secondary: #ffffff;
+  --text-primary: #000000;
+  --text-secondary: #65676b;
+  --border-color: #dddfe2;
+}
+
+body.theme-dark {
+  --bg-primary: #18191a;
+  --bg-secondary: #242526;
+  --text-primary: #e4e6eb;
+  --text-secondary: #b0b3b8;
+  --border-color: #393a3b;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.form-container,
+.chat-wrapper,
+.rooms-sidebar,
+.chat-message-area,
+.input-container,
+.modal-window {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+input, textarea, select {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
