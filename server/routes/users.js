@@ -76,4 +76,49 @@ router.get('/search', authMiddleware, async (req, res) => {
   }
 });
 
+// Эндпоинт для получения профиля
+router.get('/user/profile', authMiddleware, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT u.nickname, u.bio, u.birth_date AS birthdate
+       FROM users u
+       JOIN secret_profile sp ON sp.id = u.id
+       WHERE sp.login = $1`,
+      [req.userLogin]
+    );
+    if (rows.length === 0) return res.status(404).send('User not found');
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('Error fetching profile:', err);
+    res.status(500).send('Error fetching profile');
+  }
+});
+
+// Эндпоинт для обновления профиля
+router.patch('/user/profile', authMiddleware, async (req, res) => {
+  const { nickname, bio, birthdate } = req.body;
+  try {
+    // Проверяем уникальность nickname
+    const check = await pool.query(
+      `SELECT id FROM users 
+       WHERE nickname = $1 AND id <> (SELECT id FROM secret_profile WHERE login = $2)`,
+      [nickname, req.userLogin]
+    );
+    if (check.rows.length > 0) {
+      return res.status(400).send('Nickname already taken');
+    }
+
+    await pool.query(
+      `UPDATE users 
+       SET nickname = $1, bio = $2, birth_date = $3
+       WHERE id = (SELECT id FROM secret_profile WHERE login = $4)`,
+      [nickname, bio, birthdate, req.userLogin]
+    );
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('Error updating profile:', err);
+    res.status(500).send('Error updating profile');
+  }
+});
+
 module.exports = router;
