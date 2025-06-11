@@ -28,6 +28,9 @@
       <button id="btn-strike-game">🎮 Galactic Annihilator</button>
       <button id="btn-match3-game">🚀 Galactic Match-3</button>
       <button id="btn-runner-game">🏃 Бегунок</button>
+      <!-- В rooms-sidebar, после списка пользователей -->
+<h2>Настройки</h2>
+<button id="btn-settings">⚙️ Настройки профиля</button>
     </aside>
 
 <section id="chat-section" class="chat-container">
@@ -152,6 +155,39 @@
   <div class="modal-content game-modal-content">
     <span class="close-game">&times;</span>
     <iframe id="game-frame" class="game-frame"></iframe>
+  </div>
+</div>
+
+  <div id="settings-modal" class="hidden">
+  <div class="modal-overlay"></div>
+  <div class="modal-window">
+    <h3>Настройки профиля</h3>
+    <form id="settings-form">
+      <label>
+        Никнейм:
+        <input type="text" id="settings-nickname" required>
+      </label>
+      <label>
+        Био:
+        <textarea id="settings-bio" placeholder="Расскажите о себе"></textarea>
+      </label>
+      <label>
+        Возраст:
+        <input type="number" id="settings-age" min="1" max="120">
+      </label>
+      <label>
+        Тема оформления:
+        <select id="settings-theme">
+          <option value="light">Светлая</option>
+          <option value="dark">Тёмная</option>
+          <option value="system">Системная</option>
+        </select>
+      </label>
+      <div class="modal-actions">
+        <button type="button" id="settings-cancel">Отмена</button>
+        <button type="submit">Сохранить</button>
+      </div>
+    </form>
   </div>
 </div>
   <script src="chat.js"></script>
