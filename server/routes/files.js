@@ -4,7 +4,12 @@ const pool    = require('../db');
 const jwt     = require('jsonwebtoken');
 const WebSocket = require('ws');
 
-const { getWss } = require('../chat');
+
+const chat = require('../chat');
+const { wss, clients } = chat.getWss();
+
+// Используем полученные объекты
+wss.clients.forEach(...);
 const router  = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
