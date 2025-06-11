@@ -22,7 +22,7 @@ async function saveProfile() {
             body: JSON.stringify({
                 nickname,
                 full_name,
-                birthdate, // Отправляем дату рождения вместо возраста
+                birthdate, // Отправляем дату рождения
                 bio,
                 email
             })
