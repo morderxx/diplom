@@ -158,32 +158,33 @@
   </div>
 </div>
 
-  <div id="settings-modal" class="hidden">
-  <div class="modal-overlay"></div>
-  <div class="modal-window">
+<!-- Добавить перед закрывающим тегом body -->
+<div id="settings-modal" class="modal" style="display:none;">
+  <div class="modal-content">
+    <span class="close-modal" id="settings-close">&times;</span>
     <h3>Настройки профиля</h3>
     <form id="settings-form">
-      <label>
-        Никнейм:
+      <div class="form-group">
+        <label for="settings-nickname">Никнейм</label>
         <input type="text" id="settings-nickname" required>
-      </label>
-      <label>
-        Био:
-        <textarea id="settings-bio" placeholder="Расскажите о себе"></textarea>
-      </label>
-      <label>
-        Возраст:
-        <input type="number" id="settings-age" min="1" max="120">
-      </label>
-      <label>
-        Тема оформления:
+      </div>
+      <div class="form-group">
+        <label for="settings-bio">Био</label>
+        <textarea id="settings-bio" rows="3" placeholder="Расскажите о себе"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="settings-birthdate">Дата рождения</label>
+        <input type="date" id="settings-birthdate">
+      </div>
+      <div class="form-group">
+        <label for="settings-theme">Тема оформления</label>
         <select id="settings-theme">
           <option value="light">Светлая</option>
           <option value="dark">Тёмная</option>
           <option value="system">Системная</option>
         </select>
-      </label>
-      <div class="modal-actions">
+      </div>
+      <div class="form-actions">
         <button type="button" id="settings-cancel">Отмена</button>
         <button type="submit">Сохранить</button>
       </div>
