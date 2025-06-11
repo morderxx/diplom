@@ -1733,12 +1733,19 @@ function applyTheme(theme) {
   document.body.classList.remove('theme-light', 'theme-dark');
   
   if (theme === 'system') {
-    theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 
-      'dark' : 'light';
+    theme = window.matchMedia('(prefers-color-scheme: dark)').matches 
+      ? 'dark' 
+      : 'light';
   }
   
   document.body.classList.add(`theme-${theme}`);
   localStorage.setItem('theme', theme);
+  
+  // Принудительное обновление всех элементов
+  document.querySelectorAll('*').forEach(el => {
+    el.style && (el.style.visibility = 'hidden');
+    el.style && (el.style.visibility = 'visible');
+  });
 }
 
 // Инициализация темы при загрузке
