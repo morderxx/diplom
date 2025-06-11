@@ -1,28 +1,6 @@
 /* =================== */
 /*  СТИЛИ ДЛЯ ФОРМ    */
 /* =================== */
-/* Добавьте в самое начало ваших стилей */
-:root {
-  --bg-primary: #f0f2f5;
-  --bg-secondary: #ffffff;
-  --text-primary: #000000;
-  --text-secondary: #65676b;
-  --border-color: #dddfe2;
-}
-
-* {
-  transition: background-color 0.3s, color 0.3s, border-color 0.3s;
-}
-
-body {
-  background: var(--bg-primary);
-  color: var(--text-primary);
-}
-
-/* Обязательно добавьте это правило */
-body * {
-  color: inherit;
-}
 
 body {
     margin: 0;
@@ -814,56 +792,3 @@ body.lightbox-open {
   background-color: #f0f0f0;
 }
 
-body {
-  scrollbar-color: var(--text-secondary) var(--bg-primary);
-}
-
-::-webkit-scrollbar {
-  width: 8px;
-  background: var(--bg-primary);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--text-secondary);
-  border-radius: 4px;
-}
-/* Тема оформления */
-body.theme-light {
-  filter: invert(85%) hue-rotate(180deg);
-  --bg-primary: #f0f2f5;
-  --bg-secondary: #ffffff;
-  --text-primary: #000000;
-  --text-secondary: #65676b;
-  --border-color: #dddfe2;
-}
-
-body.theme-dark {
-  --bg-primary: #18191a;
-  --bg-secondary: #242526;
-  --text-primary: #e4e6eb;
-  --text-secondary: #b0b3b8;
-  --border-color: #393a3b;
-  color-scheme: dark;
-}
-
-body {
-  background: var(--bg-primary);
-  color: var(--text-primary);
-}
-
-.form-container,
-.chat-wrapper,
-.rooms-sidebar,
-.chat-message-area,
-.input-container,
-.modal-window {
-  background: var(--bg-secondary);
-  border-color: var(--border-color);
-  color: var(--text-primary);
-}
-
-input, textarea, select {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  border-color: var(--border-color);
-}
