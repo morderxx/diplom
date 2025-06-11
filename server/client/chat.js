@@ -1083,6 +1083,17 @@ async function loadRooms() {
     };
     ul.appendChild(li);
   });
+  const hasSupportRoom = rooms.some(r => 
+      !r.is_group && !r.is_channel && 
+      r.members.includes('@admin')
+    );
+    
+    if (!hasSupportRoom) {
+      const li = document.createElement('li');
+      li.textContent = 'Техподдержка';
+      li.onclick = () => openPrivateChat('@admin');
+      ul.appendChild(li);
+    }
 }
 
 
@@ -1192,6 +1203,19 @@ function appendMessage(sender, text, time, callId = null) {
     const el = document.createElement('div');
     el.className = 'call-event';    // <-- только этот класс
     el.textContent = text;
+    chatBox.appendChild(el);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    return;
+  }
+
+    if (sender === '@admin') {
+    const el = document.createElement('div');
+    el.className = 'admin-message';
+    el.innerHTML = `
+      <div class="admin-header">Техподдержка</div>
+      <div class="admin-text">${text}</div>
+      <div class="admin-time">${new Date(time).toLocaleTimeString()}</div>
+    `;
     chatBox.appendChild(el);
     chatBox.scrollTop = chatBox.scrollHeight;
     return;
