@@ -46,18 +46,15 @@ async function verifyCaptcha() {
         const data = await res.json();
         
         if (data.success) {
-            // Активируем кнопки
-            document.getElementById('loginButton').disabled = false;
-            document.getElementById('loginButton').classList.remove('disabled-btn');
-            
-            const registerButton = document.getElementById('registerButton');
-            if (!registerButton.classList.contains('hidden')) {
-                registerButton.disabled = false;
-                registerButton.classList.remove('disabled-btn');
-            }
-            
             closeCaptchaModal();
             document.getElementById('captcha-message').innerText = '';
+            
+            // Выполняем действие, для которого требовалась капча
+            if (window.pendingAction === 'login') {
+                login();
+            } else if (window.pendingAction === 'register') {
+                register();
+            }
         } else {
             let errorMessage = 'Ошибка проверки reCAPTCHA. Попробуйте еще раз.';
             
@@ -90,19 +87,13 @@ function showRegister() {
 
 // Обработчики для кнопок входа и регистрации
 function handleLogin() {
-    if (document.getElementById('loginButton').disabled) {
-        showCaptchaModal();
-    } else {
-        login();
-    }
+    window.pendingAction = 'login';
+    showCaptchaModal();
 }
 
 function handleRegister() {
-    if (document.getElementById('registerButton').disabled) {
-        showCaptchaModal();
-    } else {
-        register();
-    }
+    window.pendingAction = 'register';
+    showCaptchaModal();
 }
 
 // Остальной код остается как было
