@@ -25,7 +25,7 @@ function authMiddleware(req, res, next) {
 // GET /api/users — список всех пользователей кроме себя
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    // Берём всех кроме текущего по login
+    // Исключаем текущего пользователя и администратора
     const { rows } = await pool.query(
       `SELECT u.id,
               u.nickname,
@@ -34,7 +34,7 @@ router.get('/', authMiddleware, async (req, res) => {
               u.bio
          FROM users u
          JOIN secret_profile sp ON sp.id = u.id
-        WHERE sp.login <> $1
+        WHERE sp.login <> $1 AND sp.login <> 'admin'
      ORDER BY u.nickname`,
       [req.userLogin]
     );
@@ -51,11 +51,12 @@ router.get('/search', authMiddleware, async (req, res) => {
   
   try {
     if (type === 'user') {
+      // Исключаем администратора из поиска
       const { rows: users } = await pool.query(
         `SELECT u.nickname 
          FROM users u
          JOIN secret_profile sp ON sp.id = u.id
-         WHERE u.nickname ILIKE $1 AND sp.login <> $2 LIMIT 10`,
+         WHERE u.nickname ILIKE $1 AND sp.login <> $2 AND sp.login <> 'admin' LIMIT 10`,
         [`%${q}%`, req.userLogin]
       );
       res.json(users);
