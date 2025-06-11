@@ -12,21 +12,60 @@ function goBack(screenId) {
     document.getElementById(screenId).classList.remove('hidden');
 }
 
+// Глобальные переменные для управления капчей
+let captchaWidgetId = null;
+let captchaVerified = false;
+
 // Показать модальное окно капчи
 function showCaptchaModal() {
     document.getElementById('captcha-modal').classList.remove('hidden');
-    grecaptcha.reset();
     document.getElementById('captcha-message').innerText = '';
+    document.getElementById('verify-captcha-btn').classList.add('disabled-btn');
+    document.getElementById('verify-captcha-btn').disabled = true;
+    
+    // Инициализация капчи только при первом открытии
+    if (!captchaWidgetId) {
+        captchaWidgetId = grecaptcha.render('captcha-container', {
+            'sitekey': '6LczulkrAAAAAC2VSZfgIVzx3bZXWt3WfC3vvta0',
+            'callback': onCaptchaSuccess,
+            'expired-callback': onCaptchaExpired,
+            'error-callback': onCaptchaError
+        });
+    } else {
+        grecaptcha.reset(captchaWidgetId);
+    }
 }
 
 // Закрыть модальное окно капчи
 function closeCaptchaModal() {
     document.getElementById('captcha-modal').classList.add('hidden');
+    grecaptcha.reset(captchaWidgetId);
+}
+
+// Колбэк при успешном прохождении капчи
+function onCaptchaSuccess() {
+    document.getElementById('verify-captcha-btn').classList.remove('disabled-btn');
+    document.getElementById('verify-captcha-btn').disabled = false;
+}
+
+// Колбэк при истечении времени капчи
+function onCaptchaExpired() {
+    document.getElementById('captcha-message').innerText = 'Время проверки истекло. Пожалуйста, пройдите проверку снова.';
+    document.getElementById('verify-captcha-btn').classList.add('disabled-btn');
+    document.getElementById('verify-captcha-btn').disabled = true;
+    grecaptcha.reset(captchaWidgetId);
+}
+
+// Колбэк при ошибке капчи
+function onCaptchaError() {
+    document.getElementById('captcha-message').innerText = 'Произошла ошибка при загрузке капчи. Пожалуйста, попробуйте еще раз.';
+    document.getElementById('verify-captcha-btn').classList.add('disabled-btn');
+    document.getElementById('verify-captcha-btn').disabled = true;
 }
 
 // Проверка капчи с реальной верификацией
 async function verifyCaptcha() {
-    const captchaResponse = grecaptcha.getResponse();
+    const captchaResponse = grecaptcha.getResponse(captchaWidgetId);
     
     if (!captchaResponse) {
         document.getElementById('captcha-message').innerText = 'Пожалуйста, пройдите проверку reCAPTCHA';
@@ -34,6 +73,11 @@ async function verifyCaptcha() {
     }
     
     try {
+        // Показываем загрузку
+        const verifyBtn = document.getElementById('verify-captcha-btn');
+        verifyBtn.disabled = true;
+        verifyBtn.innerText = 'Проверка...';
+        
         // Проверка капчи на сервере
         const res = await fetch('/api/verify-captcha', {
             method: 'POST',
@@ -46,6 +90,7 @@ async function verifyCaptcha() {
         const data = await res.json();
         
         if (data.success) {
+            captchaVerified = true;
             closeCaptchaModal();
             document.getElementById('captcha-message').innerText = '';
             
@@ -69,11 +114,16 @@ async function verifyCaptcha() {
             document.getElementById('captcha-message').innerText = errorMessage;
             
             // Перезагружаем капчу
-            grecaptcha.reset();
+            grecaptcha.reset(captchaWidgetId);
         }
     } catch (error) {
         console.error('Captcha verification error:', error);
         document.getElementById('captcha-message').innerText = 'Ошибка соединения с сервером. Проверьте интернет-соединение.';
+    } finally {
+        // Восстанавливаем кнопку
+        const verifyBtn = document.getElementById('verify-captcha-btn');
+        verifyBtn.disabled = false;
+        verifyBtn.innerText = 'Подтвердить';
     }
 }
 
@@ -87,14 +137,34 @@ function showRegister() {
 
 // Обработчики для кнопок входа и регистрации
 function handleLogin() {
+    const loginValue = document.getElementById('login').value;
+    const password   = document.getElementById('password').value;
+
+    if (!loginValue || !password) {
+        document.getElementById('message').innerText = 'Пожалуйста, заполните все поля';
+        return;
+    }
+
     window.pendingAction = 'login';
     showCaptchaModal();
 }
 
 function handleRegister() {
+    const loginInput = document.getElementById('login').value;
+    const password   = document.getElementById('password').value;
+    const keyword    = document.getElementById('keyword').value;
+
+    if (!loginInput || !password || !keyword) {
+        document.getElementById('message').innerText = 'Пожалуйста, заполните все поля';
+        return;
+    }
+
     window.pendingAction = 'register';
     showCaptchaModal();
 }
+
+// Добавляем обработчик для кнопки подтверждения капчи
+document.getElementById('verify-captcha-btn').addEventListener('click', verifyCaptcha);
 
 // Остальной код остается как было
 const API_URL = '/api';
@@ -102,11 +172,6 @@ const API_URL = '/api';
 async function login() {
   const loginValue = document.getElementById('login').value;
   const password   = document.getElementById('password').value;
-
-  if (!loginValue || !password) {
-    document.getElementById('message').innerText = 'Пожалуйста, заполните все поля';
-    return;
-  }
 
   const res = await fetch(`${API_URL}/login`, {
     method: 'POST',
@@ -146,11 +211,6 @@ async function register() {
   const password   = document.getElementById('password').value;
   const keyword    = document.getElementById('keyword').value;
 
-  if (!loginInput || !password || !keyword) {
-    document.getElementById('message').innerText = 'Пожалуйста, заполните все поля';
-    return;
-  }
-
   const res = await fetch(`${API_URL}/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -164,3 +224,9 @@ async function register() {
 
   await login();
 }
+
+// Инициализация при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    // Явно скрываем модальное окно капчи
+    document.getElementById('captcha-modal').classList.add('hidden');
+});
