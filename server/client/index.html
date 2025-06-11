@@ -63,6 +63,59 @@
             margin: 10px 0;
             text-align: center;
         }
+        
+        /* Стили для модального окна капчи */
+        #captcha-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.3);
+        }
+        
+        .modal-content h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #777;
+        }
+        
+        .close-btn:hover {
+            color: #333;
+        }
+        
+        /* Стили для неактивных кнопок */
+        .disabled-btn {
+            opacity: 0.5;
+            cursor: not-allowed !important;
+        }
+        
+        .disabled-btn:hover {
+            transform: none !important;
+            box-shadow: none !important;
+        }
     </style>
 </head>
 <body>
@@ -71,19 +124,6 @@
         <h1>Chayka</h1>
         <p>Добро пожаловать в современный мессенджер для общения, игр и совместного творчества</p>
         <button id="continue-btn">Продолжить</button>
-    </div>
-
-    <!-- Экран капчи -->
-    <div id="captcha-screen" class="hidden">
-        <div class="form-container">
-            <h1>Подтвердите, что вы не робот</h1>
-            <div id="captcha-container">
-                <div class="g-recaptcha" data-sitekey="6LczulkrAAAAAC2VSZfgIVzx3bZXWt3WfC3vvta0"></div>
-            </div>
-            <div id="captcha-message"></div>
-            <button onclick="verifyCaptcha()">Подтвердить</button>
-            <button onclick="goBack('welcome-screen')" style="background: #f0f0f0; color: #333; margin-top: 10px;">Назад</button>
-        </div>
     </div>
 
     <!-- Экран входа/регистрации -->
@@ -95,13 +135,26 @@
             <input type="text" id="keyword" placeholder="Ключевое слово (для регистрации)" class="hidden">
 
             <div class="button-container">
-                <button id="loginButton" onclick="login()">Войти</button>
+                <button id="loginButton" onclick="handleLogin()" class="disabled-btn" disabled>Войти</button>
                 <button id="registerToggleButton" onclick="showRegister()">Регистрация</button>
             </div>
 
-            <button id="registerButton" onclick="register()" class="hidden">Подтвердить регистрацию</button>
-            <button onclick="goBack('captcha-screen')" style="background: #f0f0f0; color: #333; margin-top: 10px;">Назад</button>
+            <button id="registerButton" onclick="handleRegister()" class="hidden disabled-btn" disabled>Подтвердить регистрацию</button>
+            <button onclick="goBack('welcome-screen')" style="background: #f0f0f0; color: #333; margin-top: 10px;">Назад</button>
             <div id="message"></div>
+        </div>
+    </div>
+    
+    <!-- Модальное окно капчи -->
+    <div id="captcha-modal" class="hidden">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeCaptchaModal()">&times;</span>
+            <h2>Подтвердите, что вы не робот</h2>
+            <div id="captcha-container">
+                <div class="g-recaptcha" data-sitekey="6LczulkrAAAAAC2VSZfgIVzx3bZXWt3WfC3vvta0"></div>
+            </div>
+            <div id="captcha-message"></div>
+            <button onclick="verifyCaptcha()">Подтвердить</button>
         </div>
     </div>
 
