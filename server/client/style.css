@@ -1,6 +1,28 @@
 /* =================== */
 /*  СТИЛИ ДЛЯ ФОРМ    */
 /* =================== */
+/* Добавьте в самое начало ваших стилей */
+:root {
+  --bg-primary: #f0f2f5;
+  --bg-secondary: #ffffff;
+  --text-primary: #000000;
+  --text-secondary: #65676b;
+  --border-color: #dddfe2;
+}
+
+* {
+  transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* Обязательно добавьте это правило */
+body * {
+  color: inherit;
+}
 
 body {
     margin: 0;
