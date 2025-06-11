@@ -1661,7 +1661,7 @@ btnSettings.addEventListener('click', openSettingsModal);
 
 async function openSettingsModal() {
   try {
-    const res = await fetch(`${API_URL}/user/profile`, {
+    const res = await fetch(`${API_URL}/users/user/profile`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     
