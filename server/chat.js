@@ -5,7 +5,8 @@ require('dotenv').config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
-let wss, clients;
+let wss = null;
+let clients = null;
 
 function setupWebSocket(server) {
   wss = new WebSocket.Server({ server });
