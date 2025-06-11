@@ -1,12 +1,22 @@
 // server/auth.js
-const express  = require('express');
-const bcrypt   = require('bcrypt');
-const jwt      = require('jsonwebtoken');
-const pool     = require('./db');
-const router   = express.Router();
-const crypto   = require('crypto');
+const express = require('express');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const pool = require('./db');
+const router = express.Router();
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
+
+// Настройка почтового сервиса
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
 
 // Регистрация нового пользователя
 router.post('/register', async (req, res) => {
@@ -80,7 +90,7 @@ function authMiddleware(req, res, next) {
   const token = auth.split(' ')[1];
   try {
     const payload = jwt.verify(token, JWT_SECRET);
-    req.userId    = payload.id;
+    req.userId = payload.id;
     req.userLogin = payload.login;
     next();
   } catch (e) {
@@ -91,33 +101,78 @@ function authMiddleware(req, res, next) {
 
 // Сохранение или обновление профиля
 router.post('/profile', authMiddleware, async (req, res) => {
-  const { nickname, full_name, age, bio } = req.body;
-  if (!nickname || !full_name || !age || !bio) {
-    return res.status(400).send('Missing profile fields');
+  const { nickname, full_name, age, bio, email } = req.body;
+  if (!nickname || !full_name || !age || !bio || !email) {
+    return res.status(400).send('Все поля обязательны');
   }
 
   try {
+    // Генерация токена верификации
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    
+    // Сохраняем данные с неподтверждённым email
     await pool.query(
       `UPDATE users
-          SET nickname  = $1,
-              full_name = $2,
-              age       = $3,
-              bio       = $4
-        WHERE id = $5`,
-      [nickname, full_name, age, bio, req.userId]
+        SET nickname = $1,
+            full_name = $2,
+            age = $3,
+            bio = $4,
+            email = $5,
+            email_verified = false,
+            verification_token = $6
+        WHERE id = $7`,
+      [nickname, full_name, age, bio, email, verificationToken, req.userId]
     );
-    res.status(200).send('Profile saved');
+
+    // Отправка письма с подтверждением
+    const verificationLink = `${process.env.BASE_URL}/verify-email?token=${verificationToken}&userId=${req.userId}`;
+    
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Подтверждение email',
+      html: `Нажмите <a href="${verificationLink}">здесь</a> для подтверждения почты`
+    };
+
+    await transporter.sendMail(mailOptions);
+    
+    res.status(200).json({ message: 'Письмо с подтверждением отправлено' });
   } catch (err) {
-    console.error('Profile save error:', err);
-    res.status(500).send('Error saving profile');
+    console.error('Ошибка сохранения профиля:', err);
+    res.status(500).send('Ошибка сервера');
   }
 });
 
-// GET /api/profile — вернуть профиль
+// Эндпоинт для подтверждения email
+router.get('/verify-email', async (req, res) => {
+  const { token, userId } = req.query;
+
+  try {
+    const result = await pool.query(
+      `UPDATE users
+        SET email_verified = true,
+            verification_token = NULL
+        WHERE id = $1 AND verification_token = $2
+        RETURNING *`,
+      [userId, token]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).send('Неверная ссылка подтверждения');
+    }
+
+    res.send('Email успешно подтверждён!');
+  } catch (err) {
+    console.error('Ошибка верификации:', err);
+    res.status(500).send('Ошибка сервера');
+  }
+});
+
+// GET профиля - возвращаем email и статус подтверждения
 router.get('/profile', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT nickname, full_name, age, bio
+      `SELECT nickname, full_name, age, bio, email, email_verified
          FROM users
         WHERE id = $1`,
       [req.userId]
