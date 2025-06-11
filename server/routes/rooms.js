@@ -3,8 +3,6 @@ const jwt     = require('jsonwebtoken');
 const pool    = require('../db');
 const WebSocket = require('ws');
 
-// теперь chatWS.wss и chatWS.clients есть
-
 const router  = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
@@ -72,10 +70,12 @@ router.post('/', authMiddleware, async (req, res) => {
   if (!Array.isArray(members) || members.length < 1) {
     return res.status(400).send('Members list required');
   }
-    // Запрещаем добавление администратора в группы/каналы
+
+  // Запрещаем добавление администратора в группы/каналы
   if (members.includes('@admin') && (is_group || is_channel)) {
     return res.status(400).send('Cannot add admin to group/channel');
   }
+
   // добавляем себя, если забыли
   if (!members.includes(req.userNickname)) {
     members.push(req.userNickname);
@@ -84,7 +84,8 @@ router.post('/', authMiddleware, async (req, res) => {
   // приватный чат: ровно 2 участника и НЕ канал
   if (!is_group && !is_channel && members.length === 2) {
     const [a, b] = members.sort();
-     // Особый случай для чата с администратором
+    
+    // Особый случай для чата с администратором
     if (members.includes('@admin')) {
       const exist = await pool.query(
         `SELECT r.id
@@ -97,32 +98,35 @@ router.post('/', authMiddleware, async (req, res) => {
             AND m2.nickname = $2`,
         [req.userNickname, '@admin']
       );
-         if (exist.rows.length) {
+      
+      if (exist.rows.length) {
         const roomId = exist.rows[0].id;
         return res.json({ roomId, name: '@admin' });
       }
-            name = '@admin'; // Устанавливаем специальное имя
+      
+      name = '@admin'; // Устанавливаем специальное имя
     } else {
-    const exist = await pool.query(
-      `SELECT r.id
-         FROM rooms r
-         JOIN room_members m1 ON m1.room_id = r.id
-         JOIN room_members m2 ON m2.room_id = r.id
-        WHERE r.is_group = FALSE
-          AND r.is_channel = FALSE
-          AND m1.nickname = $1
-          AND m2.nickname = $2`,
-      [a, b]
-    );
-    if (exist.rows.length) {
-      const roomId = exist.rows[0].id;
-      const other = members.find(n => n !== req.userNickname);
-      return res.json({ roomId, name: other });
-    }
-    // только для приватного чата — имя собеседника
-    name = members.find(n => n !== req.userNickname);
+      // Обычная обработка для других чатов
+      const exist = await pool.query(
+        `SELECT r.id
+           FROM rooms r
+           JOIN room_members m1 ON m1.room_id = r.id
+           JOIN room_members m2 ON m2.room_id = r.id
+          WHERE r.is_group = FALSE
+            AND r.is_channel = FALSE
+            AND m1.nickname = $1
+            AND m2.nickname = $2`,
+        [a, b]
+      );
+      if (exist.rows.length) {
+        const roomId = exist.rows[0].id;
+        const other = members.find(n => n !== req.userNickname);
+        return res.json({ roomId, name: other });
+      }
+      name = members.find(n => n !== req.userNickname);
     }
   }
+
   try {
     // создаём комнату/группу/канал
     const roomRes = await pool.query(
@@ -144,7 +148,8 @@ router.post('/', authMiddleware, async (req, res) => {
       )
     );
 
-        if (members.includes('@admin')) {
+    // Автоматическое сообщение при создании чата с администратором
+    if (members.includes('@admin')) {
       await pool.query(
         `INSERT INTO messages (room_id, sender_nickname, text, time)
          VALUES ($1, $2, $3, NOW())`,
@@ -152,7 +157,7 @@ router.post('/', authMiddleware, async (req, res) => {
       );
     }
     
-  const { wss, clients } = require('../chat').getWss();
+    const { wss, clients } = require('../chat').getWss();
     
     if (wss) {
       members.forEach(nick => {
@@ -213,16 +218,18 @@ router.get('/:roomId/messages', authMiddleware, async (req, res) => {
 });
 
 // POST /api/rooms/:roomId/members — добавить участников в группу или канал
-// Изменяем POST /api/rooms/:roomId/members
 router.post(
   '/:roomId/members',
   authMiddleware,
   async (req, res) => {
     const { roomId } = req.params;
     const { members } = req.body;
-     if (members.includes('@admin')) {
+    
+    // Запрещаем добавление администратора
+    if (members.includes('@admin')) {
       return res.status(400).send('Cannot add admin to the room');
     }
+    
     // 1) Проверяем, что комната существует
     const room = await pool.query(
       `SELECT is_group, is_channel, creator_nickname
@@ -287,7 +294,6 @@ router.post(
   }
 );
 
-// В rooms.js добавим
 // GET /api/rooms/:roomId - get room details
 router.get('/:roomId', authMiddleware, async (req, res) => {
   const { roomId } = req.params;
@@ -336,13 +342,12 @@ router.delete('/:roomId', authMiddleware, async (req, res) => {
     
     const roomData = room.rows[0];
     const isCreator = roomData.creator_nickname === req.userNickname;
-    // --- Новый код: получаем заранее список всех участников комнаты ---
-   const membersRes = await pool.query(
-     'SELECT nickname FROM room_members WHERE room_id = $1',
-     [roomId]
-   );
-   const members = membersRes.rows.map(r => r.nickname);
-   // ---------
+    const membersRes = await pool.query(
+      'SELECT nickname FROM room_members WHERE room_id = $1',
+      [roomId]
+    );
+    const members = membersRes.rows.map(r => r.nickname);
+    
     // Для приватного чата: разрешаем удаление любому участнику
     if (!roomData.is_group && !roomData.is_channel) {
       // Удаляем комнату и все связанные данные
@@ -350,19 +355,19 @@ router.delete('/:roomId', authMiddleware, async (req, res) => {
       await pool.query('DELETE FROM messages WHERE room_id = $1', [roomId]);
       await pool.query('DELETE FROM room_members WHERE room_id = $1', [roomId]);
       await pool.query('DELETE FROM rooms WHERE id = $1', [roomId]);
-          // После удаления — отправляем WS-уведомление всем бывшим участникам
-        const { wss, clients } = require('../chat').getWss();
-    
-    if (wss) {
-      members.forEach(nick => {
-        wss.clients.forEach(wsClient => {
-          const info = clients.get(wsClient);
-          if (info && info.nickname === nick && wsClient.readyState === WebSocket.OPEN) {
-            wsClient.send(JSON.stringify({ type: 'roomsUpdated' }));
-          }
+      
+      // После удаления — отправляем WS-уведомление
+      const { wss, clients } = require('../chat').getWss();
+      if (wss) {
+        members.forEach(nick => {
+          wss.clients.forEach(wsClient => {
+            const info = clients.get(wsClient);
+            if (info && info.nickname === nick && wsClient.readyState === WebSocket.OPEN) {
+              wsClient.send(JSON.stringify({ type: 'roomsUpdated' }));
+            }
+          });
         });
-      });
-    }
+      }
       return res.json({ ok: true });
     }
     
@@ -373,19 +378,18 @@ router.delete('/:roomId', authMiddleware, async (req, res) => {
       await pool.query('DELETE FROM messages WHERE room_id = $1', [roomId]);
       await pool.query('DELETE FROM room_members WHERE room_id = $1', [roomId]);
       await pool.query('DELETE FROM rooms WHERE id = $1', [roomId]);
-          // и тут тоже слать обновление
-    const { wss, clients } = require('../chat').getWss();
-    
-    if (wss) {
-      members.forEach(nick => {
-        wss.clients.forEach(wsClient => {
-          const info = clients.get(wsClient);
-          if (info && info.nickname === nick && wsClient.readyState === WebSocket.OPEN) {
-            wsClient.send(JSON.stringify({ type: 'roomsUpdated' }));
-          }
+      
+      const { wss, clients } = require('../chat').getWss();
+      if (wss) {
+        members.forEach(nick => {
+          wss.clients.forEach(wsClient => {
+            const info = clients.get(wsClient);
+            if (info && info.nickname === nick && wsClient.readyState === WebSocket.OPEN) {
+              wsClient.send(JSON.stringify({ type: 'roomsUpdated' }));
+            }
+          });
         });
-      });
-    }
+      }
       return res.json({ ok: true });
     }
     
