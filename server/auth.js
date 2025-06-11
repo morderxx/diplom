@@ -9,9 +9,9 @@ const nodemailer = require('nodemailer');
 
 // Для теста - в реальном приложении используйте переменные окружения
 const JWT_SECRET = 'your_jwt_secret_here';
-const EMAIL_USER = 'your_email@gmail.com';
-const EMAIL_PASS = 'your_email_password';
-const BASE_URL = 'http://yourdomain.com';
+const EMAIL_USER = 'zvonkicomplete@gmail.com';
+const EMAIL_PASS = '5556122tima1234567';
+const BASE_URL = 'diplom-production-8971.up.railway.app';
 
 // Настройка почтового сервиса
 const transporter = nodemailer.createTransport({
@@ -139,7 +139,7 @@ router.post('/profile', authMiddleware, async (req, res) => {
     };
 
     // В реальном приложении раскомментировать
-    // await transporter.sendMail(mailOptions);
+    await transporter.sendMail(mailOptions);
     console.log(`Verification link: ${verificationLink}`);
     
     res.status(200).json({ message: 'Письмо с подтверждением отправлено' });
