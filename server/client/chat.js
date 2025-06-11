@@ -777,6 +777,10 @@ fileInput.onchange = () => {
 
       // 2) Ответ сервера
       const { fileId, filename, mimeType, time } = await res.json();
+        if (!fileId) {
+    console.error('Server returned invalid file ID');
+    return;
+  }
             appendFile(
         userNickname, // отправитель
         fileId,
@@ -1241,6 +1245,10 @@ function appendMessage(sender, text, time, callId = null) {
 
 
 async function appendFile(sender, fileId, filename, mimeType, time) {
+    if (typeof fileId === 'undefined' || fileId === null) {
+    console.error('Invalid fileId received:', {sender, fileId, filename});
+    return;
+  }
   // 1) Дубли
   if (renderedFileIds.has(fileId)) return;
   renderedFileIds.add(fileId);
