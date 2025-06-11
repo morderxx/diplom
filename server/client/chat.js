@@ -1723,6 +1723,64 @@ settingsCancel.addEventListener('click', () => {
   settingsModal.style.display = 'none';
 });
 
+  // Добавьте этот код вместо текущей реализации темы
+const themeToggle = document.getElementById('theme-toggle');
+
+// Инициализация темы
+document.addEventListener('DOMContentLoaded', () => {
+  const isDark = localStorage.getItem('darkTheme') === 'true';
+  themeToggle.checked = isDark;
+  applyDarkTheme(isDark);
+});
+
+// Обработчик переключателя
+themeToggle.addEventListener('change', () => {
+  const isDark = themeToggle.checked;
+  applyDarkTheme(isDark);
+  localStorage.setItem('darkTheme', isDark);
+});
+
+// Функция применения темы
+function applyDarkTheme(enable) {
+  if (enable) {
+    // Создаем стили для темной темы
+    const style = document.createElement('style');
+    style.id = 'dark-theme-styles';
+    style.textContent = `
+      body.dark-theme {
+        filter: invert(1) hue-rotate(180deg) brightness(0.85);
+        background-color: #121212 !important;
+      }
+      
+      body.dark-theme img,
+      body.dark-theme video,
+      body.dark-theme iframe,
+      body.dark-theme canvas {
+        filter: invert(1) hue-rotate(180deg) brightness(1.2) !important;
+      }
+      
+      body.dark-theme::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #121212;
+        z-index: 9999;
+        pointer-events: none;
+        mix-blend-mode: difference;
+        opacity: 0.15;
+      }
+    `;
+    document.head.appendChild(style);
+    document.body.classList.add('dark-theme');
+  } else {
+    document.body.classList.remove('dark-theme');
+    const styles = document.getElementById('dark-theme-styles');
+    if (styles) styles.remove();
+  }
+}
   // Initialization
   loadRooms();
 });
