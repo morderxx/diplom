@@ -7,14 +7,18 @@ const router = express.Router();
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
+// Для теста - в реальном приложении используйте переменные окружения
+const JWT_SECRET = 'your_jwt_secret_here';
+const EMAIL_USER = 'your_email@gmail.com';
+const EMAIL_PASS = 'your_email_password';
+const BASE_URL = 'http://yourdomain.com';
 
 // Настройка почтового сервиса
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
+    user: EMAIL_USER,
+    pass: EMAIL_PASS
   }
 });
 
@@ -125,16 +129,18 @@ router.post('/profile', authMiddleware, async (req, res) => {
     );
 
     // Отправка письма с подтверждением
-    const verificationLink = `${process.env.BASE_URL}/verify-email?token=${verificationToken}&userId=${req.userId}`;
+    const verificationLink = `${BASE_URL}/verify-email?token=${verificationToken}&userId=${req.userId}`;
     
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: EMAIL_USER,
       to: email,
       subject: 'Подтверждение email',
       html: `Нажмите <a href="${verificationLink}">здесь</a> для подтверждения почты`
     };
 
-    await transporter.sendMail(mailOptions);
+    // В реальном приложении раскомментировать
+    // await transporter.sendMail(mailOptions);
+    console.log(`Verification link: ${verificationLink}`);
     
     res.status(200).json({ message: 'Письмо с подтверждением отправлено' });
   } catch (err) {
