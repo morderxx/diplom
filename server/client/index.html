@@ -4,7 +4,14 @@
     <meta charset="UTF-8">
     <title>Chayka - Мессенджер</title>
     <link rel="stylesheet" href="index.css">
-    <script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script>
+    <script>
+        // Добавляем обработчик для инициализации reCAPTCHA
+        function onRecaptchaLoad() {
+            console.log('reCAPTCHA загружена');
+            window.grecaptchaReady && window.grecaptchaReady();
+        }
+    </script>
+    <script src="https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit" async defer></script>
 </head>
 <body>
     <!-- Экран приветствия -->
@@ -28,7 +35,7 @@
             </div>
 
             <button id="registerButton" onclick="handleRegister()" class="hidden">Подтвердить регистрацию</button>
-            <button onclick="goBack('welcome-screen')" style="background: #f0f0f0; color: #333; margin-top: 10px;">Назад</button>
+            <button onclick="goBack()" style="background: #f0f0f0; color: #333; margin-top: 10px;">Назад</button>
             <div id="message"></div>
         </div>
     </div>
