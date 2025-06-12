@@ -2,72 +2,159 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Чат</title>
+  <title>Чат | Chayka</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
   <div class="chat-wrapper">
     <aside class="rooms-sidebar">
-      <div class="current-user">Вы: <span id="current-user"></span></div>
-      <h2>Чаты <button id="create-group-btn" title="Новая группа">Создать группу</button><button id="create-channel-btn" class="btn">📢 Создать канал</button>
-      </h2> 
-      
-      <ul id="rooms-list" class="rooms-list"></ul>
-      <h2>Пользователи</h2>
-      <!-- В aside class="rooms-sidebar", перед списком пользователей -->
-      <div class="search-container">
-        <input type="text" id="global-search" placeholder="Найти @пользователя или &канал">
-        <ul id="search-results" class="rooms-list" style="display: none;"></ul>
-        <ul id="users-list" class="rooms-list" style="display: none;"></ul>
+      <div class="current-user">
+        <i class="fas fa-user-circle"></i>
+        <span>Вы: <span id="current-user">Иван Иванов</span></span>
+        <span class="online-dot"></span>
       </div>
-      <h2>Мини-приложения</h2>
-      <button id="btn-weather">🌤 Погода</button>
-      <button id="btn-calendar">📅 Журнал</button>
-      <button id="btn-finance">💰 Финансы</button>
-      <h2>Игры</h2>
-      <button id="btn-strike-game">🎮 Galactic Annihilator</button>
-      <button id="btn-match3-game">🚀 Galactic Match-3</button>
-      <button id="btn-runner-game">🏃 Бегунок</button>
-      <!-- В rooms-sidebar, после списка пользователей -->
-      <h2>Настройки</h2>
-      <button id="btn-settings">⚙️ Настройки профиля</button>
-      <button id="btn-logout">🚪 Выход</button>
+      
+      <div class="sidebar-divider"></div>
+      
+      <div class="sidebar-section">
+        <div class="section-title">Чаты</div>
+        <button id="create-group-btn" class="sidebar-btn">
+          <i class="fas fa-users"></i> Создать группу
+        </button>
+        <button id="create-channel-btn" class="sidebar-btn">
+          <i class="fas fa-bullhorn"></i> Создать канал
+        </button>
+      </div>
+      
+      <div class="sidebar-section">
+        <h2><i class="fas fa-comments"></i> Мои чаты</h2>
+        <ul id="rooms-list" class="rooms-list">
+          <li class="active"><i class="fas fa-user-friends"></i> Общий чат</li>
+          <li><i class="fas fa-user-friends"></i> Рабочая группа</li>
+          <li><i class="fas fa-user-friends"></i> Друзья <span class="unread-count">3</span></li>
+          <li><i class="fas fa-bullhorn"></i> Новости проекта</li>
+        </ul>
+      </div>
+      
+      <div class="sidebar-section">
+        <h2><i class="fas fa-user-friends"></i> Контакты</h2>
+        <div class="search-container">
+          <input type="text" id="global-search" placeholder="Найти @пользователя">
+          <ul id="search-results" class="rooms-list" style="display: none;"></ul>
+        </div>
+        <ul id="users-list" class="rooms-list">
+          <li><i class="fas fa-user"></i> Анна Петрова <span class="online-dot"></span></li>
+          <li><i class="fas fa-user"></i> Максим Сидоров</li>
+          <li><i class="fas fa-user"></i> Ольга Иванова <span class="online-dot"></span></li>
+          <li><i class="fas fa-user"></i> Дмитрий Васильев</li>
+        </ul>
+      </div>
+      
+      <div class="sidebar-section">
+        <div class="section-title">Мини-приложения</div>
+        <button id="btn-weather" class="sidebar-btn">
+          <i class="fas fa-sun"></i> Погода
+        </button>
+        <button id="btn-calendar" class="sidebar-btn">
+          <i class="fas fa-calendar"></i> Журнал
+        </button>
+        <button id="btn-finance" class="sidebar-btn">
+          <i class="fas fa-wallet"></i> Финансы
+        </button>
+      </div>
+      
+      <div class="sidebar-section">
+        <div class="section-title">Игровая зона</div>
+        <button id="btn-strike-game" class="sidebar-btn">
+          <i class="fas fa-gamepad"></i> Galactic Annihilator
+        </button>
+        <button id="btn-match3-game" class="sidebar-btn">
+          <i class="fas fa-puzzle-piece"></i> Galactic Match-3
+        </button>
+        <button id="btn-runner-game" class="sidebar-btn">
+          <i class="fas fa-running"></i> Бегунок
+        </button>
+      </div>
+      
+      <div class="sidebar-divider"></div>
+      
+      <div class="sidebar-section">
+        <div class="section-title">Настройки</div>
+        <button id="btn-settings" class="sidebar-btn">
+          <i class="fas fa-cog"></i> Настройки профиля
+        </button>
+        <button id="btn-logout" class="sidebar-btn" style="background: rgba(248,113,113,0.1); color: #f87171;">
+          <i class="fas fa-sign-out-alt"></i> Выход
+        </button>
+      </div>
     </aside>
 
-<section id="chat-section" class="chat-container">
-  <div class="chat-message-area">
-    <!-- шапка -->
-    <div id="chat-header" class="chat-header">
-      <div class="chat-header__left"></div>
-  <div class="chat-header__actions">
-    <button id="add-member-btn" class="icon-btn chat-header__call-btn" title="Добавить участников">➕</button>
-    <button id="call-btn"       class="icon-btn chat-header__call-btn">☎️</button>
+    <section id="chat-section" class="chat-container active">
+      <div class="chat-message-area">
+        <div id="chat-header" class="chat-header">
+          <div class="chat-header__left">
+            <h3><i class="fas fa-user-friends"></i> Общий чат</h3>
+          </div>
+          <div class="chat-header__actions">
+            <button id="add-member-btn" class="icon-btn chat-header__call-btn" title="Добавить участников">
+              <i class="fas fa-user-plus"></i>
+            </button>
+            <button id="call-btn" class="icon-btn chat-header__call-btn">
+              <i class="fas fa-phone"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="chat-box" class="chat-box">
+          <div class="system-call-wrapper">
+            <div class="system-call">
+              Вы присоединились к чату
+            </div>
+          </div>
+          
+          <div class="message-wrapper">
+            <div class="other-message">
+              <div class="message-info">
+                <span>Анна Петрова</span>
+                <span>10:25</span>
+              </div>
+              <div class="message-bubble">
+                <div class="message-text">Привет всем! Как ваши дела? Готовы к совещанию в 15:00?</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="message-wrapper">
+            <div class="my-message">
+              <div class="message-info">
+                <span>Вы</span>
+                <span>10:28</span>
+              </div>
+              <div class="message-bubble">
+                <div class="message-text">Привет! Да, готов. Уже посмотрел материалы. Кстати, посмотрите новый дизайн интерфейса!</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="chat-input-wrapper">
+        <div class="input-container" id="input-container">
+          <button id="attach-btn" class="icon-btn">
+            <i class="fas fa-paperclip"></i>
+          </button>
+          <textarea id="message" placeholder="Введите сообщение..." rows="1"></textarea>
+          <button id="send-btn" class="icon-btn">
+            <i class="fas fa-paper-plane"></i>
+          </button>
+          <button id="voice-btn" class="icon-btn">
+            <i class="fas fa-microphone"></i>
+          </button>
+        </div>
+      </div>
+    </section>
   </div>
-    </div>
-
-    <!-- окно сообщений -->
-    <div id="chat-box" class="chat-box"></div>
-  </div>
-
-  <!-- обёртка, внутри либо поле ввода, либо подсказка -->
-  <div id="chat-input-wrapper">
-    <!-- поле ввода -->
-    <div class="input-container" id="input-container">
-      <button id="attach-btn" class="icon-btn">📎</button>
-      <textarea id="message" placeholder="Введите сообщение..." rows="1"></textarea>
-      <button id="send-btn" class="icon-btn">➤</button>
-      <button id="voice-btn" class="icon-btn">🎤</button>
-    </div>
-
-    <!-- подсказка -->
-    <p class="readonly-note" id="readonly-note" style="display: none;">
-      Это канал. Только автор может публиковать сообщения.
-    </p>
-  </div>
-</section>
-
-  </div>
-
 
   <!-- Lightbox Overlay -->
   <div id="lightbox-overlay" class="hidden">
