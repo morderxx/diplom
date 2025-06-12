@@ -75,6 +75,204 @@ button:hover {
 }
 
 /* =================== */
+/*  СТИЛИ ДЛЯ САЙДБАРА */
+/* =================== */
+.rooms-sidebar {
+  width: 260px;
+  background: #fafafa;
+  border-right: 1px solid #ddd;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  overflow-y: auto;
+}
+
+/* Заголовок текущего пользователя */
+.user-header {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+  color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 15px;
+}
+
+.user-header .avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  font-weight: bold;
+  color: #2575fc;
+}
+
+.user-header .info {
+  flex: 1;
+}
+
+.user-header .nickname {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.user-header .status {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+/* Разделы сайдбара */
+.sidebar-section {
+  margin-bottom: 15px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 8px;
+  user-select: none;
+}
+
+.section-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #444;
+}
+
+.section-header .toggle-icon {
+  transition: transform 0.3s ease;
+}
+
+.section-header.expanded .toggle-icon {
+  transform: rotate(180deg);
+}
+
+.section-content {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section-content.expanded {
+  display: flex;
+}
+
+/* Кнопки в сайдбаре */
+.sidebar-btn {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 15px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  font-size: 14px;
+}
+
+.sidebar-btn:hover {
+  background: #f5f5f5;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+.sidebar-btn:active {
+  transform: translateY(0);
+}
+
+.sidebar-btn .icon {
+  margin-right: 10px;
+  font-size: 18px;
+}
+
+/* Стили для поиска */
+.search-container {
+  position: relative;
+  margin-bottom: 15px;
+}
+
+#global-search {
+  width: 100%;
+  padding: 10px 15px;
+  padding-right: 40px;
+  border: 1px solid #ddd;
+  border-radius: 25px;
+  font-size: 14px;
+  box-sizing: border-box;
+  transition: all 0.3s ease;
+  background: #fff;
+}
+
+#global-search:focus {
+  border-color: #2575fc;
+  box-shadow: 0 0 0 2px rgba(37, 117, 252, 0.2);
+  outline: none;
+}
+
+.search-icon {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #999;
+}
+
+/* Стили для списков */
+.rooms-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rooms-list li {
+  padding: 10px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+}
+
+.rooms-list li:hover {
+  background: #f0f0f0;
+}
+
+.rooms-list li.active {
+  background: #e3f2ff;
+  color: #2575fc;
+  font-weight: 500;
+}
+
+.rooms-list li .badge {
+  margin-left: auto;
+  background: #ff5252;
+  color: white;
+  font-size: 12px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+}
+/* =================== */
 /*   СТИЛИ ДЛЯ ЧАТА    */
 /* =================== */
 .hidden { display: none; }
