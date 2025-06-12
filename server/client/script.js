@@ -236,3 +236,49 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('reCAPTCHA готов к использованию');
     };
 });
+
+
+// Добавьте эти функции в script.js
+
+// Показать модальное окно восстановления пароля
+function showResetModal() {
+    document.getElementById('reset-password-modal').classList.remove('hidden');
+    document.getElementById('reset-message').innerText = '';
+}
+
+// Закрыть модальное окно восстановления
+function closeResetModal() {
+    document.getElementById('reset-password-modal').classList.add('hidden');
+}
+
+// Функция сброса пароля
+async function resetPassword() {
+    const login = document.getElementById('reset-login').value;
+    const keyword = document.getElementById('reset-keyword').value;
+    const newPassword = document.getElementById('new-password').value;
+
+    if (!login || !keyword || !newPassword) {
+        document.getElementById('reset-message').innerText = 'Все поля обязательны';
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_URL}/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ login, keyword, newPassword })
+        });
+
+        const data = await res.json();
+        
+        if (res.ok) {
+            document.getElementById('reset-message').innerText = 'Пароль успешно изменен!';
+            setTimeout(closeResetModal, 2000);
+        } else {
+            document.getElementById('reset-message').innerText = data.message || 'Ошибка при смене пароля';
+        }
+    } catch (error) {
+        console.error('Password reset error:', error);
+        document.getElementById('reset-message').innerText = 'Ошибка сети';
+    }
+}
