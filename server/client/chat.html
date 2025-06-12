@@ -39,10 +39,15 @@
       
       <div class="sidebar-section">
         <h2><i class="fas fa-user-friends"></i> Контакты</h2>
-        <div class="search-container">
-          <input type="text" id="global-search" placeholder="Найти @пользователя">
-          <ul id="search-results" class="rooms-list" style="display: none;"></ul>
-        </div>
+               <aside class="rooms-sidebar">
+          <!-- ... -->
+          <div class="search-container">
+            <input type="text" id="global-search" placeholder="Найти @пользователя или &канал">
+            <ul id="search-results" class="rooms-list" style="display: none;"></ul>
+            <ul id="users-list" class="rooms-list" style="display: none;"></ul>
+          </div>
+          <!-- ... -->
+        </aside>
         <ul id="users-list" class="rooms-list">
           <li><i class="fas fa-user"></i> Анна Петрова <span class="online-dot"></span></li>
           <li><i class="fas fa-user"></i> Максим Сидоров</li>
