@@ -181,6 +181,7 @@ button:hover {
   transition: all 0.2s ease;
   text-align: left;
   font-size: 14px;
+  color: black;
 }
 
 .sidebar-btn:hover {
