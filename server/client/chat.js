@@ -1880,6 +1880,28 @@ async function logoutUser() {
     window.location.href = 'index.html';
   }
 }
+
+        // Получаем все заголовки секций
+      const sectionHeaders = document.querySelectorAll('.section-header');
+      
+      // Добавляем обработчики кликов
+      sectionHeaders.forEach(header => {
+        header.addEventListener('click', () => {
+          const content = header.nextElementSibling;
+          header.classList.toggle('expanded');
+          content.classList.toggle('expanded');
+        });
+      });
+
+      // Устанавливаем текущего пользователя
+      const currentUser = localStorage.getItem('username') || 'User';
+      document.getElementById('current-user').textContent = currentUser;
+      
+      // Генерация аватара из первой буквы
+      const avatar = document.querySelector('.user-header .avatar');
+      if (avatar) {
+        avatar.textContent = currentUser.charAt(0).toUpperCase();
+      }
   // Initialization
   loadRooms();
 });
