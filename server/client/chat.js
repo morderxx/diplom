@@ -1854,6 +1854,32 @@ function applyDarkTheme(enable) {
     if (styles) styles.remove();
   }
 }
+
+  // В конце файла, в разделе Initialization
+document.getElementById('btn-logout').addEventListener('click', logoutUser);
+
+// Новая функция для выхода
+async function logoutUser() {
+  try {
+    // Отправляем запрос на сервер для инвалидации токена
+    await fetch(`${API_URL}/auth/logout`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+  } catch (e) {
+    console.error('Logout error:', e);
+  } finally {
+    // Очищаем локальные данные
+    localStorage.removeItem('token');
+    localStorage.removeItem('nickname');
+    
+    // Перенаправляем на страницу входа
+    window.location.href = 'index.html';
+  }
+}
   // Initialization
   loadRooms();
 });
