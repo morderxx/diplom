@@ -22,6 +22,28 @@ function authMiddleware(req, res, next) {
   }
 }
 
+// Добавляем новый эндпоинт для получения всех пользователей (включая администратора)
+router.get('/all', authMiddleware, async (req, res) => {
+  try {
+    // Исключаем только текущего пользователя
+    const { rows } = await pool.query(
+      `SELECT u.id,
+              u.nickname,
+              u.full_name,
+              u.age,
+              u.bio
+         FROM users u
+         JOIN secret_profile sp ON sp.id = u.id
+        WHERE sp.login <> $1
+     ORDER BY u.nickname`,
+      [req.userLogin]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('Error fetching all users:', err);
+    res.status(500).send('Error fetching users');
+  }
+});
 // GET /api/users — список всех пользователей кроме себя
 router.get('/', authMiddleware, async (req, res) => {
   try {
