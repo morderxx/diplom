@@ -8,30 +8,106 @@
 <body>
   <div class="chat-wrapper">
     <aside class="rooms-sidebar">
-      <div class="current-user">Вы: <span id="current-user"></span></div>
-      <h2>Чаты <button id="create-group-btn" title="Новая группа">Создать группу</button><button id="create-channel-btn" class="btn">📢 Создать канал</button>
-      </h2> 
-      
-      <ul id="rooms-list" class="rooms-list"></ul>
-      <h2>Пользователи</h2>
-      <!-- В aside class="rooms-sidebar", перед списком пользователей -->
-      <div class="search-container">
-        <input type="text" id="global-search" placeholder="Найти @пользователя или &канал">
-        <ul id="search-results" class="rooms-list" style="display: none;"></ul>
-        <ul id="users-list" class="rooms-list" style="display: none;"></ul>
+      <!-- Заголовок с информацией о пользователе -->
+      <div class="user-header">
+        <div class="avatar">U</div>
+        <div class="info">
+          <div class="nickname" id="current-user">Username</div>
+          <div class="status">Online</div>
+        </div>
       </div>
-      <h2>Мини-приложения</h2>
-      <button id="btn-weather">🌤 Погода</button>
-      <button id="btn-calendar">📅 Журнал</button>
-      <button id="btn-finance">💰 Финансы</button>
-      <h2>Игры</h2>
-      <button id="btn-strike-game">🎮 Galactic Annihilator</button>
-      <button id="btn-match3-game">🚀 Galactic Match-3</button>
-      <button id="btn-runner-game">🏃 Бегунок</button>
-      <!-- В rooms-sidebar, после списка пользователей -->
-      <h2>Настройки</h2>
-      <button id="btn-settings">⚙️ Настройки профиля</button>
-      <button id="btn-logout">🚪 Выход</button>
+
+      <!-- Поиск -->
+      <div class="search-container">
+        <input type="text" id="global-search" placeholder="Поиск людей, чатов, сообщений">
+        <div class="search-icon">🔍</div>
+      </div>
+
+      <!-- Секция чатов -->
+      <div class="sidebar-section">
+        <div class="section-header" id="chats-header">
+          <h2>Чаты</h2>
+          <div class="toggle-icon">▼</div>
+        </div>
+        <div class="section-content" id="chats-content">
+          <button id="create-group-btn" class="sidebar-btn">
+            <span class="icon">👥</span> Создать группу
+          </button>
+          <button id="create-channel-btn" class="sidebar-btn">
+            <span class="icon">📢</span> Создать канал
+          </button>
+          <ul id="rooms-list" class="rooms-list">
+            <!-- Список чатов будет заполняться динамически -->
+          </ul>
+        </div>
+      </div>
+
+      <!-- Секция контактов -->
+      <div class="sidebar-section">
+        <div class="section-header" id="contacts-header">
+          <h2>Контакты</h2>
+          <div class="toggle-icon">▼</div>
+        </div>
+        <div class="section-content" id="contacts-content">
+          <ul id="users-list" class="rooms-list">
+            <!-- Список контактов будет заполняться динамически -->
+          </ul>
+        </div>
+      </div>
+
+      <!-- Секция мини-приложений -->
+      <div class="sidebar-section">
+        <div class="section-header" id="apps-header">
+          <h2>Мини-приложения</h2>
+          <div class="toggle-icon">▼</div>
+        </div>
+        <div class="section-content" id="apps-content">
+          <button id="btn-weather" class="sidebar-btn">
+            <span class="icon">🌤</span> Погода
+          </button>
+          <button id="btn-calendar" class="sidebar-btn">
+            <span class="icon">📅</span> Журнал
+          </button>
+          <button id="btn-finance" class="sidebar-btn">
+            <span class="icon">💰</span> Финансы
+          </button>
+        </div>
+      </div>
+
+      <!-- Секция игр -->
+      <div class="sidebar-section">
+        <div class="section-header" id="games-header">
+          <h2>Игры</h2>
+          <div class="toggle-icon">▼</div>
+        </div>
+        <div class="section-content" id="games-content">
+          <button id="btn-strike-game" class="sidebar-btn">
+            <span class="icon">🎮</span> Galactic Annihilator
+          </button>
+          <button id="btn-match3-game" class="sidebar-btn">
+            <span class="icon">🚀</span> Galactic Match-3
+          </button>
+          <button id="btn-runner-game" class="sidebar-btn">
+            <span class="icon">🏃</span> Бегунок
+          </button>
+        </div>
+      </div>
+
+      <!-- Секция настроек -->
+      <div class="sidebar-section">
+        <div class="section-header" id="settings-header">
+          <h2>Настройки</h2>
+          <div class="toggle-icon">▼</div>
+        </div>
+        <div class="section-content" id="settings-content">
+          <button id="btn-settings" class="sidebar-btn">
+            <span class="icon">⚙️</span> Настройки профиля
+          </button>
+          <button id="btn-logout" class="sidebar-btn">
+            <span class="icon">🚪</span> Выход
+          </button>
+        </div>
+      </div>
     </aside>
 
 <section id="chat-section" class="chat-container">
