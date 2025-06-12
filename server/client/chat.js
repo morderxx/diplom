@@ -468,12 +468,18 @@ function renderSelectedUsers() {
   // Общая функция для фильтрации и показа подсказок
 function setupUserSearch(inputEl, suggestionsEl, selectedSet, renderFn) {
   inputEl.addEventListener('input', () => {
-    const q = inputEl.value.trim().toLowerCase();
+    const inputValue = inputEl.value;
+    // Проверяем что значение существует перед обработкой
+    const q = inputValue ? inputValue.trim().toLowerCase() : '';
+    
     suggestionsEl.innerHTML = '';
     if (!q) return;
+    
+    // Фильтрация с проверкой на null
     const matches = allUsers
-      .filter(n => n.toLowerCase().includes(q) && !selectedSet.has(n))
+      .filter(n => n && n.toLowerCase().includes(q) && !selectedSet.has(n))
       .slice(0, 10);
+    
     for (const nick of matches) {
       const li = document.createElement('li');
       li.textContent = nick;
