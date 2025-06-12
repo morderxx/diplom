@@ -358,12 +358,45 @@ const closeGameBtn = document.querySelector('.close-game');
 let allUsers = [];
 const selectedUsers = new Set();
 
+  // Загрузка всех пользователей (включая администратора)
+async function loadAllUsersWithAdmin() {
+  try {
+    const res = await fetch(`${API_URL}/users/all`, { 
+      headers: { Authorization: `Bearer ${token}` } 
+    });
+    if (!res.ok) throw new Error('Cannot load users');
+    const users = await res.json();
+    return users.map(u => u.nickname);
+  } catch (err) {
+    console.error('Error loading users with admin:', err);
+    return [];
+  }
+}
+
+// Загрузка пользователей для подсказок (без администратора)
+async function loadRegularUsers() {
+  try {
+    const res = await fetch(`${API_URL}/users`, { 
+      headers: { Authorization: `Bearer ${token}` } 
+    });
+    if (!res.ok) throw new Error('Cannot load users');
+    const users = await res.json();
+    return users.map(u => u.nickname);
+  } catch (err) {
+    console.error('Error loading regular users:', err);
+    return [];
+  }
+}
 // Загрузка всех пользователей один раз
 async function loadAllUsers() {
-  const res = await fetch(`${API_URL}/users`, { headers:{ Authorization:`Bearer ${token}` } });
-  if (!res.ok) return console.error('Cannot load users');
-  const users = await res.json();
-  allUsers = users.map(u => u.nickname);
+  // Для общих подсказок используем пользователей без администратора
+  allUsers = await loadRegularUsers();
+  
+  // Для создания чата с техподдержкой нужен администратор
+  const usersWithAdmin = await loadAllUsersWithAdmin();
+  if (!usersWithAdmin.includes('@admin')) {
+    usersWithAdmin.push('@admin');
+  }
 }
 loadAllUsers();
 
