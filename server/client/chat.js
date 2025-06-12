@@ -388,14 +388,24 @@ async function loadRegularUsers() {
   }
 }
 // Загрузка всех пользователей один раз
+// Загрузка пользователей для подсказок
 async function loadAllUsers() {
-  // Для общих подсказок используем пользователей без администратора
-  allUsers = await loadRegularUsers();
-  
-  // Для создания чата с техподдержкой нужен администратор
-  const usersWithAdmin = await loadAllUsersWithAdmin();
-  if (!usersWithAdmin.includes('@admin')) {
-    usersWithAdmin.push('@admin');
+  try {
+    // Основной список пользователей (без администратора)
+    const res = await fetch(`${API_URL}/users`, { 
+      headers: { Authorization: `Bearer ${token}` } 
+    });
+    
+    if (!res.ok) throw new Error('Cannot load users');
+    const users = await res.json();
+    allUsers = users.map(u => u.nickname);
+    
+    // Добавляем администратора для чата техподдержки
+    if (!allUsers.includes('@admin')) {
+      allUsers.push('@admin');
+    }
+  } catch (err) {
+    console.error('Error loading users:', err);
   }
 }
 loadAllUsers();
