@@ -5,10 +5,22 @@ document.getElementById('continue-btn').addEventListener('click', function() {
 });
 
 // Функция для возврата назад
+// Обновленная функция для возврата назад
 function goBack() {
+    // Если открыта форма регистрации - возвращаем на экран входа
+    if (!document.getElementById('keyword').classList.contains('hidden')) {
+        document.getElementById('keyword').classList.add('hidden');
+        document.getElementById('registerButton').classList.add('hidden');
+        document.getElementById('loginButton').classList.remove('hidden');
+        document.getElementById('registerToggleButton').classList.remove('hidden');
+        return;
+    }
+    
+    // Иначе возвращаем на экран приветствия
     document.getElementById('welcome-screen').classList.remove('hidden');
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('captcha-modal').classList.add('hidden');
+    document.getElementById('reset-password-modal').classList.add('hidden');
 }
 
 // Глобальные переменные для управления капчей
@@ -129,13 +141,20 @@ async function verifyCaptcha() {
 }
 
 // Показ формы регистрации
+// Показ формы регистрации
 function showRegister() {
     document.getElementById('keyword').classList.remove('hidden');
     document.getElementById('registerButton').classList.remove('hidden');
     document.getElementById('loginButton').classList.add('hidden');
     document.getElementById('registerToggleButton').classList.add('hidden');
+    document.getElementById('message').innerText = ''; // Сбрасываем сообщение
 }
 
+document.getElementById('continue-btn').addEventListener('click', function() {
+    document.getElementById('welcome-screen').classList.add('hidden');
+    document.getElementById('login-screen').classList.remove('hidden');
+    document.getElementById('message').innerText = ''; // Сбрасываем сообщение
+});
 // Обработчики для кнопок входа и регистрации
 function handleLogin() {
     const loginValue = document.getElementById('login').value;
