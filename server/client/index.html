@@ -29,7 +29,7 @@
             <input type="password" id="password" placeholder="Пароль">
             <input type="text" id="keyword" placeholder="Ключевое слово (для регистрации)" class="hidden">
 <!-- Добавьте внутри login-screen после кнопки "Назад" -->
-<a href="#" onclick="showResetModal()" style="display: block; margin-top: 10px; color: #4e8cff;">Забыли пароль?</a>
+
             <div class="button-container">
                 <button id="loginButton" onclick="handleLogin()">Войти</button>
                 <button id="registerToggleButton" onclick="showRegister()">Регистрация</button>
@@ -37,6 +37,7 @@
 
             <button id="registerButton" onclick="handleRegister()" class="hidden">Подтвердить регистрацию</button>
             <button onclick="goBack()" style="background: #f0f0f0; color: #333; margin-top: 10px;">Назад</button>
+            <a href="#" onclick="showResetModal()" style="display: block; margin-top: 10px; color: #4e8cff;">Забыли пароль?</a>
             
             <div id="message"></div>
         </div>
