@@ -81,16 +81,7 @@ app.post('/api/verify-captcha', async (req, res) => {
     }
 });
 
-// Пример для Express.js
-router.post('/logout', authMiddleware, async (req, res) => {
-  try {
-    // Инвалидация токена в базе данных
-    await TokenBlacklist.create({ token: req.token });
-    res.status(200).json({ message: 'Logged out successfully' });
-  } catch (error) {
-    res.status(500).json({ error: 'Logout failed' });
-  }
-});
+
 // аутентификация
 app.use('/api', authRoutes);
 
