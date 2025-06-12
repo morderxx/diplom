@@ -132,4 +132,46 @@ router.get('/profile', authMiddleware, async (req, res) => {
   }
 });
 
+// Добавьте этот маршрут в auth.js
+
+// Сброс пароля
+router.post('/reset-password', async (req, res) => {
+    const { login, keyword, newPassword } = req.body;
+    if (!login || !keyword || !newPassword) {
+        return res.status(400).json({ message: 'Missing fields' });
+    }
+
+    try {
+        // Найдем пользователя по логину и ключевому слову
+        const userRes = await pool.query(
+            `SELECT id, keyword FROM secret_profile WHERE login = $1`,
+            [login]
+        );
+
+        if (userRes.rows.length === 0) {
+            return res.status(400).json({ message: 'Пользователь не найден' });
+        }
+
+        const user = userRes.rows[0];
+        
+        // Проверяем ключевое слово
+        if (user.keyword !== keyword) {
+            return res.status(400).json({ message: 'Неверное ключевое слово' });
+        }
+
+        // Хешируем новый пароль
+        const hashedPass = await bcrypt.hash(newPassword, 10);
+        
+        // Обновляем пароль
+        await pool.query(
+            `UPDATE secret_profile SET pass = $1 WHERE id = $2`,
+            [hashedPass, user.id]
+        );
+
+        res.json({ message: 'Пароль успешно изменен' });
+    } catch (err) {
+        console.error('Password reset error:', err);
+        res.status(500).json({ message: 'Error resetting password' });
+    }
+});
 module.exports = router;
