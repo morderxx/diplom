@@ -951,3 +951,21 @@ body.dark-theme .modal-window * {
   text-align: right;
   margin-top: 5px;
 }
+
+/* В раздел "Настройки" */
+#btn-logout {
+  width: 100%;
+  padding: 10px;
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+#btn-logout:hover {
+  background: #d32f2f;
+}
