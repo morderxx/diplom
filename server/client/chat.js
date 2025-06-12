@@ -1894,11 +1894,11 @@ async function logoutUser() {
       });
 
       // Устанавливаем текущего пользователя
-      const currentUser = localStorage.getItem('username') || 'User';
+      const currentUser = userNickname;
       document.getElementById('current-user').textContent = currentUser;
       
       // Генерация аватара из первой буквы
-      const avatar = document.querySelector('.user-header .avatar');
+      const avatar = userNickname;
       if (avatar) {
         avatar.textContent = currentUser.charAt(0).toUpperCase();
       }
