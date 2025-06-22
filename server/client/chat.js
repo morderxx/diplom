@@ -206,10 +206,12 @@ document.addEventListener('click', () => {
     return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
   }
   
-  function toTimestamp(dateStr, hh, mm) {
-    const [y, m, day] = dateStr.split('-').map(Number);
-    return new Date(y, m-1, day, hh, mm, 0, 0).getTime();
-  }
+function toTimestamp(dateStr, hh, mm) {
+  const [y, m, day] = dateStr.split('-').map(Number);
+  // Создаем дату в локальном времени пользователя
+  const date = new Date(y, m-1, day, hh, mm);
+  return date.getTime(); // Возвращаем timestamp с учетом часового пояса
+}
   
   const calendarToken = () => localStorage.getItem('token');
   const notifAudio = new Audio('/miniapps/calendar/notify.mp3');
