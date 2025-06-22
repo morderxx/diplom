@@ -197,71 +197,119 @@ document.addEventListener('click', () => {
 });
 // ─── Планировщик уведомлений календаря ───────────────────────────
 ;(function(){
-  const pad = n => String(n).padStart(2,'0');
-  function getLocalDateStr(d = new Date()){
+  const pad = n => String(n).padStart(2, '0');
+  
+  // Хранилище для таймеров
+  const scheduledTimers = new Map();
+  
+  function getLocalDateStr(d = new Date()) {
     return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
   }
-  function toTimestamp(dateStr, hh, mm){
-    const [y,m,day] = dateStr.split('-').map(Number);
+  
+  function toTimestamp(dateStr, hh, mm) {
+    const [y, m, day] = dateStr.split('-').map(Number);
     return new Date(y, m-1, day, hh, mm, 0, 0).getTime();
   }
+  
   const calendarToken = () => localStorage.getItem('token');
-
-  // разблокировка звука + запрос разрешения на уведомления
   const notifAudio = new Audio('/miniapps/calendar/notify.mp3');
   notifAudio.preload = 'auto';
+
+  // Инициализация аудио
   document.body.addEventListener('click', () => {
-    notifAudio.play().then(()=>{
+    notifAudio.play().then(() => {
       notifAudio.pause();
       notifAudio.currentTime = 0;
-    }).catch(()=>{});
+    }).catch(() => {});
   }, { once: true });
 
   if ('Notification' in window) {
     Notification.requestPermission();
   }
 
-  async function checkAndSchedule(){
-    const dateStr = getLocalDateStr();
-    let events = [];
+  // Очистка старых таймеров
+  function clearExistingTimers() {
+    for (const timerId of scheduledTimers.values()) {
+      clearTimeout(timerId);
+    }
+    scheduledTimers.clear();
+  }
+
+  // Функция для создания уведомления
+  function scheduleNotification(dateStr, time, description) {
+    const [hh, mm] = time.split(':').map(Number);
+    const eventTime = toTimestamp(dateStr, hh, mm);
+    const now = Date.now();
+    const delay = eventTime - now;
+
+    // Пропускаем прошедшие события
+    if (delay < 0) return;
+
+    const timerId = setTimeout(() => {
+      // Воспроизводим звук
+      notifAudio.play().catch(() => {});
+
+      // Показываем уведомление
+      if (Notification.permission === 'granted') {
+        new Notification('Напоминание', {
+          body: `${time} — ${description}`,
+          icon: '/miniapps/calendar/icon.png',
+          tag: String(eventTime),
+          renotify: true,
+          requireInteraction: true,
+          silent: false
+        });
+      }
+      console.log(`🔔 "${description}" @ ${time}`);
+      
+      // Удаляем выполненный таймер
+      scheduledTimers.delete(`${dateStr}|${time}`);
+    }, delay);
+
+    // Сохраняем ID таймера
+    scheduledTimers.set(`${dateStr}|${time}`, timerId);
+  }
+
+  // Основная функция проверки и планирования
+  async function checkAndSchedule() {
+    clearExistingTimers();
+    
     try {
-      const r = await fetch(`/events?date=${dateStr}`, {
+      // Загружаем события на 30 дней вперед
+      const today = new Date();
+      const future = new Date();
+      future.setDate(today.getDate() + 30);
+      
+      const dateRange = `?start=${getLocalDateStr(today)}&end=${getLocalDateStr(future)}`;
+      const r = await fetch(`/events${dateRange}`, {
         headers: { 'Authorization': `Bearer ${calendarToken()}` }
       });
-      events = r.ok ? await r.json() : [];
+      
+      if (!r.ok) return;
+      
+      const events = await r.json();
+      
+      // Планируем уведомления для всех событий
+      for (const event of events) {
+        if (event.time && event.description) {
+          scheduleNotification(event.date, event.time, event.description);
+        }
+      }
     } catch(e) {
       console.error('Ошибка при загрузке событий:', e);
-      return;
-    }
-
-    const now = Date.now();
-    for (const { time, description } of events) {
-      if (!time) continue;
-      const [hh, mm] = time.split(':').map(Number);
-      const ts       = toTimestamp(dateStr, hh, mm);
-      const delay    = ts - now;
-      if (delay >= 0) {
-        setTimeout(() => {
-          notifAudio.play().catch(()=>{});
-          if (Notification.permission === 'granted') {
-            new Notification('Напоминание', {
-              body: `${time} — ${description}`,
-              icon: '/miniapps/calendar/icon.png',
-              tag: String(ts),
-              renotify: true,
-              requireInteraction: true,
-              silent: false
-            });
-          }
-          console.log(`🔔 "${description}" @ ${time}`);
-        }, delay);
-      }
     }
   }
 
-  // Запускаем сразу и затем каждые 60 секунд
+  // Запускаем сразу и затем каждые 5 минут
   checkAndSchedule();
-  setInterval(checkAndSchedule, 60_000);
+  setInterval(checkAndSchedule, 300_000); // 5 минут
+  
+  // Обновляем расписание при событиях из iframe календаря
+  window.addEventListener('message', (event) => {
+    if (event.data === 'calendarUpdated') {
+      checkAndSchedule();
+    }
+  });
 })();
 
 
