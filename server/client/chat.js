@@ -1217,14 +1217,25 @@ rooms.forEach(r => {
     // 3) Превью + никнейм по условию (ИЗМЕНЕНО)
     let previewText;
     
-    if (r.last_message_file_id) {
-        // Файловое сообщение
-        if (r.last_message_file_type && r.last_message_file_type.startsWith('audio/')) {
-            previewText = 'Голосовое сообщение';
-        } else {
-            previewText = 'ФАЙЛ';
+   if (r.last_message_file_id) {
+    // Файловое сообщение
+    if (r.last_message_file_type) {
+        if (r.last_message_file_type.startsWith('audio/')) {
+            previewText = '🎤 Голосовое сообщение';
+        } 
+        else if (r.last_message_file_type.startsWith('image/')) {
+            previewText = '🖼️ Фото';  // Иконка фото + текст
+        }
+        else if (r.last_message_file_type.startsWith('video/')) {
+            previewText = '🎬 Видео';
+        }
+        else {
+            previewText = '📎 Файл';  // Для всех остальных типов
         }
     } else {
+        previewText = '📎 Файл';  // На случай если тип неизвестен
+    }
+} else {
         // Текстовое сообщение
         previewText = r.last_message_text
             ? (r.last_message_text.length > 30
