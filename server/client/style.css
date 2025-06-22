@@ -1168,3 +1168,28 @@ body.dark-theme .modal-window * {
 #btn-logout:hover {
   background: #d32f2f;
 }
+
+.room-last-msg {
+  font-size: 12px;
+  color: #888;
+  padding: 4px 0;
+  overflow: hidden;
+  display: flex;
+  justify-content: space-between;
+}
+
+.last-msg-content {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70%;
+}
+
+.last-msg-time {
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.no-msg {
+  font-style: italic;
+}
