@@ -1202,15 +1202,28 @@ rooms.forEach(r => {
       ? new Date(r.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       : '';
 
-    // 3) Превью + никнейм по условию
-    let previewText = r.last_message_text
-      ? (r.last_message_text.length > 30
-          ? r.last_message_text.slice(0, 27) + '…'
-          : r.last_message_text)
-      : '— нет сообщений —';
+    // 3) Превью + никнейм по условию (ИЗМЕНЕНО)
+    let previewText;
+    
+    if (r.last_message_file_id) {
+        // Файловое сообщение
+        if (r.last_message_file_type && r.last_message_file_type.startsWith('audio/')) {
+            previewText = 'Голосовое сообщение';
+        } else {
+            previewText = 'ФАЙЛ';
+        }
+    } else {
+        // Текстовое сообщение
+        previewText = r.last_message_text
+            ? (r.last_message_text.length > 30
+                ? r.last_message_text.slice(0, 27) + '…'
+                : r.last_message_text)
+            : '— нет сообщений —';
+    }
 
+    // Добавляем отправителя для не-каналов
     if (!r.is_channel && r.last_message_sender && r.last_message_sender !== userNickname) {
-      previewText = `<span class="preview-sender">${r.last_message_sender}:</span> ${previewText}`;
+        previewText = `<span class="preview-sender">${r.last_message_sender}:</span> ${previewText}`;
     }
 
     // 4) Собираем HTML (только title, preview, time)
@@ -1221,14 +1234,14 @@ rooms.forEach(r => {
     `;
 
     li.onclick = () => {
-      currentPeer = (!r.is_group && !r.is_channel)
-        ? r.members.find(n => n !== userNickname)
-        : title;
-      joinRoom(r.id);
+        currentPeer = (!r.is_group && !r.is_channel)
+            ? r.members.find(n => n !== userNickname)
+            : title;
+        joinRoom(r.id);
     };
 
     ul.appendChild(li);
-  });
+});
 
 
 
