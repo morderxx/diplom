@@ -38,47 +38,64 @@ async function authMiddleware(req, res, next) {
 router.get('/', authMiddleware, async (req, res) => {
   try {
      const { rows } = await pool.query(
-  `SELECT
-     r.id,
-     r.name,
-     r.is_group,
-     r.is_channel,
-     r.creator_nickname,
-
-     /* самое позднее время из сообщений */
-     GREATEST(
-       COALESCE(MAX(m.time), '1970-01-01'),
-       COALESCE(MAX(c.ended_at), '1970-01-01')
-     ) AS last_message_time,
-
-     /* текст последнего обычного сообщения */
-     (SELECT text
-        FROM messages
-       WHERE room_id = r.id
-       ORDER BY time DESC
-       LIMIT 1
-     ) AS last_message_text,
-
-     /* никнейм автора последнего сообщения */
-     (SELECT sender_nickname
-        FROM messages
-       WHERE room_id = r.id
-       ORDER BY time DESC
-       LIMIT 1
-     ) AS last_message_sender,
-
-     array_agg(members.nickname ORDER BY members.nickname) AS members
-   FROM rooms r
-   JOIN room_members mm1
-     ON mm1.room_id = r.id AND mm1.nickname = $1
-   JOIN room_members members
-     ON members.room_id = r.id
-   LEFT JOIN messages m
-     ON m.room_id = r.id
-   LEFT JOIN calls c
-     ON c.room_id = r.id
-  GROUP BY r.id
-  ORDER BY last_message_time DESC`,
+      `SELECT
+      r.id,
+      r.name,
+      r.is_group,
+      r.is_channel,
+      r.creator_nickname,
+    
+      /* самое позднее время из сообщений */
+      GREATEST(
+        COALESCE(MAX(m.time), '1970-01-01'),
+        COALESCE(MAX(c.ended_at), '1970-01-01')
+      ) AS last_message_time,
+    
+      /* текст последнего обычного сообщения */
+      (SELECT text
+         FROM messages
+        WHERE room_id = r.id
+        ORDER BY time DESC
+        LIMIT 1
+      ) AS last_message_text,
+    
+      /* никнейм автора последнего сообщения */
+      (SELECT sender_nickname
+         FROM messages
+        WHERE room_id = r.id
+        ORDER BY time DESC
+        LIMIT 1
+      ) AS last_message_sender,
+    
+      /* ID файла последнего сообщения */
+      (SELECT file_id
+         FROM messages
+        WHERE room_id = r.id
+        ORDER BY time DESC
+        LIMIT 1
+      ) AS last_message_file_id,
+    
+      /* MIME-тип файла последнего сообщения */
+      (SELECT f.mime_type
+         FROM messages m
+         LEFT JOIN files f ON f.id = m.file_id
+        WHERE m.room_id = r.id
+        ORDER BY m.time DESC
+        LIMIT 1
+      ) AS last_message_file_type,
+    
+      array_agg(members.nickname ORDER BY members.nickname) AS members
+    FROM rooms r
+    JOIN room_members mm1
+      ON mm1.room_id = r.id AND mm1.nickname = $1
+    JOIN room_members members
+      ON members.room_id = r.id
+    LEFT JOIN messages m
+      ON m.room_id = r.id
+    LEFT JOIN calls c
+      ON c.room_id = r.id
+    GROUP BY r.id
+    ORDER BY last_message_time DESC`,
   [req.userNickname]
 );
 
