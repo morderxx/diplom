@@ -5,7 +5,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const userNickname = localStorage.getItem('nickname');
   const renderedFileIds = new Set();
   const roomMeta = {}; 
-
+  const lastMessages = {};
+  
   if (!token || !userNickname) {
     window.location.href = 'index.html';
     return;
@@ -60,6 +61,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2) Только потом — сообщения для текущей комнаты
     if (msg.roomId !== currentRoom) return;
 
+    if (['message', 'file', 'call'].includes(msg.type)) {
+    lastMessages[msg.roomId] = {
+      type: msg.type,
+      sender: msg.sender || msg.initiator,
+      time: msg.time,
+      text: msg.text || '',
+      mimeType: msg.mimeType || '',
+      filename: msg.filename || ''
+    };
+    updateRoomItem(msg.roomId, lastMessages[msg.roomId]);
+  }
      switch (msg.type) {
     case 'webrtc-hangup':
       if (msg.from === userNickname) break; // не обрабатываем эхо
@@ -1150,6 +1162,49 @@ document.getElementById('chat-box').addEventListener('click', e => {
   };
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.add('hidden'); });
 
+
+  // Функция для обновления элемента списка чатов
+function updateRoomItem(roomId, lastMessage = null) {
+  const roomItem = document.querySelector(`#rooms-list li[data-id="${roomId}"]`);
+  if (!roomItem) return;
+
+  const lastMsgElement = roomItem.querySelector('.room-last-msg') || document.createElement('div');
+  lastMsgElement.className = 'room-last-msg';
+  
+  if (lastMessage) {
+    const time = new Date(lastMessage.time);
+    const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    // Форматирование в зависимости от типа сообщения
+    let content;
+    if (lastMessage.type === 'file') {
+      if (lastMessage.mimeType.startsWith('image/')) {
+        content = '🖼️ Фото';
+      } else if (lastMessage.mimeType.startsWith('audio/')) {
+        content = '🔊 Аудио';
+      } else {
+        content = '📎 Файл';
+      }
+    } else if (lastMessage.type === 'call') {
+      content = '📞 Звонок';
+    } else {
+      content = lastMessage.text.length > 20 
+        ? lastMessage.text.substring(0, 20) + '...' 
+        : lastMessage.text;
+    }
+    
+    lastMsgElement.innerHTML = `
+      <div class="last-msg-content">${lastMessage.sender}: ${content}</div>
+      <div class="last-msg-time">${timeStr}</div>
+    `;
+  } else {
+    lastMsgElement.innerHTML = '<div class="no-msg">Нет сообщений</div>';
+  }
+  
+  if (!roomItem.contains(lastMsgElement)) {
+    roomItem.appendChild(lastMsgElement);
+  }
+}
   // Загрузка и отправка чата
 async function loadRooms() {
   const res = await fetch(`${API_URL}/rooms`, { headers: { Authorization: `Bearer ${token}` } });
@@ -1197,6 +1252,12 @@ async function loadRooms() {
       joinRoom(r.id);
     };
     ul.appendChild(li);
+     const lastMsgContainer = document.createElement('div');
+    lastMsgContainer.className = 'room-last-msg';
+    li.appendChild(lastMsgContainer);
+    
+    // Инициализируем с последним сообщением (если есть)
+    updateRoomItem(r.id, lastMessages[r.id]);
   });
   const hasSupportRoom = rooms.some(r => 
       !r.is_group && !r.is_channel && 
@@ -1308,6 +1369,18 @@ async function joinRoom(roomId) {
       console.warn('Неизвестный элемент истории:', m);
     }
   });
+   if (history.length > 0) {
+    const lastMsg = history[history.length - 1];
+    lastMessages[roomId] = {
+      type: lastMsg.type,
+      sender: lastMsg.sender_nickname || lastMsg.initiator,
+      time: lastMsg.time,
+      text: lastMsg.text || '',
+      mimeType: lastMsg.mime_type || '',
+      filename: lastMsg.filename || ''
+    };
+    updateRoomItem(roomId, lastMessages[roomId]);
+  }
 }
   
 function appendMessage(sender, text, time, callId = null) {
