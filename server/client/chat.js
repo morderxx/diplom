@@ -238,7 +238,11 @@ function toTimestamp(dateStr, hh, mm) {
 
 function scheduleNotification(dateStr, time, description) {
   if (!time) return; // Пропускаем события без времени
-  
+
+    if (!/^\d{2}:\d{2}$/.test(time)) {
+    console.error(`Некорректный формат времени: ${time}`);
+    return;
+  }
   const [hh, mm] = time.split(':').map(Number);
     // Добавляем валидацию времени
   if (isNaN(hh) || hh < 0 || hh > 23 || isNaN(mm) || mm < 0 || mm > 59) {
@@ -303,17 +307,12 @@ async function checkAndSchedule() {
     
     for (const event of events) {
       if (event.time && event.description) {
+        console.log(`Планируем: ${event.date} ${event.time}`);
         scheduleNotification(event.date, event.time, event.description);
       }
     }
   } catch(e) {
     console.error('Ошибка при загрузке событий:', e);
-  }
-   for (const event of events) {
-    if (event.time && event.description) {
-      console.log(`Планируем: ${event.date} ${event.time}`);
-      scheduleNotification(event.date, event.time, event.description);
-    }
   }
 }
 
