@@ -912,7 +912,6 @@ fileInput.onchange = () => {
       type:     'file',          // чтобы сервер попал в блок msg.type==='file'
       roomId:   currentRoom,
       sender:   userNickname,    // сервер использует msg.sender, если clients.get(ws) вдруг отсутствует
-      fileId:   fileId,
       filename: filename,
       mimeType: mimeType,
       time:     time
