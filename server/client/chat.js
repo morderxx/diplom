@@ -1528,6 +1528,7 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
    if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({
       type: 'file',
+       token,   
       roomId: currentRoom,
       fileId,
       filename,
