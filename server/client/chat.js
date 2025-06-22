@@ -240,6 +240,11 @@ function scheduleNotification(dateStr, time, description) {
   if (!time) return; // Пропускаем события без времени
   
   const [hh, mm] = time.split(':').map(Number);
+    // Добавляем валидацию времени
+  if (isNaN(hh) || hh < 0 || hh > 23 || isNaN(mm) || mm < 0 || mm > 59) {
+    console.error(`Некорректное время: ${time}`);
+    return;
+  }
   const eventTime = toTimestamp(dateStr, hh, mm);
   const now = Date.now();
   const delay = eventTime - now;
@@ -303,6 +308,12 @@ async function checkAndSchedule() {
     }
   } catch(e) {
     console.error('Ошибка при загрузке событий:', e);
+  }
+   for (const event of events) {
+    if (event.time && event.description) {
+      console.log(`Планируем: ${event.date} ${event.time}`);
+      scheduleNotification(event.date, event.time, event.description);
+    }
   }
 }
 
