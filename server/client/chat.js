@@ -207,8 +207,12 @@ document.addEventListener('click', () => {
   }
   
 function toTimestamp(dateStr, hh, mm) {
-  const [y, m, day] = dateStr.split('-').map(Number);
-  const date = new Date(Date.UTC(y, m-1, day, hh, mm)); // Используем UTC
+  // Исправляем формат даты, если пришло с временной зоной
+  const cleanDateStr = dateStr.split('T')[0];
+  const [y, m, day] = cleanDateStr.split('-').map(Number);
+  
+  // Создаем дату в локальном времени
+  const date = new Date(y, m-1, day, hh, mm);
   return date.getTime();
 }
   
@@ -239,13 +243,11 @@ function toTimestamp(dateStr, hh, mm) {
 function scheduleNotification(dateStr, time, description) {
   if (!time) return; // Пропускаем события без времени
 
-    if (!/^\d{2}:\d{2}$/.test(time)) {
-    console.error(`Некорректный формат времени: ${time}`);
-    return;
-  }
-  const [hh, mm] = time.split(':').map(Number);
+    const parts = time.split(':');
+  const hh = parseInt(parts[0], 10);
+  const mm = parseInt(parts[1], 10);
     // Добавляем валидацию времени
-  if (isNaN(hh) || hh < 0 || hh > 23 || isNaN(mm) || mm < 0 || mm > 59) {
+if (isNaN(hh) || hh < 0 || hh > 23 || isNaN(mm) || mm < 0 || mm > 59) {
     console.error(`Некорректное время: ${time}`);
     return;
   }
