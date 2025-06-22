@@ -1169,25 +1169,36 @@ body.dark-theme .modal-window * {
   background: #d32f2f;
 }
 
+/* === Override для выравнивания preview и time в одну строку === */
 #rooms-list li {
-  display: flex;
-  flex-direction: column;
+  /* вместо flex => grid */
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "title title"
+    "preview time";
+  gap: 4px 8px;           /* 4px по вертикали, 8px по горизонтали */
   padding: 8px;
   cursor: pointer;
-  align-items: flex-start; 
+  /* выравниваем содержимое строк preview/time по центру по высоте */
+  align-items: center;
 }
+
 .room-title {
-  font-weight: bold;
+  grid-area: title;
 }
+
 .room-preview {
-  font-size: 0.9em;
-  color: #666;
+  grid-area: preview;
+  /* чтобы длинный текст красиво обрезался */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
 .room-time {
-  font-size: 0.8em;
-  color: #999;
-  align-self: flex-end;
+  grid-area: time;
+  /* тонкая настройка отступа, если нужно */
+  margin-left: 4px;
 }
-.support-room .room-title {
-  color: #007bff;
-}
+
