@@ -908,8 +908,16 @@ fileInput.onchange = () => {
         mimeType,
         time
       );
- if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: 'roomsUpdated' }));
+ // 1. Немедленно обновляем сайдбар для текущего пользователя
+      loadRooms();
+      
+      // 2. Отправляем специальное событие для обновления сайдбара
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ 
+          type: 'forceRoomsUpdate',
+          roomId: currentRoom,
+          isImage: true
+        }));
       }
     } catch (err) {
       console.error('Ошибка в fileInput.onchange:', err);
