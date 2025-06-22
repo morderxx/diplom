@@ -10,7 +10,7 @@ let clients = null;
 
 function setupWebSocket(server) {
   wss = new WebSocket.Server({ server });
-  clients = new Map(); // ws → { nickname, roomId }
+  clients = new Map(); // Map<WebSocket, { nickname, roomId }>
 
   wss.on('connection', ws => {
     ws.on('message', async raw => {
@@ -42,48 +42,51 @@ function setupWebSocket(server) {
         return;
       }
 
-// TEXT MESSAGE
-if (msg.type === 'message') {
-  try {
-    const payload = jwt.verify(msg.token, JWT_SECRET);
-    const login   = payload.login;
-    const r       = await pool.query(
-      `SELECT u.nickname
-         FROM users u
-         JOIN secret_profile s ON s.id = u.id
-        WHERE s.login = $1`,
-      [login]
-    );
-    const sender = r.rows[0] && r.rows[0].nickname;
-    if (!sender) return;
+      // TEXT MESSAGE
+      if (msg.type === 'message') {
+        try {
+          // Верификация и вставка в БД
+          const payload = jwt.verify(msg.token, JWT_SECRET);
+          const login   = payload.login;
+          const r       = await pool.query(
+            `SELECT u.nickname
+               FROM users u
+               JOIN secret_profile s ON s.id = u.id
+              WHERE s.login = $1`,
+            [login]
+          );
+          const sender = r.rows[0] && r.rows[0].nickname;
+          if (!sender) return;
 
-    const time = new Date().toISOString();
-    await pool.query(
-      `INSERT INTO messages (room_id, sender_nickname, text, time)
-         VALUES ($1, $2, $3, $4)`,
-      [msg.roomId, sender, msg.text, time]
-    );
+          const time = new Date().toISOString();
+          await pool.query(
+            `INSERT INTO messages (room_id, sender_nickname, text, time)
+               VALUES ($1, $2, $3, $4)`,
+            [msg.roomId, sender, msg.text, time]
+          );
 
-    // <-- Весь forEach внутри try, всё ок
-    wss.clients.forEach(c => {
-      const info = clients.get(c);
-      if (info && info.roomId === msg.roomId && c.readyState === WebSocket.OPEN) {
-        c.send(JSON.stringify({
-          type:   'message',
-          roomId: msg.roomId,
-          sender,
-          text:   msg.text,
-          time
-        }));
+          // Рассылка нового сообщения + уведомление об обновлении списка чатов
+          wss.clients.forEach(c => {
+            const info = clients.get(c);
+            if (info && info.roomId === msg.roomId && c.readyState === WebSocket.OPEN) {
+              // 1) само сообщение
+              c.send(JSON.stringify({
+                type:   'message',
+                roomId: msg.roomId,
+                sender,
+                text:   msg.text,
+                time
+              }));
+              // 2) служебный апдейт для sidebar
+              c.send(JSON.stringify({ type: 'roomsUpdated' }));
+            }
+          });
+
+        } catch (e) {
+          console.error('WS message error', e);
+        }
+        return;
       }
-    });
-
-  } catch (e) {
-    console.error('WS message error', e);
-  }
-  return;
-}
-
 
       // FILE MESSAGE
       if (msg.type === 'file') {
@@ -95,9 +98,11 @@ if (msg.type === 'message') {
         }
         if (!senderInfo) return;
 
+        // Рассылка инфы о файле + уведомление об обновлении списка чатов
         wss.clients.forEach(c => {
           const info = clients.get(c);
           if (info && info.roomId === senderInfo.roomId && c.readyState === WebSocket.OPEN) {
+            // 1) само событие 'file'
             c.send(JSON.stringify({
               type:     'file',
               sender:   senderInfo.nickname,
@@ -106,6 +111,8 @@ if (msg.type === 'message') {
               mimeType: msg.mimeType,
               time:     msg.time
             }));
+            // 2) служебное апдейт для sidebar
+            c.send(JSON.stringify({ type: 'roomsUpdated' }));
           }
         });
         return;
@@ -155,7 +162,7 @@ if (msg.type === 'message') {
         return;
       }
 
-      // Новый блок для webrtc-hangup
+      // webrtc-hangup
       if (msg.type === 'webrtc-hangup') {
         const senderInfo = clients.get(ws);
         if (!senderInfo) return;
@@ -184,27 +191,19 @@ if (msg.type === 'message') {
   });
 }
 
-// Замените весь блок module.exports на:
 function getWss() {
   return { wss, clients };
 }
 
-// Замените в конце файла:
-// В конце файла chat.js
 module.exports = {
   setupWebSocket,
-  getWss: function() {
-    return {
-      wss: wss,
-      clients: clients
-    };
-  },
-  get wss() { 
+  getWss,
+  get wss() {
     if (!wss) throw new Error("WebSocket server not initialized");
-    return wss; 
+    return wss;
   },
-  get clients() { 
+  get clients() {
     if (!clients) throw new Error("Clients map not initialized");
-    return clients; 
+    return clients;
   }
 };
