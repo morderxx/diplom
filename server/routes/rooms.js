@@ -37,22 +37,37 @@ async function authMiddleware(req, res, next) {
 // 1) GET /api/rooms — список своих комнат + участников
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const { rows } = await pool.query(
+      const { rows } = await pool.query(
       `SELECT
          r.id,
          r.name,
          r.is_group,
          r.is_channel,
          r.creator_nickname,
-         r.created_at,
-         array_agg(m.nickname ORDER BY m.nickname) AS members
+         /* самое позднее время из сообщений */
+         GREATEST(
+           COALESCE(MAX(m.time), '1970-01-01'),
+           COALESCE(MAX(c.ended_at), '1970-01-01')
+         ) AS last_message_time,
+         /* текст последнего обычного сообщения */
+         (SELECT text
+            FROM messages
+           WHERE room_id = r.id
+           ORDER BY time DESC
+           LIMIT 1
+         ) AS last_message_text,
+         array_agg(members.nickname ORDER BY members.nickname) AS members
        FROM rooms r
-       JOIN room_members m1
-         ON m1.room_id = r.id AND m1.nickname = $1
-       JOIN room_members m
+       JOIN room_members mm1
+         ON mm1.room_id = r.id AND mm1.nickname = $1
+       JOIN room_members members
+         ON members.room_id = r.id
+       LEFT JOIN messages m
          ON m.room_id = r.id
+       LEFT JOIN calls c
+         ON c.room_id = r.id
       GROUP BY r.id
-      ORDER BY r.created_at DESC`,
+      ORDER BY last_message_time DESC`,
       [req.userNickname]
     );
     res.json(rows);
