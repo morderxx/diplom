@@ -915,6 +915,15 @@ fileInput.onchange = () => {
       fileInput.value = '';
       sendBtn.disabled = false;   // если вдруг был disabled
     }
+      socket.send(JSON.stringify({
+      type:     'file',          // чтобы сервер попал в блок msg.type==='file'
+      roomId:   currentRoom,
+      sender:   userNickname,    // сервер использует msg.sender, если clients.get(ws) вдруг отсутствует
+      fileId:   fileId,
+      filename: filename,
+      mimeType: mimeType,
+      time:     time
+    }));
   })();
 };
 
