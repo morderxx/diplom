@@ -1152,11 +1152,20 @@ document.getElementById('chat-box').addEventListener('click', e => {
 
   // Загрузка и отправка чата
 async function loadRooms() {
-  const res = await fetch(`${API_URL}/rooms`, { headers: { Authorization: `Bearer ${token}` } });
-  if (!res.ok) return console.error(await res.text());
-  const rooms = await res.json();
+  // 1. Забираем список чатов с последним сообщением и временем
+  const res = await fetch(`${API_URL}/rooms`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) {
+    console.error(await res.text());
+    return;
+  }
+  let rooms = await res.json();
 
-  // сброс meta и заполнение
+  // 2. Сортируем по времени последнего сообщения (последние наверху)
+  rooms.sort((a, b) => new Date(b.last_message_time) - new Date(a.last_message_time));
+
+  // 3. Обновляем мета-информацию (ваш старый код)
   Object.keys(roomMeta).forEach(k => delete roomMeta[k]);
   rooms.forEach(r => {
     roomMeta[r.id] = {
@@ -1168,48 +1177,63 @@ async function loadRooms() {
     };
   });
 
+  // 4. Рендерим список
   const ul = document.getElementById('rooms-list');
   ul.innerHTML = '';
+
   rooms.forEach(r => {
     const li = document.createElement('li');
-    let label;
-    // сначала каналы
-    if (r.is_channel) {
-      label = r.name || `Канал #${r.id}`;
-    }
-    // потом группы
-    else if (r.is_group) {
-      label = r.name || `Группа #${r.id}`;
-    }
-    // иначе приватный чат
-    else {
-      label = r.members.find(n => n !== userNickname) || '(без имени)';
-    }
-
-    li.textContent = label;
     li.dataset.id = r.id;
+
+    // 4.1 Определяем заголовок
+    let title;
+    if (r.is_channel)      title = r.name || `Канал #${r.id}`;
+    else if (r.is_group)   title = r.name || `Группа #${r.id}`;
+    else                   title = r.members.find(n => n !== userNickname) || '(без имени)';
+
+    // 4.2 Форматируем время: HH:MM
+    const time = r.last_message_time
+      ? new Date(r.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : '';
+
+    // 4.3 Превью текста (обрезано до 30 символов)
+    const preview = r.last_message_text
+      ? (r.last_message_text.length > 30
+          ? r.last_message_text.slice(0, 27) + '…'
+          : r.last_message_text)
+      : '— нет сообщений —';
+
+    // 4.4 Собираем HTML в li
+    li.innerHTML = `
+      <div class="room-title">${title}</div>
+      <div class="room-preview">${preview}</div>
+      <div class="room-time">${time}</div>
+    `;
+
+    // 4.5 Клик по чату
     li.onclick = () => {
-      // для приватного чата currentPeer = ник другого
-      // для групп/каналов — просто показываем label
       currentPeer = (!r.is_group && !r.is_channel)
         ? r.members.find(n => n !== userNickname)
-        : label;
+        : title;
       joinRoom(r.id);
     };
+
     ul.appendChild(li);
   });
-  const hasSupportRoom = rooms.some(r => 
-      !r.is_group && !r.is_channel && 
-      r.members.includes('@admin')
-    );
-    
-    if (!hasSupportRoom) {
-      const li = document.createElement('li');
-      li.textContent = 'Техподдержка';
-      li.onclick = () => openPrivateChat('@admin');
-      ul.appendChild(li);
-    }
+
+  // 5. Кнопка техподдержки, если её ещё нет
+  const hasSupport = rooms.some(r =>
+    !r.is_group && !r.is_channel && r.members.includes('@admin')
+  );
+  if (!hasSupport) {
+    const li = document.createElement('li');
+    li.classList.add('support-room');
+    li.innerHTML = `<div class="room-title">Техподдержка</div>`;
+    li.onclick = () => openPrivateChat('@admin');
+    ul.appendChild(li);
+  }
 }
+
 
 
   async function openPrivateChat(otherNick) {
