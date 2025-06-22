@@ -93,6 +93,7 @@ router.get('/', authMiddleware, async (req, res) => {
 // POST /events
 // Body: { date, time, desc }
 router.post('/', authMiddleware, async (req, res) => {
+  console.log("Received event:", req.body);
   const userId = req.userId;
   const { date, time, desc } = req.body;
   if (!date || !desc) return res.status(400).send('date and desc required');
