@@ -1168,3 +1168,25 @@ body.dark-theme .modal-window * {
 #btn-logout:hover {
   background: #d32f2f;
 }
+
+#rooms-list li {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  cursor: pointer;
+}
+.room-title {
+  font-weight: bold;
+}
+.room-preview {
+  font-size: 0.9em;
+  color: #666;
+}
+.room-time {
+  font-size: 0.8em;
+  color: #999;
+  align-self: flex-end;
+}
+.support-room .room-title {
+  color: #007bff;
+}
