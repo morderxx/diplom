@@ -908,14 +908,9 @@ fileInput.onchange = () => {
         mimeType,
         time
       );
-         socket.send(JSON.stringify({
-      type:     'file',          // чтобы сервер попал в блок msg.type==='file'
-      roomId:   currentRoom,
-      sender:   userNickname,    // сервер использует msg.sender, если clients.get(ws) вдруг отсутствует
-      filename: filename,
-      mimeType: mimeType,
-      time:     time
-    }));
+ if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'roomsUpdated' }));
+      }
     } catch (err) {
       console.error('Ошибка в fileInput.onchange:', err);
     } finally {
