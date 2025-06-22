@@ -1525,6 +1525,16 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
     };
     bubble.appendChild(link);
   }
+   if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({
+      type: 'file',
+      roomId: currentRoom,
+      fileId,
+      filename,
+      mimeType,
+      time
+    }));
+  }
 }
 
 
