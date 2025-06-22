@@ -99,6 +99,7 @@
         body: JSON.stringify(body)
       });
       if (!res.ok) throw new Error(`Ошибка ${res.status}: ${await res.text()}`);
+      window.parent.postMessage('calendarUpdated', '*');
       formOverlay.classList.add('hidden');
       await renderCalendar();
     } catch (e) {
