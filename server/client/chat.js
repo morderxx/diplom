@@ -1182,73 +1182,48 @@ async function loadRooms() {
   ul.innerHTML = '';
 
 rooms.forEach(r => {
-  const li = document.createElement('li');
-  li.dataset.id = r.id;
+    const li = document.createElement('li');
+    li.dataset.id = r.id;
 
-  // 1) Заголовок
-  let title = r.is_channel
-    ? (r.name || `Канал #${r.id}`)
-    : r.is_group
-      ? (r.name || `Группа #${r.id}`)
-      : (r.members.find(n => n !== userNickname) || '(без имени)');
+    // 1) Заголовок
+    const title = r.is_channel
+      ? (r.name || `Канал #${r.id}`)
+      : r.is_group
+        ? (r.name || `Группа #${r.id}`)
+        : (r.members.find(n => n !== userNickname) || '(без имени)');
 
-  // 2) Время
-  const time = r.last_message_time
-    ? new Date(r.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    : '';
+    // 2) Время
+    const time = r.last_message_time
+      ? new Date(r.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : '';
 
-  // 3) Превью: текст + опциональный никнейм
-  let previewHtml = '';
-  if (r.last_message_text) {
-    // обрезка
-    const text = r.last_message_text.length > 30
-      ? r.last_message_text.slice(0, 27) + '…'
-      : r.last_message_text;
+    // 3) Превью + никнейм по условию
+    let previewText = r.last_message_text
+      ? (r.last_message_text.length > 30
+          ? r.last_message_text.slice(0, 27) + '…'
+          : r.last_message_text)
+      : '— нет сообщений —';
 
-    // добавляем никнейм только если
-    //  • это не канал (r.is_channel === false)
-    //  • и это чужое сообщение (r.last_message_sender !== userNickname)
     if (!r.is_channel && r.last_message_sender && r.last_message_sender !== userNickname) {
-      previewHtml = `<span class="preview-sender">${r.last_message_sender}:</span> ${text}`;
-    } else {
-      previewHtml = text;
+      previewText = `<span class="preview-sender">${r.last_message_sender}:</span> ${previewText}`;
     }
-  } else {
-    previewHtml = '— нет сообщений —';
-  }
 
-  // 4) Бэйдж / статус чтения (каналы и группы не трогаем здесь)
-  let badgeHtml = '';
-  if (!r.is_group && !r.is_channel) {
-    // приватный чат или админ
-    if (r.last_message_sender !== userNickname) {
-      if (r.unread_count > 0) {
-        badgeHtml = `<div class="badge">${r.unread_count}</div>`;
-      }
-    } else {
-      const read = (new Date(r.last_message_time) <= new Date(r.my_last_read));
-      badgeHtml = `<div class="read-status">${ read ? '✔️' : '✖️' }</div>`;
-    }
-  }
-
-  li.innerHTML = `
-    <div class="room-title">${title}</div>
-    <div class="room-preview">${previewHtml}</div>
-    <div class="room-meta">
+    // 4) Собираем HTML (только title, preview, time)
+    li.innerHTML = `
+      <div class="room-title">${title}</div>
+      <div class="room-preview">${previewText}</div>
       <div class="room-time">${time}</div>
-      ${badgeHtml}
-    </div>
-  `;
+    `;
 
-  li.onclick = () => {
-    currentPeer = (!r.is_group && !r.is_channel)
-      ? r.members.find(n => n !== userNickname)
-      : title;
-    joinRoom(r.id);
-  };
+    li.onclick = () => {
+      currentPeer = (!r.is_group && !r.is_channel)
+        ? r.members.find(n => n !== userNickname)
+        : title;
+      joinRoom(r.id);
+    };
 
-  ul.appendChild(li);
-});
+    ul.appendChild(li);
+  });
 
 
 
