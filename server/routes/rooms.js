@@ -38,45 +38,42 @@ async function authMiddleware(req, res, next) {
 // В GET /api/rooms добавим выборку последнего сообщения
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const { rows } = await pool.query(
-      `SELECT 
-        r.id,
-        r.name,
-        r.is_group,
-        r.is_channel,
-        r.creator_nickname,
-        r.created_at,
-        array_agg(m.nickname ORDER BY m.nickname) AS members,
-        (
-          SELECT json_build_object(
-            'type', COALESCE(msg.type, call.type),
-            'sender', COALESCE(msg.sender_nickname, call.initiator),
-            'time', COALESCE(msg.time, call.started_at),
-            'text', msg.text,
-            'file_id', msg.file_id,
-            'filename', f.filename,
-            'mime_type', f.mime_type
-          )
-          FROM (
-            SELECT 'message' AS type, sender_nickname, time, text, file_id, NULL AS started_at
-            FROM messages
-            WHERE room_id = r.id
-            UNION ALL
-            SELECT 'call' AS type, initiator, started_at AS time, NULL AS text, NULL AS file_id, started_at
-            FROM calls
-            WHERE room_id = r.id
-            ORDER BY time DESC
-            LIMIT 1
-          ) AS last
-          LEFT JOIN files f ON f.id = last.file_id
-        ) AS last_message
-       FROM rooms r
-       JOIN room_members m1 ON m1.room_id = r.id AND m1.nickname = $1
-       JOIN room_members m ON m.room_id = r.id
-      GROUP BY r.id
-      ORDER BY MAX(COALESCE(last_message.time, r.created_at)) DESC`,
-      [req.userNickname]
-    );
+// В методе GET /api/rooms
+const { rows } = await pool.query(
+  `SELECT 
+     r.id,
+     r.name,
+     r.is_group,
+     r.is_channel,
+     r.creator_nickname,
+     r.created_at,
+     array_agg(m.nickname ORDER BY m.nickname) AS members,
+     (
+       SELECT json_build_object(
+         'type', 'message',
+         'sender', m2.sender_nickname,
+         'time', m2.time,
+         'text', m2.text,
+         'file_id', m2.file_id,
+         'filename', f.filename,
+         'mime_type', f.mime_type
+       )
+       FROM messages m2
+       LEFT JOIN files f ON f.id = m2.file_id
+       WHERE m2.room_id = r.id
+       ORDER BY m2.time DESC
+       LIMIT 1
+     ) AS last_message
+   FROM rooms r
+   JOIN room_members m1 ON m1.room_id = r.id AND m1.nickname = $1
+   JOIN room_members m ON m.room_id = r.id
+  GROUP BY r.id
+  ORDER BY COALESCE(
+    (SELECT MAX(time) FROM messages WHERE room_id = r.id),
+    r.created_at
+  ) DESC`,
+  [req.userNickname]
+);
     res.json(rows);
   } catch (err) {
     console.error('Error fetching rooms:', err);
