@@ -908,14 +908,7 @@ fileInput.onchange = () => {
         mimeType,
         time
       );
-    } catch (err) {
-      console.error('Ошибка в fileInput.onchange:', err);
-    } finally {
-      // сброс input и восстановление кнопки send
-      fileInput.value = '';
-      sendBtn.disabled = false;   // если вдруг был disabled
-    }
-      socket.send(JSON.stringify({
+         socket.send(JSON.stringify({
       type:     'file',          // чтобы сервер попал в блок msg.type==='file'
       roomId:   currentRoom,
       sender:   userNickname,    // сервер использует msg.sender, если clients.get(ws) вдруг отсутствует
@@ -924,6 +917,13 @@ fileInput.onchange = () => {
       mimeType: mimeType,
       time:     time
     }));
+    } catch (err) {
+      console.error('Ошибка в fileInput.onchange:', err);
+    } finally {
+      // сброс input и восстановление кнопки send
+      fileInput.value = '';
+      sendBtn.disabled = false;   // если вдруг был disabled
+    }
   })();
 };
 
