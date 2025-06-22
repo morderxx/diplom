@@ -1186,10 +1186,11 @@ body.dark-theme .modal-window * {
 
 .room-title {
   grid-area: title;
-     font-weight: 600;
+     font-weight: 500;
 }
 
 .room-preview {
+     font-size: 10px;
   grid-area: preview;
   /* чтобы длинный текст красиво обрезался */
   white-space: nowrap;
