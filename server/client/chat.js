@@ -967,6 +967,7 @@ fileInput.onchange = () => {
           socket.send(JSON.stringify({
             type: 'file',
             roomId: currentRoom,
+            fileId:   fileId,
             fileId: fileId,
             filename: filename,
             mimeType: 'audio/webm', // или другой MIME-тип
