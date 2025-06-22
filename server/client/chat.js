@@ -1185,48 +1185,71 @@ rooms.forEach(r => {
   const li = document.createElement('li');
   li.dataset.id = r.id;
 
-  // заголовок
-  let title = r.is_channel ? (r.name || `Канал #${r.id}`)
-            : r.is_group   ? (r.name || `Группа #${r.id}`)
-            : r.members.find(n => n !== userNickname) || '(без имени)';
+  // 1) Заголовок
+  let title = r.is_channel
+    ? (r.name || `Канал #${r.id}`)
+    : r.is_group
+      ? (r.name || `Группа #${r.id}`)
+      : (r.members.find(n => n !== userNickname) || '(без имени)');
 
-  // время
+  // 2) Время
   const time = r.last_message_time
     ? new Date(r.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : '';
 
-  // если это техподдержка, просто показываем заголовок
-  const isSupport = !r.is_group && !r.is_channel && r.members.includes('@admin');
-  if (isSupport) {
-    li.innerHTML = `<div class="room-title">${title}</div>`;
+  // 3) Превью: текст + опциональный никнейм
+  let previewHtml = '';
+  if (r.last_message_text) {
+    // обрезка
+    const text = r.last_message_text.length > 30
+      ? r.last_message_text.slice(0, 27) + '…'
+      : r.last_message_text;
+
+    // добавляем никнейм только если
+    //  • это не канал (r.is_channel === false)
+    //  • и это чужое сообщение (r.last_message_sender !== userNickname)
+    if (!r.is_channel && r.last_message_sender && r.last_message_sender !== userNickname) {
+      previewHtml = `<span class="preview-sender">${r.last_message_sender}:</span> ${text}`;
+    } else {
+      previewHtml = text;
+    }
   } else {
-    // обрезка текста
-    const raw = r.last_message_text || '';
-    const previewText = raw.length > 30 ? raw.slice(0, 27) + '…' : raw;
-
-    // автор
-    const sender = r.last_message_sender || '';
-    const previewHtml = sender
-      ? `<span class="preview-sender">${sender}:</span> ${previewText}`
-      : previewText;
-
-    li.innerHTML = `
-      <div class="room-title">${title}</div>
-      <div class="room-preview">${previewHtml}</div>
-      <div class="room-time">${time}</div>
-    `;
+    previewHtml = '— нет сообщений —';
   }
 
+  // 4) Бэйдж / статус чтения (каналы и группы не трогаем здесь)
+  let badgeHtml = '';
+  if (!r.is_group && !r.is_channel) {
+    // приватный чат или админ
+    if (r.last_message_sender !== userNickname) {
+      if (r.unread_count > 0) {
+        badgeHtml = `<div class="badge">${r.unread_count}</div>`;
+      }
+    } else {
+      const read = (new Date(r.last_message_time) <= new Date(r.my_last_read));
+      badgeHtml = `<div class="read-status">${ read ? '✔️' : '✖️' }</div>`;
+    }
+  }
+
+  li.innerHTML = `
+    <div class="room-title">${title}</div>
+    <div class="room-preview">${previewHtml}</div>
+    <div class="room-meta">
+      <div class="room-time">${time}</div>
+      ${badgeHtml}
+    </div>
+  `;
+
   li.onclick = () => {
-    currentPeer = isSupport
-      ? '@admin'
-      : (!r.is_group && !r.is_channel)
-        ? r.members.find(n => n !== userNickname)
-        : title;
+    currentPeer = (!r.is_group && !r.is_channel)
+      ? r.members.find(n => n !== userNickname)
+      : title;
     joinRoom(r.id);
   };
+
   ul.appendChild(li);
 });
+
 
 
   // 5. Кнопка техподдержки, если её ещё нет
