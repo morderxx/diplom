@@ -956,6 +956,14 @@ fileInput.onchange = () => {
             mimeType,
             time
           );
+          socket.send(JSON.stringify({
+            type: 'file',
+            roomId: currentRoom,
+            fileId: fileId,
+            filename: filename,
+            mimeType: 'audio/webm', // или другой MIME-тип
+            time: time
+          }));
         }
         if (!res.ok) console.error('Ошибка загрузки голосового сообщения:', await res.text());
         voiceBtn.disabled = false;
