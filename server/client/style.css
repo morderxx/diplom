@@ -1186,11 +1186,11 @@ body.dark-theme .modal-window * {
 
 .room-title {
   grid-area: title;
-     font-weight: 500;
+     font-weight: 600;
 }
 
 .room-preview {
-     font-size: 10px;
+     font-size: 12px;
   grid-area: preview;
   /* чтобы длинный текст красиво обрезался */
   white-space: nowrap;
@@ -1199,8 +1199,15 @@ body.dark-theme .modal-window * {
 }
 
 .room-time {
+    font-size: 12px;
   grid-area: time;
   /* тонкая настройка отступа, если нужно */
   margin-left: 4px;
+}
+/* имя автора в превью */
+.preview-sender {
+  font-weight: 600;
+  color: #2575fc;
+  margin-right: 4px;
 }
 
