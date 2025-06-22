@@ -21,6 +21,18 @@ function setupWebSocket(server) {
         return;
       }
 
+      if (msg.type === 'forceRoomsUpdate') {
+        // Рассылаем событие всем участникам комнаты
+        wss.clients.forEach(c => {
+          const info = clients.get(c);
+          if (info && info.roomId === msg.roomId && c.readyState === WebSocket.OPEN) {
+            c.send(JSON.stringify({ 
+              type: 'roomsUpdated',
+              force: true
+            }));
+          }
+        });
+      }
       // JOIN
       if (msg.type === 'join') {
         try {
