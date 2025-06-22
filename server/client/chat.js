@@ -1181,45 +1181,53 @@ async function loadRooms() {
   const ul = document.getElementById('rooms-list');
   ul.innerHTML = '';
 
-  rooms.forEach(r => {
-    const li = document.createElement('li');
-    li.dataset.id = r.id;
+rooms.forEach(r => {
+  const li = document.createElement('li');
+  li.dataset.id = r.id;
 
-    // 4.1 Определяем заголовок
-    let title;
-    if (r.is_channel)      title = r.name || `Канал #${r.id}`;
-    else if (r.is_group)   title = r.name || `Группа #${r.id}`;
-    else                   title = r.members.find(n => n !== userNickname) || '(без имени)';
+  // заголовок
+  let title = r.is_channel ? (r.name || `Канал #${r.id}`)
+            : r.is_group   ? (r.name || `Группа #${r.id}`)
+            : r.members.find(n => n !== userNickname) || '(без имени)';
 
-    // 4.2 Форматируем время: HH:MM
-    const time = r.last_message_time
-      ? new Date(r.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      : '';
+  // время
+  const time = r.last_message_time
+    ? new Date(r.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : '';
 
-    // 4.3 Превью текста (обрезано до 30 символов)
-    const preview = r.last_message_text
-      ? (r.last_message_text.length > 30
-          ? r.last_message_text.slice(0, 27) + '…'
-          : r.last_message_text)
-      : '— нет сообщений —';
+  // если это техподдержка, просто показываем заголовок
+  const isSupport = !r.is_group && !r.is_channel && r.members.includes('@admin');
+  if (isSupport) {
+    li.innerHTML = `<div class="room-title">${title}</div>`;
+  } else {
+    // обрезка текста
+    const raw = r.last_message_text || '';
+    const previewText = raw.length > 30 ? raw.slice(0, 27) + '…' : raw;
 
-    // 4.4 Собираем HTML в li
+    // автор
+    const sender = r.last_message_sender || '';
+    const previewHtml = sender
+      ? `<span class="preview-sender">${sender}:</span> ${previewText}`
+      : previewText;
+
     li.innerHTML = `
       <div class="room-title">${title}</div>
-      <div class="room-preview">${preview}</div>
+      <div class="room-preview">${previewHtml}</div>
       <div class="room-time">${time}</div>
     `;
+  }
 
-    // 4.5 Клик по чату
-    li.onclick = () => {
-      currentPeer = (!r.is_group && !r.is_channel)
+  li.onclick = () => {
+    currentPeer = isSupport
+      ? '@admin'
+      : (!r.is_group && !r.is_channel)
         ? r.members.find(n => n !== userNickname)
         : title;
-      joinRoom(r.id);
-    };
+    joinRoom(r.id);
+  };
+  ul.appendChild(li);
+});
 
-    ul.appendChild(li);
-  });
 
   // 5. Кнопка техподдержки, если её ещё нет
   const hasSupport = rooms.some(r =>
