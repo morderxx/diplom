@@ -45,7 +45,7 @@ function setupWebSocket(server) {
       // TEXT MESSAGE
       if (msg.type === 'message') {
         try {
-          // Верификация и вставка в БД
+          // верификация и запись в БД
           const payload = jwt.verify(msg.token, JWT_SECRET);
           const login   = payload.login;
           const r       = await pool.query(
@@ -65,11 +65,10 @@ function setupWebSocket(server) {
             [msg.roomId, sender, msg.text, time]
           );
 
-          // Рассылка нового сообщения + уведомление об обновлении списка чатов
+          // 1) Рассылка нового сообщения участникам комнаты
           wss.clients.forEach(c => {
             const info = clients.get(c);
             if (info && info.roomId === msg.roomId && c.readyState === WebSocket.OPEN) {
-              // 1) само сообщение
               c.send(JSON.stringify({
                 type:   'message',
                 roomId: msg.roomId,
@@ -77,7 +76,12 @@ function setupWebSocket(server) {
                 text:   msg.text,
                 time
               }));
-              // 2) служебный апдейт для sidebar
+            }
+          });
+
+          // 2) Уведомление всех клиентов обновить список чатов
+          wss.clients.forEach(c => {
+            if (c.readyState === WebSocket.OPEN) {
               c.send(JSON.stringify({ type: 'roomsUpdated' }));
             }
           });
@@ -92,36 +96,42 @@ function setupWebSocket(server) {
       if (msg.type === 'file') {
         let senderInfo = clients.get(ws);
         if (!senderInfo && msg.roomId && msg.sender) {
-          // если JOIN ещё не успел, подхватываем из сообщения
           senderInfo = { nickname: msg.sender, roomId: msg.roomId };
           clients.set(ws, senderInfo);
         }
         if (!senderInfo) return;
 
-        // Рассылка инфы о файле + уведомление об обновлении списка чатов
+        // 1) Рассылка инфы о файле
         wss.clients.forEach(c => {
           const info = clients.get(c);
           if (info && info.roomId === senderInfo.roomId && c.readyState === WebSocket.OPEN) {
-            // 1) само событие 'file'
             c.send(JSON.stringify({
               type:     'file',
+              roomId:   senderInfo.roomId,
               sender:   senderInfo.nickname,
               fileId:   msg.fileId,
               filename: msg.filename,
               mimeType: msg.mimeType,
               time:     msg.time
             }));
-            // 2) служебное апдейт для sidebar
+          }
+        });
+
+        // 2) Уведомление обновить список чатов
+        wss.clients.forEach(c => {
+          if (c.readyState === WebSocket.OPEN) {
             c.send(JSON.stringify({ type: 'roomsUpdated' }));
           }
         });
         return;
       }
 
-      // WEBRTC SIGNALING
-      if (['webrtc-offer', 'webrtc-answer', 'webrtc-ice'].includes(msg.type)) {
+      // CALL EVENT (звонок начат/принят/завершён)
+      if (['webrtc-offer', 'webrtc-answer', 'webrtc-ice', 'webrtc-cancel', 'webrtc-hangup'].includes(msg.type)) {
         const senderInfo = clients.get(ws);
         if (!senderInfo) return;
+
+        // 1) Рассылка сигнала WebRTC внутри комнаты
         wss.clients.forEach(c => {
           const info = clients.get(c);
           if (
@@ -134,52 +144,19 @@ function setupWebSocket(server) {
               type:    msg.type,
               roomId:  senderInfo.roomId,
               from:    senderInfo.nickname,
-              payload: msg.payload
+              payload: msg.payload // для offer/answer/ice
             }));
           }
         });
-        return;
-      }
 
-      if (msg.type === 'webrtc-cancel') {
-        const senderInfo = clients.get(ws);
-        if (!senderInfo) return;
-        wss.clients.forEach(c => {
-          const info = clients.get(c);
-          if (
-            c !== ws &&
-            info &&
-            info.roomId === senderInfo.roomId &&
-            c.readyState === WebSocket.OPEN
-          ) {
-            c.send(JSON.stringify({
-              type:   'webrtc-cancel',
-              from:   senderInfo.nickname,
-              roomId: senderInfo.roomId
-            }));
-          }
-        });
-        return;
-      }
-
-      // webrtc-hangup
-      if (msg.type === 'webrtc-hangup') {
-        const senderInfo = clients.get(ws);
-        if (!senderInfo) return;
-        wss.clients.forEach(c => {
-          const info = clients.get(c);
-          if (
-            info &&
-            info.roomId === senderInfo.roomId &&
-            c.readyState === WebSocket.OPEN
-          ) {
-            c.send(JSON.stringify({
-              type:   'webrtc-hangup',
-              from:   senderInfo.nickname,
-              roomId: senderInfo.roomId
-            }));
-          }
-        });
+        // 2) Если это hangup/cancel, можно послать roomsUpdated тоже
+        if (['webrtc-cancel', 'webrtc-hangup'].includes(msg.type)) {
+          wss.clients.forEach(c => {
+            if (c.readyState === WebSocket.OPEN) {
+              c.send(JSON.stringify({ type: 'roomsUpdated' }));
+            }
+          });
+        }
         return;
       }
 
