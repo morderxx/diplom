@@ -208,9 +208,8 @@ document.addEventListener('click', () => {
   
 function toTimestamp(dateStr, hh, mm) {
   const [y, m, day] = dateStr.split('-').map(Number);
-  // Создаем дату в локальном времени пользователя
-  const date = new Date(y, m-1, day, hh, mm);
-  return date.getTime(); // Возвращаем timestamp с учетом часового пояса
+  const date = new Date(Date.UTC(y, m-1, day, hh, mm)); // Используем UTC
+  return date.getTime();
 }
   
   const calendarToken = () => localStorage.getItem('token');
@@ -237,77 +236,75 @@ function toTimestamp(dateStr, hh, mm) {
     scheduledTimers.clear();
   }
 
-  // Функция для создания уведомления
-  function scheduleNotification(dateStr, time, description) {
-    const [hh, mm] = time.split(':').map(Number);
-    const eventTime = toTimestamp(dateStr, hh, mm);
-    const now = Date.now();
-    const delay = eventTime - now;
+function scheduleNotification(dateStr, time, description) {
+  if (!time) return; // Пропускаем события без времени
+  
+  const [hh, mm] = time.split(':').map(Number);
+  const eventTime = toTimestamp(dateStr, hh, mm);
+  const now = Date.now();
+  const delay = eventTime - now;
 
-      if (Notification.permission !== 'granted') {
-    Notification.requestPermission().then(permission => {
-      if (permission === 'granted') {
-        console.log('Notification permission granted');
-      }
-    });
+  // В scheduleNotification
+if (isNaN(hh) || isNaN(mm)) {
+  console.error(`Некорректное время: ${time}`);
+  return;
+}
+  // Пропускаем прошедшие события
+  if (delay < 0) {
+    console.log(`Пропущено прошедшее событие: ${dateStr} ${time}`);
+    return;
   }
-    // Пропускаем прошедшие события
-    if (delay < 0) return;
 
-    const timerId = setTimeout(() => {
-      // Воспроизводим звук
-      notifAudio.play().catch(() => {});
-
-      // Показываем уведомление
-      if (Notification.permission === 'granted') {
-        new Notification('Напоминание', {
-          body: `${time} — ${description}`,
-          icon: '/miniapps/calendar/icon.png',
-          tag: String(eventTime),
-          renotify: true,
-          requireInteraction: true,
-          silent: false
-        });
-      }
-      console.log(`🔔 "${description}" @ ${time}`);
-      
-      // Удаляем выполненный таймер
-      scheduledTimers.delete(`${dateStr}|${time}`);
-    }, delay);
-
-    // Сохраняем ID таймера
-    scheduledTimers.set(`${dateStr}|${time}`, timerId);
+  // Удаляем старый таймер, если существует
+  const key = `${dateStr}|${time}`;
+  if (scheduledTimers.has(key)) {
+    clearTimeout(scheduledTimers.get(key));
+    scheduledTimers.delete(key);
   }
+
+  const timerId = setTimeout(() => {
+    notifAudio.play().catch(() => {});
+    
+    if (Notification.permission === 'granted') {
+      new Notification('Напоминание', {
+        body: `${time} — ${description}`,
+        icon: '/miniapps/calendar/icon.png'
+      });
+    }
+    
+    scheduledTimers.delete(key);
+  }, delay);
+
+  scheduledTimers.set(key, timerId);
+}
 
   // Основная функция проверки и планирования
-  async function checkAndSchedule() {
-    clearExistingTimers();
+async function checkAndSchedule() {
+  clearExistingTimers();
+  
+  try {
+    const today = new Date();
+    const future = new Date();
+    future.setDate(today.getDate() + 30);
     
-    try {
-      // Загружаем события на 30 дней вперед
-      const today = new Date();
-      const future = new Date();
-      future.setDate(today.getDate() + 30);
-      
-      const dateRange = `?start=${getLocalDateStr(today)}&end=${getLocalDateStr(future)}`;
-      const r = await fetch(`/events${dateRange}`, {
-        headers: { 'Authorization': `Bearer ${calendarToken()}` }
-      });
-      
-      if (!r.ok) return;
-      
-      const events = await r.json();
-      
-      // Планируем уведомления для всех событий
-      for (const event of events) {
-        if (event.time && event.description) {
-          scheduleNotification(event.date, event.time, event.description);
-        }
+    const dateRange = `?start=${getLocalDateStr(today)}&end=${getLocalDateStr(future)}`;
+    const r = await fetch(`/events${dateRange}`, {
+      headers: { 'Authorization': `Bearer ${calendarToken()}` }
+    });
+    
+    if (!r.ok) return;
+    
+    const events = await r.json();
+    
+    for (const event of events) {
+      if (event.time && event.description) {
+        scheduleNotification(event.date, event.time, event.description);
       }
-    } catch(e) {
-      console.error('Ошибка при загрузке событий:', e);
     }
+  } catch(e) {
+    console.error('Ошибка при загрузке событий:', e);
   }
+}
 
   // Запускаем сразу и затем каждые 5 минут
   checkAndSchedule();
