@@ -242,6 +242,13 @@ document.addEventListener('click', () => {
     const now = Date.now();
     const delay = eventTime - now;
 
+      if (Notification.permission !== 'granted') {
+    Notification.requestPermission().then(permission => {
+      if (permission === 'granted') {
+        console.log('Notification permission granted');
+      }
+    });
+  }
     // Пропускаем прошедшие события
     if (delay < 0) return;
 
