@@ -130,6 +130,11 @@ document.addEventListener('DOMContentLoaded', () => {
       handleIce(msg.payload);
       break;
 
+    case 'roomsUpdated':
+      // при любом таком сигнале подгружаем свежие previews
+      loadRooms();
+      break;
+         
 case 'call': {
   // Не дублируем свои собственные звонки
   if (msg.initiator === userNickname) break;
