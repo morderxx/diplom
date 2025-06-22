@@ -1522,6 +1522,17 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
         img.src = apiSrc;
       });
 
+     // 1. Немедленно обновляем сайдбар для текущего пользователя
+      loadRooms();
+      
+      // 2. Отправляем специальное событие для обновления сайдбара
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ 
+          type: 'forceRoomsUpdate',
+          roomId: currentRoom,
+          isImage: true
+        }));
+      }
     return;  // на этом выходим и НЕ идём в последующие блоки
   }
 
