@@ -48,6 +48,25 @@ router.get('/', authMiddleware, async (req, res) => {
     }
   }
 
+    // 1.2) Запрос по диапазону дат
+  else if (req.query.start && req.query.end) {
+    try {
+      const { rows } = await pool.query(`
+        SELECT 
+          event_date AS date, 
+          event_time AS time,
+          description
+        FROM events
+        WHERE user_id = $1
+          AND event_date BETWEEN $2 AND $3
+      `, [userId, req.query.start, req.query.end]);
+
+      return res.json(rows);
+    } catch (err) {
+      console.error('Error fetching events by range:', err);
+      return res.status(500).send('DB error');
+    }
+  }
   // 2) Запрос для подсветки календаря
   const year  = parseInt(req.query.year,  10);
   const month = parseInt(req.query.month, 10);
