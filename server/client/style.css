@@ -1174,6 +1174,7 @@ body.dark-theme .modal-window * {
   flex-direction: column;
   padding: 8px;
   cursor: pointer;
+  align-items: flex-start; 
 }
 .room-title {
   font-weight: bold;
