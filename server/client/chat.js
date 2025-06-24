@@ -726,6 +726,7 @@ function appendCenterCall(text) {
   wrapper.appendChild(el);
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
+  setTimeout(scrollToBottom, 0);
 }
   // Показать окно звонка
 function showCallWindow(peer, incoming = false) {
@@ -1539,6 +1540,7 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
           isImage: true
         }));
       }
+     setTimeout(scrollToBottom, 0);
     return;  // на этом выходим и НЕ идём в последующие блоки
   }
 
