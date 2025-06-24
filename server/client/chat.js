@@ -245,9 +245,15 @@ function toTimestamp(dateStr, hh, mm) {
     scheduledTimers.clear();
   }
 
+  
+  
 function scrollToBottom() {
   const chatBox = document.getElementById('chat-box');
+  // Два варианта прокрутки для надежности
   chatBox.scrollTop = chatBox.scrollHeight;
+  setTimeout(() => {
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }, 50);
 }
   
 function scheduleNotification(dateStr, time, description) {
