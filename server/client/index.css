@@ -237,3 +237,21 @@ button:hover {
     cursor: pointer;
     margin-top: 10px;
 }
+
+/* Центрирование капчи */
+#captcha-container {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0;
+}
+
+/* Стили для кнопки отмены */
+#cancel-captcha-btn {
+    background: #f0f0f0;
+    color: #333;
+    margin-top: 10px;
+}
+
+#cancel-captcha-btn:hover {
+    background: #e0e0e0;
+}
