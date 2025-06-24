@@ -1549,16 +1549,6 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
           roomId: currentRoom,
           isImage: true
         }));
-            img.onload = function() {
-      if (currentRoom === roomId) {
-        scrollToBottom(); // Прокрутка после загрузки изображения
-      }
-    };
-    img.onerror = function() {
-      if (currentRoom === roomId) {
-        scrollToBottom(); // Прокрутка даже при ошибке
-      }
-    };
       }
      setTimeout(scrollToBottom, 0);
     return;  // на этом выходим и НЕ идём в последующие блоки
