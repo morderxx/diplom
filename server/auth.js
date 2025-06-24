@@ -109,6 +109,15 @@ router.post('/profile', authMiddleware, async (req, res) => {
     res.status(200).send('Profile saved');
   } catch (err) {
     console.error('Profile save error:', err);
+    
+    // Обработка ошибки дублирования никнейма
+    if (err.code === '23505') {
+      return res.status(400).json({ 
+        error: 'duplicate_nickname',
+        message: 'Этот никнейм уже занят. Пожалуйста, выберите другой.' 
+      });
+    }
+    
     res.status(500).send('Error saving profile');
   }
 });
@@ -131,8 +140,6 @@ router.get('/profile', authMiddleware, async (req, res) => {
     res.status(500).send('Error fetching profile');
   }
 });
-
-// Добавьте этот маршрут в auth.js
 
 // Сброс пароля
 router.post('/reset-password', async (req, res) => {
@@ -174,4 +181,5 @@ router.post('/reset-password', async (req, res) => {
         res.status(500).json({ message: 'Error resetting password' });
     }
 });
+
 module.exports = router;
