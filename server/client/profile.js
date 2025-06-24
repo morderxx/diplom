@@ -14,12 +14,6 @@ async function saveProfile() {
         return;
     }
 
-    // Проверка формата никнейма
-    if (!nickname.startsWith('@')) {
-        document.getElementById('message').innerText = 'Никнейм должен начинаться с @';
-        return;
-    }
-
     // Проверка возраста (минимум 12 лет)
     const birthDate = new Date(birthdate);
     const today = new Date();
@@ -46,7 +40,7 @@ async function saveProfile() {
             body: JSON.stringify({
                 nickname,
                 full_name,
-                age: birthdate,
+                age: birthdate,  // Отправляем дату рождения в поле age
                 bio
             })
         });
@@ -61,36 +55,34 @@ async function saveProfile() {
             try {
                 const errorData = await res.json();
                 
-                // Обработка ошибки дублирования никнейма по тексту ошибки
-                if (errorData.error?.detail?.includes('already exists') || 
-                    errorData.error?.detail?.includes('nickname') || 
-                    errorData.error?.code === '23505' || 
+                // Улучшенная проверка на дублирование никнейма
+                const isNicknameConflict = (
+                    errorData.error?.code === '23505' ||
                     errorData.error?.constraint === 'idx_users_nickname' ||
-                    (errorData.error && errorData.error.includes('duplicate key'))) {
-                    document.getElementById('message').innerText = 
-                        'Этот никнейм уже занят. Пожалуйста, выберите другой.';
-                } 
-                // Обработка других ошибок
-                else {
-                    document.getElementById('message').innerText = 
-                        `Ошибка сохранения: ${errorData.error?.message || errorData.message || 'Неизвестная ошибка'}`;
-                }
-            } 
-            // Если не удалось распарсить JSON, анализируем текст ошибки
-            catch (parseError) {
-                const errorText = await res.text();
-                
-                // Проверяем текст ошибки на наличие признаков дублирования
-                if (errorText.includes('duplicate key') || 
-                    errorText.includes('nickname') || 
-                    errorText.includes('23505') || 
-                    errorText.includes('already exists')) {
+                    errorData.code === '23505' ||                     // Проверяем корневой уровень
+                    errorData.detail?.includes('already exists') ||   // Проверяем детали ошибки
+                    errorData.error?.detail?.includes('already exists') ||
+                    errorData.message?.includes('already exists') ||
+                    errorData.error?.message?.includes('already exists')
+                );
+
+                if (isNicknameConflict) {
                     document.getElementById('message').innerText = 
                         'Этот никнейм уже занят. Пожалуйста, выберите другой.';
                 } else {
+                    // Форматирование сообщения об ошибке
+                    const errorMessage = (
+                        errorData.error?.message ||
+                        errorData.message ||
+                        'Неизвестная ошибка'
+                    );
                     document.getElementById('message').innerText = 
-                        `Ошибка сохранения профиля (${res.status}): ${errorText || 'Нет дополнительной информации'}`;
+                        `Ошибка сохранения: ${errorMessage}`;
                 }
+            } catch (parseError) {
+                // Обработка случаев, когда ответ не в JSON формате
+                document.getElementById('message').innerText = 
+                    `Ошибка сохранения профиля (код: ${res.status})`;
             }
         }
     } catch (error) {
