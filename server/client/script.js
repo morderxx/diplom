@@ -206,6 +206,17 @@ function handleRegister() {
         return;
     }
 
+    // Проверка сложности пароля: минимум 7 символов и хотя бы 1 буква
+    if (password.length < 7) {
+        document.getElementById('message').innerText = 'Пароль должен содержать не менее 7 символов';
+        return;
+    }
+    
+    if (!/[a-zA-Z]/.test(password)) {
+        document.getElementById('message').innerText = 'Пароль должен содержать хотя бы одну английскую букву';
+        return;
+    }
+
     window.pendingAction = 'register';
     showCaptchaModal();
 }
@@ -296,8 +307,6 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 });
 
-// Добавьте эти функции в script.js
-
 // Показать модальное окно восстановления пароля
 function showResetModal() {
     document.getElementById('reset-password-modal').classList.remove('hidden');
@@ -318,6 +327,17 @@ async function resetPassword() {
 
     if (!login || !keyword || !newPassword) {
         document.getElementById('reset-message').innerText = 'Все поля обязательны';
+        return;
+    }
+
+    // Проверка сложности нового пароля
+    if (newPassword.length < 7) {
+        document.getElementById('reset-message').innerText = 'Пароль должен содержать не менее 7 символов';
+        return;
+    }
+    
+    if (!/[a-zA-Z]/.test(newPassword)) {
+        document.getElementById('reset-message').innerText = 'Пароль должен содержать хотя бы одну английскую букву';
         return;
     }
 
