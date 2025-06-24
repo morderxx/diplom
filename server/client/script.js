@@ -25,7 +25,6 @@ function goBack() {
 
 // Глобальные переменные для управления капчей
 let captchaWidgetId = null;
-let captchaVerified = false;
 
 // Показать модальное окно капчи
 function showCaptchaModal() {
@@ -34,16 +33,17 @@ function showCaptchaModal() {
     document.getElementById('verify-captcha-btn').classList.add('disabled-btn');
     document.getElementById('verify-captcha-btn').disabled = true;
     
-    // Инициализация капчи только при первом открытии
-    if (!captchaWidgetId) {
+    // Всегда сбрасываем капчу при открытии
+    if (captchaWidgetId) {
+        grecaptcha.reset(captchaWidgetId);
+    } else {
+        // Инициализация при первом открытии
         captchaWidgetId = grecaptcha.render('captcha-container', {
             'sitekey': '6LczulkrAAAAAC2VSZfgIVzx3bZXWt3WfC3vvta0',
             'callback': onCaptchaSuccess,
             'expired-callback': onCaptchaExpired,
             'error-callback': onCaptchaError
         });
-    } else {
-        grecaptcha.reset(captchaWidgetId);
     }
 }
 
@@ -85,6 +85,11 @@ async function verifyCaptcha() {
         return;
     }
     
+    // Сохраняем текущее действие перед сбросом
+    const pendingAction = window.pendingAction;
+    // Сбрасываем действие сразу после сохранения
+    window.pendingAction = null;
+    
     try {
         // Показываем загрузку
         const verifyBtn = document.getElementById('verify-captcha-btn');
@@ -103,15 +108,16 @@ async function verifyCaptcha() {
         const data = await res.json();
         
         if (data.success) {
-            captchaVerified = true;
             closeCaptchaModal();
             document.getElementById('captcha-message').innerText = '';
             
             // Выполняем действие, для которого требовалась капча
-            if (window.pendingAction === 'login') {
-                login();
-            } else if (window.pendingAction === 'register') {
-                register();
+            if (pendingAction === 'login') {
+                await login();
+            } else if (pendingAction === 'register') {
+                await register();
+            } else if (pendingAction === 'reset') {
+                await resetPassword();
             }
         } else {
             let errorMessage = 'Ошибка проверки reCAPTCHA. Попробуйте еще раз.';
@@ -125,14 +131,16 @@ async function verifyCaptcha() {
             }
             
             document.getElementById('captcha-message').innerText = errorMessage;
-            
-            // Перезагружаем капчу
-            grecaptcha.reset(captchaWidgetId);
         }
     } catch (error) {
         console.error('Captcha verification error:', error);
         document.getElementById('captcha-message').innerText = 'Ошибка соединения с сервером. Проверьте интернет-соединение.';
     } finally {
+        // Всегда сбрасываем капчу после проверки
+        if (captchaWidgetId) {
+            grecaptcha.reset(captchaWidgetId);
+        }
+        
         // Восстанавливаем кнопку
         const verifyBtn = document.getElementById('verify-captcha-btn');
         verifyBtn.disabled = false;
@@ -140,7 +148,6 @@ async function verifyCaptcha() {
     }
 }
 
-// Показ формы регистрации
 // Показ формы регистрации
 function showRegister() {
     document.getElementById('keyword').classList.remove('hidden');
@@ -155,6 +162,7 @@ document.getElementById('continue-btn').addEventListener('click', function() {
     document.getElementById('login-screen').classList.remove('hidden');
     document.getElementById('message').innerText = ''; // Сбрасываем сообщение
 });
+
 // Обработчики для кнопок входа и регистрации
 function handleLogin() {
     const loginValue = document.getElementById('login').value;
@@ -256,13 +264,13 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 });
 
-
 // Добавьте эти функции в script.js
 
 // Показать модальное окно восстановления пароля
 function showResetModal() {
     document.getElementById('reset-password-modal').classList.remove('hidden');
     document.getElementById('reset-message').innerText = '';
+    window.pendingAction = 'reset';
 }
 
 // Закрыть модальное окно восстановления
@@ -292,7 +300,10 @@ async function resetPassword() {
         
         if (res.ok) {
             document.getElementById('reset-message').innerText = 'Пароль успешно изменен!';
-            setTimeout(closeResetModal, 2000);
+            setTimeout(() => {
+                closeResetModal();
+                document.getElementById('message').innerText = 'Пароль успешно изменен!';
+            }, 2000);
         } else {
             document.getElementById('reset-message').innerText = data.message || 'Ошибка при смене пароля';
         }
