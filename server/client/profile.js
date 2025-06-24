@@ -20,7 +20,6 @@ async function saveProfile() {
     let ageYears = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
     
-    // Корректировка возраста, если день рождения ещё не наступил
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
         ageYears--;
     }
@@ -56,32 +55,35 @@ async function saveProfile() {
         }
 
         // Обработка ошибок
-        let errorResponse;
+        const responseText = await res.text();
+        let errorResponse = null;
+        
         try {
-            // Пытаемся распарсить JSON
-            errorResponse = await res.json();
+            errorResponse = JSON.parse(responseText);
         } catch {
-            // Если не JSON, читаем как текст
-            errorResponse = await res.text();
+            // Если не JSON, оставляем как текст
         }
 
         // Проверка на конфликт никнейма
-        const isNicknameConflict = (
-            (typeof errorResponse === 'string' && (
-                errorResponse.includes('already exists') ||
-                errorResponse.includes('duplicate key') ||
-                errorResponse.includes('idx_users_nickname') ||
-                errorResponse.includes('23505')
-            )) ||
-            (typeof errorResponse === 'object' && (
+        let isNicknameConflict = false;
+        
+        // 1. Проверка по тексту ответа
+        if (responseText.includes('already exists') ||
+            responseText.includes('duplicate key') ||
+            responseText.includes('idx_users_nickname') ||
+            responseText.includes('23505')) {
+            isNicknameConflict = true;
+        }
+        // 2. Проверка структуры JSON
+        else if (errorResponse) {
+            isNicknameConflict = (
                 errorResponse.error?.code === '23505' ||
                 errorResponse.error?.constraint === 'idx_users_nickname' ||
                 errorResponse.code === '23505' ||
-                errorResponse.detail?.includes('already exists') ||
-                errorResponse.message?.includes('already exists') ||
-                errorResponse.error?.message?.includes('already exists')
-            ))
-        );
+                (errorResponse.detail && errorResponse.detail.includes('already exists')) ||
+                (errorResponse.error && errorResponse.error.includes('already exists'))
+            );
+        }
 
         if (isNicknameConflict) {
             document.getElementById('message').innerText = 
@@ -90,18 +92,24 @@ async function saveProfile() {
             // Формируем сообщение об ошибке
             let errorMessage = 'Ошибка сохранения профиля';
             
-            if (typeof errorResponse === 'string') {
-                errorMessage += `: ${errorResponse.substring(0, 100)}`;
-            } else if (typeof errorResponse === 'object') {
-                errorMessage += `: ${errorResponse.message || errorResponse.error?.message || 'Неизвестная ошибка сервера'}`;
+            if (errorResponse) {
+                // Пытаемся извлечь сообщение из JSON
+                errorMessage = errorResponse.error?.message || 
+                              errorResponse.message || 
+                              errorResponse.detail ||
+                              JSON.stringify(errorResponse);
+            } else {
+                // Используем текст ответа
+                errorMessage = responseText.substring(0, 200);
             }
             
-            document.getElementById('message').innerText = errorMessage;
+            document.getElementById('message').innerText = 
+                `Ошибка: ${errorMessage} (код: ${res.status})`;
         }
         
     } catch (error) {
-        console.error('Сетевая ошибка:', error);
+        console.error('Ошибка при сохранении профиля:', error);
         document.getElementById('message').innerText = 
-            'Сетевая ошибка. Проверьте подключение к интернету.';
+            'Произошла ошибка при сохранении профиля. Попробуйте ещё раз.';
     }
 }
