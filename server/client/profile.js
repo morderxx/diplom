@@ -39,7 +39,7 @@ async function saveProfile() {
         body: JSON.stringify({
             nickname,
             full_name,
-            age,  // Отправляем возраст в годах
+            birthdate,  // Отправляем возраст в годах
             bio
         })
     });
