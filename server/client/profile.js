@@ -56,7 +56,7 @@ async function saveProfile() {
                 const errorData = await res.json();
                 
                 // Проверка на дублирование никнейма
-                if (errorData.error?.code === '500' || 
+                if (errorData.error?.code === '23505' || 
                     errorData.error?.constraint === 'idx_users_nickname') {
                     document.getElementById('message').innerText = 
                         'Этот никнейм уже занят. Пожалуйста, выберите другой.';
