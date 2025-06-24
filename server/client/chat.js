@@ -1399,7 +1399,11 @@ async function joinRoom(roomId) {
       console.warn('Неизвестный элемент истории:', m);
     }
   });
-  setTimeout(scrollToBottom, 0);
+   setTimeout(() => {
+    scrollToBottom();
+    // Дополнительная прокрутка через 100 мс для изображений
+    setTimeout(scrollToBottom, 100);
+  }, 0);
 }
   
 function appendMessage(sender, text, time, callId = null) {
@@ -1545,6 +1549,16 @@ async function appendFile(sender, fileId, filename, mimeType, time) {
           roomId: currentRoom,
           isImage: true
         }));
+            img.onload = function() {
+      if (currentRoom === roomId) {
+        scrollToBottom(); // Прокрутка после загрузки изображения
+      }
+    };
+    img.onerror = function() {
+      if (currentRoom === roomId) {
+        scrollToBottom(); // Прокрутка даже при ошибке
+      }
+    };
       }
      setTimeout(scrollToBottom, 0);
     return;  // на этом выходим и НЕ идём в последующие блоки
