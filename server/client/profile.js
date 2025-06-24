@@ -40,51 +40,65 @@ async function saveProfile() {
             body: JSON.stringify({
                 nickname,
                 full_name,
-                age: birthdate,  // Отправляем дату рождения в поле age
+                age: birthdate,
                 bio
             })
         });
 
+        // Успешный ответ
         if (res.ok) {
             localStorage.setItem('nickname', nickname);
             document.getElementById('message').innerText = 'Профиль сохранён!';
             setTimeout(() => {
                 window.location.href = 'chat.html';
             }, 1000);
-        } else {
-            try {
-                const errorData = await res.json();
-                
-                // Улучшенная проверка на дублирование никнейма
-                const isNicknameConflict = (
-                    errorData.error?.code === '23505' ||
-                    errorData.error?.constraint === 'idx_users_nickname' ||
-                    errorData.code === '23505' ||                     // Проверяем корневой уровень
-                    errorData.detail?.includes('already exists') ||   // Проверяем детали ошибки
-                    errorData.error?.detail?.includes('already exists') ||
-                    errorData.message?.includes('already exists') ||
-                    errorData.error?.message?.includes('already exists')
-                );
-
-                if (isNicknameConflict) {
-                    document.getElementById('message').innerText = 
-                        'Этот никнейм уже занят. Пожалуйста, выберите другой.';
-                } else {
-                    // Форматирование сообщения об ошибке
-                    const errorMessage = (
-                        errorData.error?.message ||
-                        errorData.message ||
-                        'Неизвестная ошибка'
-                    );
-                    document.getElementById('message').innerText = 
-                        `Ошибка сохранения: ${errorMessage}`;
-                }
-            } catch (parseError) {
-                // Обработка случаев, когда ответ не в JSON формате
-                document.getElementById('message').innerText = 
-                    `Ошибка сохранения профиля (код: ${res.status})`;
-            }
+            return;
         }
+
+        // Обработка ошибок
+        let errorResponse;
+        try {
+            // Пытаемся распарсить JSON
+            errorResponse = await res.json();
+        } catch {
+            // Если не JSON, читаем как текст
+            errorResponse = await res.text();
+        }
+
+        // Проверка на конфликт никнейма
+        const isNicknameConflict = (
+            (typeof errorResponse === 'string' && (
+                errorResponse.includes('already exists') ||
+                errorResponse.includes('duplicate key') ||
+                errorResponse.includes('idx_users_nickname') ||
+                errorResponse.includes('23505')
+            )) ||
+            (typeof errorResponse === 'object' && (
+                errorResponse.error?.code === '23505' ||
+                errorResponse.error?.constraint === 'idx_users_nickname' ||
+                errorResponse.code === '23505' ||
+                errorResponse.detail?.includes('already exists') ||
+                errorResponse.message?.includes('already exists') ||
+                errorResponse.error?.message?.includes('already exists')
+            ))
+        );
+
+        if (isNicknameConflict) {
+            document.getElementById('message').innerText = 
+                'Этот никнейм уже занят. Пожалуйста, выберите другой.';
+        } else {
+            // Формируем сообщение об ошибке
+            let errorMessage = 'Ошибка сохранения профиля';
+            
+            if (typeof errorResponse === 'string') {
+                errorMessage += `: ${errorResponse.substring(0, 100)}`;
+            } else if (typeof errorResponse === 'object') {
+                errorMessage += `: ${errorResponse.message || errorResponse.error?.message || 'Неизвестная ошибка сервера'}`;
+            }
+            
+            document.getElementById('message').innerText = errorMessage;
+        }
+        
     } catch (error) {
         console.error('Сетевая ошибка:', error);
         document.getElementById('message').innerText = 
