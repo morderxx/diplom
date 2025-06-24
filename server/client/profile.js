@@ -67,14 +67,20 @@ async function saveProfile() {
         // Проверка на конфликт никнейма
         let isNicknameConflict = false;
         
-        // 1. Проверка по тексту ответа
-        if (responseText.includes('already exists') ||
-            responseText.includes('duplicate key') ||
-            responseText.includes('idx_users_nickname') ||
-            responseText.includes('23505')) {
+        // 1. Проверка нового формата ошибки
+        if (errorResponse && errorResponse.error === 'duplicate_nickname') {
             isNicknameConflict = true;
         }
-        // 2. Проверка структуры JSON
+        // 2. Проверка по тексту ответа
+        else if (
+            responseText.includes('already exists') ||
+            responseText.includes('duplicate key') ||
+            responseText.includes('idx_users_nickname') ||
+            responseText.includes('23505')
+        ) {
+            isNicknameConflict = true;
+        }
+        // 3. Проверка структуры JSON
         else if (errorResponse) {
             isNicknameConflict = (
                 errorResponse.error?.code === '23505' ||
