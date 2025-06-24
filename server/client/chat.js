@@ -245,6 +245,11 @@ function toTimestamp(dateStr, hh, mm) {
     scheduledTimers.clear();
   }
 
+function scrollToBottom() {
+  const chatBox = document.getElementById('chat-box');
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+  
 function scheduleNotification(dateStr, time, description) {
   if (!time) return; // Пропускаем события без времени
 
@@ -1387,6 +1392,7 @@ async function joinRoom(roomId) {
       console.warn('Неизвестный элемент истории:', m);
     }
   });
+  setTimeout(scrollToBottom, 0);
 }
   
 function appendMessage(sender, text, time, callId = null) {
