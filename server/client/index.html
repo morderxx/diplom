@@ -44,16 +44,17 @@
         </div>
     </div>
     
-    <!-- Модальное окно капчи -->
-    <div id="captcha-modal" class="hidden">
-        <div class="modal-content">
-            <span class="close-btn" onclick="closeCaptchaModal()">&times;</span>
-            <h2>Подтвердите, что вы не робот</h2>
-            <div id="captcha-container"></div>
-            <div id="captcha-message"></div>
-            <button id="verify-captcha-btn" class="disabled-btn" disabled>Подтвердить</button>
-        </div>
+   <!-- Модальное окно капчи -->
+<div id="captcha-modal" class="hidden">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeCaptchaModal()">&times;</span>
+        <h2>Подтвердите, что вы не робот</h2>
+        <div id="captcha-container"></div>
+        <div id="captcha-message"></div>
+        <button id="verify-captcha-btn" class="disabled-btn" disabled>Подтвердить</button>
+        <button id="cancel-captcha-btn" onclick="cancelCaptcha()">Отмена</button>
     </div>
+</div>
     <!-- Добавьте этот код в body после captcha-modal -->
 <div id="reset-password-modal" class="hidden">
     <div class="modal-content">
